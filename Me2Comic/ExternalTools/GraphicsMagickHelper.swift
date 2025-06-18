@@ -164,125 +164,21 @@ class GraphicsMagickHelper {
         return command
     }
 
-    /// Get image dimensions using GraphicsMagick
+    /// Get image dimensions using ImageIO
     /// - Parameters:
     ///   - imagePath: Path to the image
-    ///   - gmPath: Path to GraphicsMagick executable
+    ///   - gmPath: Path to GraphicsMagick executable (unused, kept for interface compatibility)
     /// - Returns: Tuple containing width and height if successful, nil otherwise
     static func getImageDimensions(imagePath: String, gmPath: String) -> (width: Int, height: Int)? {
-        let dimensionsTask = Process()
-        dimensionsTask.executableURL = URL(fileURLWithPath: gmPath)
-        dimensionsTask.arguments = ["identify", "-format", "%w %h", imagePath]
-
-        let pipe = Pipe()
-        dimensionsTask.standardOutput = pipe
-        dimensionsTask.standardError = pipe
-
-        do {
-            try dimensionsTask.run()
-            dimensionsTask.waitUntilExit()
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard dimensionsTask.terminationStatus == 0,
-                  let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !output.isEmpty
-            else {
-                return nil
-            }
-
-            let dimensions = output.split(separator: " ")
-            guard dimensions.count == 2,
-                  let width = Int(dimensions[0]),
-                  let height = Int(dimensions[1])
-            else {
-                return nil
-            }
-
-            return (width: width, height: height)
-        } catch {
-            return nil
-        }
+        return ImageIOHelper.getImageDimensions(imagePath: imagePath)
     }
 
-    /// Get dimensions for multiple images in a single gm identify call
+    /// Get dimensions for multiple images using ImageIO
     /// - Parameters:
     ///   - imagePaths: Array of image file paths
-    ///   - gmPath: Path to GraphicsMagick executable
+    ///   - gmPath: Path to GraphicsMagick executable (unused, kept for interface compatibility)
     /// - Returns: Dictionary mapping image paths to their dimensions
     static func getBatchImageDimensions(imagePaths: [String], gmPath: String) -> [String: (width: Int, height: Int)] {
-        guard !imagePaths.isEmpty else { return [:] }
-
-        let dimensionsTask = Process()
-        dimensionsTask.executableURL = URL(fileURLWithPath: gmPath)
-
-        // Use tab as delimiter
-        var arguments = ["identify", "-format", "%f\t%w\t%h\n"]
-        arguments.append(contentsOf: imagePaths)
-        dimensionsTask.arguments = arguments
-
-        let pipe = Pipe()
-        dimensionsTask.standardOutput = pipe
-        dimensionsTask.standardError = pipe
-
-        do {
-            try dimensionsTask.run()
-            dimensionsTask.waitUntilExit()
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard dimensionsTask.terminationStatus == 0,
-                  let output = String(data: data, encoding: .utf8),
-                  !output.isEmpty
-            else {
-                return [:]
-            }
-
-            var result: [String: (width: Int, height: Int)] = [:]
-
-            // Create a mapping from filename to full paths to handle duplicate filenames
-            var filenameToPathsMap: [String: [String]] = [:]
-            for imagePath in imagePaths {
-                let filename = URL(fileURLWithPath: imagePath).lastPathComponent
-                if filenameToPathsMap[filename] == nil {
-                    filenameToPathsMap[filename] = []
-                }
-                filenameToPathsMap[filename]?.append(imagePath)
-            }
-
-            let lines = output.components(separatedBy: .newlines)
-            for line in lines {
-                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                if trimmedLine.isEmpty { continue }
-
-                // Split by tab character
-                let components = trimmedLine.components(separatedBy: "\t")
-                guard components.count == 3,
-                      let width = Int(components[1]),
-                      let height = Int(components[2])
-                else { continue }
-
-                let filename = components[0]
-
-                // Match the path precisely
-                if let possiblePaths = filenameToPathsMap[filename] {
-                    if possiblePaths.count == 1 {
-                        // Unique filename, match directly
-                        result[possiblePaths[0]] = (width: width, height: height)
-                    } else {
-                        // Multiple identical filenames, require more precise matching
-                        // Since gm identify returns only the filename, match the first unmatched path in order
-                        for path in possiblePaths {
-                            if result[path] == nil {
-                                result[path] = (width: width, height: height)
-                                break
-                            }
-                        }
-                    }
-                }
-            }
-
-            return result
-        } catch {
-            return [:]
-        }
+        return ImageIOHelper.getBatchImageDimensions(imagePaths: imagePaths)
     }
 }
