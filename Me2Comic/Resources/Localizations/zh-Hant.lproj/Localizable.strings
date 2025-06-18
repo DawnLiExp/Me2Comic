@@ -123,8 +123,8 @@
 "BatchSizeLabel" = "每批影像數：";
 
 /* Batch Size description */
-"BatchSizeDesc" = "每個執行緒處理的影像張數，適當設定可提升處理效率並降低系統資源消耗，預設為40張";
+"BatchSizeDesc" = "每個執行緒處理的影像張數，適當設定可提升處理效率並降低系統資源消耗，設定範圍1–618，預設為40張";
 
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "每批影像數無效。請輸入 1 至 1000 的整數。已套用預設值（40）。";
+"InvalidBatchSize" = "每批影像數無效。請輸入 1 至 618 的整數。已套用預設值（40）。";
 
