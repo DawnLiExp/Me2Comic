@@ -123,9 +123,9 @@
 "BatchSizeLabel" = "Per batch:";
 
 /* Batch Size description (shortened for UI) */
-"BatchSizeDesc" = "Number of images processed per thread. Proper tuning improves performance. Default: 40";
+"BatchSizeDesc" = "Number of images per batch (1–618). Adjusting may improve processing speed and reduce load. Default: 40";
 
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 1000. Default (40) will be used.";
+"InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 618. Default (40) will be used.";
 
 

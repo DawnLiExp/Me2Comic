@@ -123,8 +123,8 @@
 "BatchSizeLabel" = "バッチ画像数：";
 
 /* Batch Size description */
-"BatchSizeDesc" = "各スレッドが処理する画像の枚数です。適切に設定することで処理効率が向上し、システム負荷を軽減できます。既定値は40枚です";
+"BatchSizeDesc" = "各スレッドが処理する画像数（1～618）。設定により効率向上・負荷軽減が可能です。既定値は40枚です";
 
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "バッチサイズが無効です。1〜1000の整数を入力してください。既定値（40）を使用します。";
+"InvalidBatchSize" = "バッチサイズが無効です。1〜618の整数を入力してください。既定値（40）を使用します。";
 

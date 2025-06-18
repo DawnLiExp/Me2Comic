@@ -123,7 +123,7 @@
 "BatchSizeLabel" = "每批图像数：";
 
 /* Batch Size description */
-"BatchSizeDesc" = "每线程处理的图像数量，合适的设置能提升处理效率，降低系统开销，默认40张";
+"BatchSizeDesc" = "每线程处理的图像数量，合适的设置能提升处理效率，降低系统开销，设置范围1-618，默认40张";
 
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "每批图像数无效。请输入 1-1000 之间的整数。已自动使用默认值（40）。";
+"InvalidBatchSize" = "每批图像数无效。请输入 1-618 之间的整数。已自动使用默认值（40）。";
