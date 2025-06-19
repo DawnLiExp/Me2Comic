@@ -8,8 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		FC0976862DC72DF900C307FD /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0976852DC72DF900C307FD /* UIComponents.swift */; };
-		FC19ED752DF46431007A2F24 /* ThreadSafeArray.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC19ED742DF46429007A2F24 /* ThreadSafeArray.swift */; };
-		FC19ED772DF46446007A2F24 /* ManagedTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC19ED762DF4643F007A2F24 /* ManagedTask.swift */; };
+		FC38F2E92E03F31C00FBB3B2 /* BatchProcessOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchProcessOperation.swift */; };
 		FC8E3A462DF1D41400A375BA /* ImageProcessorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8E3A452DF1D41400A375BA /* ImageProcessorModels.swift */; };
 		FC9092EC2DFEC37700867319 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9092EB2DFEC37700867319 /* ImageIO.framework */; };
 		FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */; };
@@ -23,8 +22,7 @@
 
 /* Begin PBXFileReference section */
 		FC0976852DC72DF900C307FD /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIComponents.swift; sourceTree = "<group>"; };
-		FC19ED742DF46429007A2F24 /* ThreadSafeArray.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadSafeArray.swift; sourceTree = "<group>"; };
-		FC19ED762DF4643F007A2F24 /* ManagedTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManagedTask.swift; sourceTree = "<group>"; };
+		FC38F2E82E03F31A00FBB3B2 /* BatchProcessOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchProcessOperation.swift; sourceTree = "<group>"; };
 		FC8BA09D2DCB7E1B007582B9 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		FC8E3A452DF1D41400A375BA /* ImageProcessorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessorModels.swift; sourceTree = "<group>"; };
 		FC9092EB2DFEC37700867319 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
@@ -54,8 +52,7 @@
 		FC19ED782DF464CC007A2F24 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
-				FC19ED762DF4643F007A2F24 /* ManagedTask.swift */,
-				FC19ED742DF46429007A2F24 /* ThreadSafeArray.swift */,
+				FC38F2E82E03F31A00FBB3B2 /* BatchProcessOperation.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -211,14 +208,13 @@
 		FCB9B0C02DBDFD4500110511 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
-				FC19ED772DF46446007A2F24 /* ManagedTask.swift in Sources */,
+				FC38F2E92E03F31C00FBB3B2 /* BatchProcessOperation.swift in Sources */,
 				FC8E3A462DF1D41400A375BA /* ImageProcessorModels.swift in Sources */,
 				FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */,
 				FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */,
 				FCB9B0CA2DBDFD4500110511 /* ImageProcessorView.swift in Sources */,
 				FC0976862DC72DF900C307FD /* UIComponents.swift in Sources */,
 				FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */,
-				FC19ED752DF46431007A2F24 /* ThreadSafeArray.swift in Sources */,
 				FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */,
 			);
 		};
