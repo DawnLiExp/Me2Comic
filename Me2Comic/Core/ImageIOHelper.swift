@@ -8,6 +8,7 @@
 import CoreGraphics // Required for kCGImagePropertyPixelWidth, kCGImagePropertyPixelHeight
 import Foundation
 import ImageIO
+import os.lock
 
 enum ImageIOHelper {
     /// Retrieves image dimensions (width and height) using the ImageIO framework.
@@ -51,25 +52,40 @@ enum ImageIOHelper {
     static func getBatchImageDimensions(imagePaths: [String]) -> [String: (width: Int, height: Int)] {
         guard !imagePaths.isEmpty else { return [:] }
 
-        var result: [String: (width: Int, height: Int)] = [:]
-        // Use NSLock to ensure thread-safe access when updating the 'result' dictionary
-        // from multiple concurrent operations.
-        let lock = NSLock()
+        // Pre-allocate dictionary with expected capacity
+        var result: [String: (width: Int, height: Int)] = Dictionary(minimumCapacity: imagePaths.count)
 
-        // `DispatchQueue.concurrentPerform` is ideal here. It executes the provided block
-        // concurrently for each iteration, automatically managing the number of threads
-        // to optimally utilize CPU cores. This avoids over-concurrency while ensuring
-        // efficient parallel processing for ImageIO operations within this batch.
-        // The higher-level `ImageProcessor` already limits the number of concurrent batches
-        // using a DispatchSemaphore based on `threadCount`.
-        DispatchQueue.concurrentPerform(iterations: imagePaths.count) { index in
-            let imagePath = imagePaths[index]
-            if let dimensions = getImageDimensions(imagePath: imagePath) {
-                lock.lock()
-                result[imagePath] = dimensions
-                lock.unlock()
+        // Use os_unfair_lock wrapped in a class for Swift compatibility
+        final class UnfairLock {
+            private var _lock = os_unfair_lock()
+
+            func withLock<R>(_ body: () throws -> R) rethrows -> R {
+                os_unfair_lock_lock(&_lock)
+                defer { os_unfair_lock_unlock(&_lock) }
+                return try body()
             }
         }
+
+        let lock = UnfairLock()
+        // Set stride length based on CPU cores to balance task granularity and reduce scheduling overhead.
+        let strideLength = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount * 2)
+        // Use concurrentPerform for parallel processing, with stride-based task distribution for efficiency.
+        DispatchQueue.concurrentPerform(iterations: imagePaths.count) { index in
+            // Process images in chunks (stride) to reduce the number of concurrent tasks.
+            for realIndex in stride(from: index, to: imagePaths.count, by: strideLength) {
+                // Use autoreleasepool to manage memory and prevent memory spikes during image processing.
+                autoreleasepool {
+                    let path = imagePaths[realIndex]
+                    if let dims = getImageDimensions(imagePath: path) {
+                        // Thread-safe dictionary update using os_unfair_lock for minimal contention.
+                        lock.withLock {
+                            result[path] = dims
+                        }
+                    }
+                }
+            }
+        }
+
         return result
     }
 }
