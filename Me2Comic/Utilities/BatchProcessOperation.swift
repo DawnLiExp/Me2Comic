@@ -80,8 +80,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         let supportedExtensions = ["jpg", "jpeg", "png"]
         let validImages = batchImages.filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
         let batchDimensions = GraphicsMagickHelper.getBatchImageDimensions(
-            imagePaths: validImages.map { $0.path },
-            gmPath: gmPath
+            imagePaths: validImages.map { $0.path }
         )
         // Prepare batch file.
         let fileManager = FileManager.default
@@ -104,8 +103,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 dimensions = batchDim
             } else {
                 dimensions = GraphicsMagickHelper.getImageDimensions(
-                    imagePath: imageFile.path,
-                    gmPath: gmPath
+                    imagePath: imageFile.path
                 )
             }
             guard let dimensions = dimensions else {
