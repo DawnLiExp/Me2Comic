@@ -28,9 +28,6 @@ class ImageProcessor: ObservableObject {
     // File paths that failed to process
     private var allFailedFiles: [String] = []
 
-    // KVO observer for progress tracking
-    private var progressObserver: NSKeyValueObservation?
-
     @Published var isProcessing: Bool = false
 
     @Published var logMessages: [String] = [] {
@@ -44,9 +41,6 @@ class ImageProcessor: ObservableObject {
     /// Cancel all pending/running tasks and clean up observer
     func stopProcessing() {
         processingQueue.cancelAllOperations()
-        progressObserver?.invalidate()
-        progressObserver = nil
-
         DispatchQueue.main.async {
             self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
             self.isProcessing = false
@@ -168,12 +162,9 @@ class ImageProcessor: ObservableObject {
         }
     }
 
-    /// Reset counters, observers, and internal states
+    /// Reset counters and internal states
     private func resetProcessingState() {
         processingQueue.cancelAllOperations()
-        progressObserver?.invalidate()
-        progressObserver = nil
-
         resultsQueue.sync {
             totalImagesProcessed = 0
             allFailedFiles.removeAll()
@@ -317,8 +308,6 @@ class ImageProcessor: ObservableObject {
 
         let elapsed = Int(Date().timeIntervalSince(processingStartTime ?? Date()))
         let duration = formatProcessingTime(elapsed)
-        progressObserver?.invalidate()
-        progressObserver = nil
 
         DispatchQueue.main.async {
             if self.processingQueue.operationCount == 0 && processedCount == 0 {
