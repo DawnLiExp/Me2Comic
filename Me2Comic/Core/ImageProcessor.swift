@@ -368,61 +368,54 @@ class ImageProcessor: ObservableObject {
             }
         }
 
-        // Create a completion operation that runs after all batch operations are done
-        let completion = BlockOperation { [weak self] in
-            self?.finalizeProcessing(subdirectories: subdirectories)
-        }
-        allOps.forEach { completion.addDependency($0) }
+        // Add all batch operations to the queue
+        processingQueue.addOperations(allOps, waitUntilFinished: false)
 
-        // Add all operations to the queue
-        processingQueue.addOperations(allOps + [completion], waitUntilFinished: false)
-    }
+        // Add barrier block for final processing
+        processingQueue.addBarrierBlock { [weak self, subdirectories] in
+            guard let self = self else { return }
 
-    /// Finalizes the image processing, reporting total processed images, failed files, and elapsed time.
-    /// Sends a system notification upon completion.
-    /// - Parameter subdirectories: The list of subdirectories that were processed.
-    private func finalizeProcessing(subdirectories: [URL]) {
-        var processedCount = 0
-        var failed: [String] = []
-
-        // Synchronize access to shared results
-        resultsQueue.sync {
-            processedCount = totalImagesProcessed
-            failed = allFailedFiles
-        }
-
-        // Calculate elapsed time
-        let elapsed = Int(Date().timeIntervalSince(processingStartTime ?? Date()))
-        let duration = formatProcessingTime(elapsed)
-
-        DispatchQueue.main.async {
-            // Handle cases where processing was stopped or no images were processed
-            if self.processingQueue.operationCount == 0 && processedCount == 0 {
-                self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
-            } else {
-                // Log processed subdirectories
-                for dir in subdirectories {
-                    self.logMessages.append(String(format: NSLocalizedString("ProcessedSubdir", comment: ""), dir.lastPathComponent))
-                }
-
-                // Log failed files, if any, limiting to the first 10 for brevity
-                if !failed.isEmpty {
-                    self.logMessages.append(String(format: NSLocalizedString("FailedFiles", comment: ""), failed.count))
-                    for file in failed.prefix(10) {
-                        self.logMessages.append("- \(file)")
-                    }
-                    if failed.count > 10 {
-                        self.logMessages.append(String(format: ". %d more", failed.count - 10))
-                    }
-                }
-
-                // Log overall processing summary
-                self.logMessages.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
-                self.logMessages.append(duration)
-                self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
-                self.sendCompletionNotification(totalProcessed: processedCount, failedCount: failed.count)
+            // Safely access shared state using resultsQueue
+            var processedCount = 0
+            var failedFiles: [String] = []
+            self.resultsQueue.sync {
+                processedCount = self.totalImagesProcessed
+                failedFiles = self.allFailedFiles
             }
-            self.isProcessing = false
+
+            let elapsed = Int(Date().timeIntervalSince(self.processingStartTime ?? Date()))
+            let duration = self.formatProcessingTime(elapsed)
+
+            DispatchQueue.main.async {
+                // Preserve original logging structure and flow
+                if self.processingQueue.operationCount == 0 && processedCount == 0 {
+                    self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
+                } else {
+                    // Log processed subdirectories
+                    for dir in subdirectories {
+                        self.logMessages.append(String(format: NSLocalizedString("ProcessedSubdir", comment: ""), dir.lastPathComponent))
+                    }
+
+                    // Log failed files
+                    if !failedFiles.isEmpty {
+                        self.logMessages.append(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
+                        for file in failedFiles.prefix(10) {
+                            self.logMessages.append("- \(file)")
+                        }
+                        if failedFiles.count > 10 {
+                            self.logMessages.append(String(format: ". %d more", failedFiles.count - 10))
+                        }
+                    }
+
+                    // Log processing summary
+                    self.logMessages.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
+                    self.logMessages.append(duration)
+                    self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
+                    self.sendCompletionNotification(totalProcessed: processedCount, failedCount: failedFiles.count)
+                }
+
+                self.isProcessing = false
+            }
         }
     }
 
