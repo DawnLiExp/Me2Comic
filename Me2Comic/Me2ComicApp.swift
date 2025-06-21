@@ -11,13 +11,15 @@ import SwiftUI
 @main
 struct Me2ComicApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     var body: some Scene {
         WindowGroup {
             ImageProcessorView()
         }
-        .windowStyle(.hiddenTitleBar) // 隐藏标题栏
-        .windowResizability(.contentMinSize) // 保持最小内容尺寸
+        // 隐藏标题栏
+        .windowStyle(.hiddenTitleBar)
+        // 保持最小内容尺寸
+        .windowResizability(.contentMinSize)
         Settings {
             AboutView()
         }
@@ -27,15 +29,19 @@ struct Me2ComicApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
-        
+
         if let window = NSApp.windows.first {
-            window.isMovableByWindowBackground = true // 启用全局拖拽
-            window.titlebarAppearsTransparent = true // 保持标题栏透明
-            window.styleMask.insert(.fullSizeContentView) // 内容扩展到标题栏区域
+            // 启用全局拖拽
+            window.isMovableByWindowBackground = true
+            // 保持标题栏透明
+            window.titlebarAppearsTransparent = true
+            // 内容扩展到标题栏区域
+            window.styleMask.insert(.fullSizeContentView)
         }
     }
 }
 
+/// 应用程序版本、构建号和语言选择
 struct AboutView: View {
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     private let buildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? NSLocalizedString("BuildVersionDefault", comment: "")
@@ -50,7 +56,7 @@ struct AboutView: View {
         if systemLanguage.contains("ja") { return "ja" }
         return "en"
     }()
-    
+
     var body: some View {
         VStack(spacing: 10) {
             Image(nsImage: NSImage(named: NSImage.Name("AppIcon")) ?? NSImage())
@@ -58,19 +64,19 @@ struct AboutView: View {
                 .scaledToFit()
                 .frame(width: 100, height: 100)
                 .padding(.top, 20)
-            
+
             Text("Me2Comic")
                 .font(.title)
                 .foregroundColor(.textPrimary)
-            
+
             Text("Version \(appVersion) (Build \(buildVersion))")
                 .foregroundColor(.textSecondary)
-            
+
             Text("© 2025 Me2")
                 .foregroundColor(.textSecondary)
-            
+
             Spacer().frame(height: 20)
-            
+
             HStack(spacing: 5) {
                 Text(NSLocalizedString("Select Language", comment: ""))
                     .foregroundColor(.textPrimary)
@@ -88,7 +94,7 @@ struct AboutView: View {
                     UserDefaults.standard.set([newValue], forKey: "AppleLanguages")
                 }
             }
-            
+
             Spacer()
         }
         .padding()
@@ -97,6 +103,7 @@ struct AboutView: View {
     }
 }
 
+/// `Color` 扩展，十六进制字符串初始化颜色
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -123,6 +130,7 @@ extension Color {
     }
 }
 
+/// `ShapeStyle` 的扩展，用于定义应用程序的自定义颜色资产。
 extension ShapeStyle where Self == Color {
     /// 标题和标签
     static var textPrimary: Color { Color(hex: "#C0C1C3") }

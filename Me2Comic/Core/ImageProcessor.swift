@@ -13,15 +13,15 @@ import UserNotifications
 
 /// Container for all image processing configuration parameters
 struct ProcessingParameters {
-    let widthThreshold: String
-    let resizeHeight: String
+    let widthThreshold: String // The width threshold for determining if an image needs to be split.
+    let resizeHeight: String // The target height for resizing images.
     let quality: String
-    let threadCount: Int
+    let threadCount: Int // The number of concurrent threads to use for processing (1-6).
     let unsharpRadius: String
     let unsharpSigma: String
     let unsharpAmount: String
     let unsharpThreshold: String
-    let batchSize: String
+    let batchSize: String // The number of images to process in each batch (1-618).
     let useGrayColorspace: Bool
 }
 
@@ -56,8 +56,8 @@ class ImageProcessor: ObservableObject {
         }
     }
 
-    /// Cancels all pending and running image processing tasks.
-    /// Resets the processing state and updates the UI.
+    /// Stops all ongoing and pending image processing tasks.
+    /// Resets the processing state and updates the UI accordingly.
     func stopProcessing() {
         processingQueue.cancelAllOperations()
         DispatchQueue.main.async {
@@ -78,10 +78,9 @@ class ImageProcessor: ObservableObject {
         }
     }
 
-    /// Retrieves image files with supported extensions from a given directory.
-    /// Supported extensions are JPG, JPEG, and PNG.
-    /// - Parameter directory: The URL of the directory to scan for image files.
-    /// - Returns: An array of URLs pointing to the image files found.
+    /// Retrieves image files with supported extensions (JPG, JPEG, PNG) from a specified directory.
+    /// - Parameter directory: The URL of the directory to scan.
+    /// - Returns: An array of URLs pointing to the found image files.
     private func getImageFiles(_ directory: URL) -> [URL] {
         let fileManager = FileManager.default
         let imageExtensions = ["jpg", "jpeg", "png"]
@@ -89,7 +88,7 @@ class ImageProcessor: ObservableObject {
             let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
             return files.filter { imageExtensions.contains($0.pathExtension.lowercased()) }
         } catch {
-            // Log error if directory contents cannot be read
+            // Log error if directory contents cannot be read.
             // self.logMessages.append("Error reading directory: \(error.localizedDescription)")
             return []
         }
@@ -128,7 +127,7 @@ class ImageProcessor: ObservableObject {
     /// - Parameter batchSizeStr: The batch size as a string, typically from user input.
     /// - Returns: A validated integer batch size.
     private func validateBatchSize(_ batchSizeStr: String) -> Int {
-        guard let batchSize = Int(batchSizeStr), batchSize >= 1, batchSize <= 1000 else {
+        guard let batchSize = Int(batchSizeStr), batchSize >= 1, batchSize <= 618 else {
             DispatchQueue.main.async {
                 self.logMessages.append(NSLocalizedString("InvalidBatchSize", comment: ""))
             }
@@ -421,18 +420,13 @@ class ImageProcessor: ObservableObject {
                 self.logMessages.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
                 self.logMessages.append(duration)
                 self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
-                // Send macOS system notification
                 self.sendCompletionNotification(totalProcessed: processedCount, failedCount: failed.count)
             }
             self.isProcessing = false
         }
     }
 
-    /// Sends a macOS system notification to inform the user about the completion of image processing.
-    /// The notification content varies based on whether there were any failed files.
-    /// - Parameters:
-    ///   - totalProcessed: The total number of images that were processed (successfully or not).
-    ///   - failedCount: The number of files that failed to process.
+    /// Sends a local user notification upon completion of image processing.
     private func sendCompletionNotification(totalProcessed: Int, failedCount: Int) {
         let center = UNUserNotificationCenter.current()
         let content = UNMutableNotificationContent()

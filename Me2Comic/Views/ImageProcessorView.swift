@@ -9,6 +9,8 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
+/// `ImageProcessorView` defines the main user interface for the image processing application.
+/// It manages user inputs, displays processing logs, and orchestrates image processing operations.
 struct ImageProcessorView: View {
     @State private var inputDirectory: URL?
     @State private var outputDirectory: URL?
@@ -27,14 +29,14 @@ struct ImageProcessorView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            LeftPanelView() // Left panel
+            LeftPanelView() // Left panel of the UI.
 
-            GradientDividerView() // Divider line
+            GradientDividerView() // Visual divider between panels.
 
             VStack(spacing: 25) {
                 Spacer().frame(height: 5)
 
-                // Input Dir Button
+                // Input Directory Selection Button.
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Input Directory", comment: ""),
                                   inputDirectory?.path ?? NSLocalizedString("Input Directory Placeholder", comment: "")),
@@ -45,13 +47,13 @@ struct ImageProcessorView: View {
                 )
                 .padding(.top, -11)
 
-                // Output Dir Button
+                // Output Directory Selection Button.
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Output Directory", comment: ""),
                                   outputDirectory?.path ?? NSLocalizedString("Output Directory Placeholder", comment: "")),
                     action: { selectOutputDirectory() },
                     isProcessing: processor.isProcessing,
-                    openAction: { // Open in Finder
+                    openAction: { // Action to open the output directory in Finder.
                         if let url = outputDirectory {
                             NSWorkspace.shared.open(url)
                         }
@@ -60,8 +62,8 @@ struct ImageProcessorView: View {
                 )
                 .padding(.bottom, 10)
 
-                // Parameters panel
-                HStack(alignment: .top, spacing: 18) { // Increased spacing for right-side gap
+                // Panel for image processing parameters.
+                HStack(alignment: .top, spacing: 18) {
                     SettingsPanelView(
                         widthThreshold: $widthThreshold,
                         resizeHeight: $resizeHeight,
@@ -76,16 +78,16 @@ struct ImageProcessorView: View {
                         isProcessing: processor.isProcessing
                     )
 
-                    // Parameters description
+                    // Description for the processing parameters.
                     ParameterDescriptionView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.trailing, -3) // Added to increase gap from right edge
+                        .padding(.trailing, -3)
                 }
-                .padding(.horizontal, 4) // Increased padding for left-side gap
+                .padding(.horizontal, 4)
                 .fixedSize(horizontal: false, vertical: true)
                 .background(.panelBackground)
 
-                // Go/Stop
+                // Action button to start or stop processing.
                 ActionButtonView(isProcessing: processor.isProcessing) {
                     if processor.isProcessing {
                         processor.stopProcessing()
@@ -95,19 +97,19 @@ struct ImageProcessorView: View {
                 }
                 .disabled(!processor.isProcessing && (inputDirectory == nil || outputDirectory == nil))
 
-                // Log console
-                // Use DecoratedView directly to reduce nesting
+                // Log console for displaying messages and progress.
                 DecoratedView(content: LogTextView(processor: processor))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.bottom, 15)
                     .padding(.bottom, 5)
-                    .padding(.trailing, 1) // Added to increase gap from right edge
+                    .padding(.trailing, 1)
             }
             .padding(.horizontal, 15)
         }
-        .frame(minWidth: 994, minHeight: 735) // Sets min window size
+        .frame(minWidth: 994, minHeight: 735) // Sets minimum window size.
         .background(.panelBackground)
         .onAppear {
+            // Request notification authorization when the view appears.
             let center = UNUserNotificationCenter.current()
             center.requestAuthorization(options: [.alert, .sound]) { granted, error in
                 if let error = error {
@@ -123,7 +125,7 @@ struct ImageProcessorView: View {
         }
     }
 
-    // Directory Selection
+    /// Presents an `NSOpenPanel` to allow the user to select an input directory.
     private func selectInputDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -136,6 +138,7 @@ struct ImageProcessorView: View {
         }
     }
 
+    /// Presents an `NSOpenPanel` to allow the user to select an output directory.
     private func selectOutputDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -148,6 +151,7 @@ struct ImageProcessorView: View {
         }
     }
 
+    /// Initiates the image processing operation using the selected directories and parameters.
     private func processImages() {
         guard let inputDir = inputDirectory, let outputDir = outputDirectory else {
             processor.logMessages.append(NSLocalizedString("NoInputOrOutputDir", comment: ""))
@@ -170,7 +174,8 @@ struct ImageProcessorView: View {
     }
 }
 
-// NSViewRepresentable wrapper for NSTextView
+/// `LogTextView` is an `NSViewRepresentable` wrapper for `NSTextView`,
+/// used to display log messages from the `ImageProcessor`.
 struct LogTextView: NSViewRepresentable {
     @ObservedObject var processor: ImageProcessor
 

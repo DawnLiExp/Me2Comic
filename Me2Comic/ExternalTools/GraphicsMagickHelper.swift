@@ -7,12 +7,13 @@
 
 import Foundation
 
-/// Helper class for GraphicsMagick operations
+/// `GraphicsMagickHelper` provides utility functions for interacting with the GraphicsMagick command-line tool.
 class GraphicsMagickHelper {
-    /// Safely detect GraphicsMagick executable path with predefined paths
-    /// - Returns: Path to GraphicsMagick executable if found, nil otherwise
+    /// Attempts to detect the GraphicsMagick executable path by checking common installation locations.
+    /// If not found in known paths, it falls back to using the `which` command.
+    /// - Parameter logHandler: A closure to handle log messages during the detection process.
+    /// - Returns: The detected path to the GraphicsMagick executable, or `nil` if not found.
     static func detectGMPathSafely(logHandler: (String) -> Void) -> String? {
-        // First check known safe paths
         let knownPaths = ["/opt/homebrew/bin/gm", "/usr/local/bin/gm", "/usr/bin/gm"]
 
         for path in knownPaths {
@@ -21,13 +22,12 @@ class GraphicsMagickHelper {
             }
         }
 
-        // Fall back to which command if known paths don't exist
         return detectGMPathViaWhich(logHandler: logHandler)
     }
 
-    /// Detect GraphicsMagick executable path using which command
-    /// - Parameter logHandler: Closure to handle log messages
-    /// - Returns: Path to GraphicsMagick executable if found, nil otherwise
+    /// Detects the GraphicsMagick executable path using the `which` command.
+    /// - Parameter logHandler: A closure to handle log messages.
+    /// - Returns: The detected path to the GraphicsMagick executable, or `nil` if not found.
     private static func detectGMPathViaWhich(logHandler: (String) -> Void) -> String? {
         let whichTask = Process()
         whichTask.executableURL = URL(fileURLWithPath: "/usr/bin/which")
@@ -52,7 +52,6 @@ class GraphicsMagickHelper {
                   let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !output.isEmpty
             else {
-                // Simplified error message
                 logHandler(NSLocalizedString("GMNotFoundViaWhich", comment: "Cannot find gm via `which`"))
                 return nil
             }
@@ -63,11 +62,11 @@ class GraphicsMagickHelper {
         }
     }
 
-    /// Verify GraphicsMagick installation and get version
+    /// Verifies the GraphicsMagick installation by running `gm --version`.
     /// - Parameters:
-    ///   - gmPath: Path to GraphicsMagick executable
-    ///   - logHandler: Closure to handle log messages
-    /// - Returns: True if GraphicsMagick is installed and working, false otherwise
+    ///   - gmPath: The path to the GraphicsMagick executable.
+    ///   - logHandler: A closure to handle log messages.
+    /// - Returns: `true` if GraphicsMagick is installed and functional, `false` otherwise.
     static func verifyGraphicsMagick(gmPath: String, logHandler: (String) -> Void) -> Bool {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: gmPath)
@@ -95,33 +94,28 @@ class GraphicsMagickHelper {
         return true
     }
 
-    /// Properly escape path for shell command
-    /// - Parameter path: Path to escape
-    /// - Returns: Escaped path safe for shell commands
+    /// Escapes a given file path for safe use within shell commands.
+    /// - Parameter path: The file path to escape.
+    /// - Returns: The escaped file path, enclosed in double quotes.
     static func escapePathForShell(_ path: String) -> String {
-        // Replace backslashes with double backslashes
         var escapedPath = path.replacingOccurrences(of: "\\", with: "\\\\")
-
-        // Replace double quotes with escaped double quotes
         escapedPath = escapedPath.replacingOccurrences(of: "\"", with: "\\\"")
-
-        // Wrap in double quotes to handle spaces and special characters
         return "\"\(escapedPath)\""
     }
 
-    /// Generate GraphicsMagick convert command
+    /// Constructs a GraphicsMagick `convert` command string based on the provided parameters.
     /// - Parameters:
-    ///   - inputPath: Path to input image
-    ///   - outputPath: Path to output image
-    ///   - cropParams: Optional crop parameters
-    ///   - resizeHeight: Height to resize to
-    ///   - quality: JPEG quality (1-100)
-    ///   - unsharpRadius: Unsharp mask radius
-    ///   - unsharpSigma: Unsharp mask sigma
-    ///   - unsharpAmount: Unsharp mask amount
-    ///   - unsharpThreshold: Unsharp mask threshold
-    ///   - useGrayColorspace: Whether to convert to grayscale
-    /// - Returns: Complete GraphicsMagick command string
+    ///   - inputPath:
+    ///   - outputPath:
+    ///   - cropParams: Optional cropping parameters (e.g., "100x100+0+0").
+    ///   - resizeHeight: The target height for resizing.
+    ///   - quality:
+    ///   - unsharpRadius:
+    ///   - unsharpSigma:
+    ///   - unsharpAmount:
+    ///   - unsharpThreshold:
+    ///   - useGrayColorspace:
+    /// - Returns: A complete GraphicsMagick command string ready for execution.
     static func buildConvertCommand(
         inputPath: String,
         outputPath: String,
@@ -134,46 +128,40 @@ class GraphicsMagickHelper {
         unsharpThreshold: Float,
         useGrayColorspace: Bool
     ) -> String {
-        // Escape paths for shell command
         let escapedInputPath = escapePathForShell(inputPath)
         let escapedOutputPath = escapePathForShell(outputPath)
 
         var command = "convert \(escapedInputPath)"
 
-        // Add crop parameters
         if let crop = cropParams {
             command += " -crop \(crop)"
         }
 
-        // Add resize parameters
         command += " -resize x\(resizeHeight)"
 
-        // Add colorspace parameters
         if useGrayColorspace {
             command += " -colorspace GRAY"
         }
 
-        // Add unsharp parameters
         if unsharpAmount > 0 {
             command += " -unsharp \(unsharpRadius)x\(unsharpSigma)+\(unsharpAmount)+\(unsharpThreshold)"
         }
 
-        // Add quality parameters and output path
         command += " -quality \(quality) \(escapedOutputPath)"
 
         return command
     }
 
-    /// Get image dimensions using ImageIOHelper.
-    /// - Parameter imagePath: Path to the image.
-    /// - Returns: Tuple containing width and height if successful, nil otherwise.
+    /// Retrieves image dimensions using `ImageIOHelper`.
+    /// - Parameter imagePath: The path to the image.
+    /// - Returns: A tuple containing the width and height if successful, otherwise `nil`.
     static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
         return ImageIOHelper.getImageDimensions(imagePath: imagePath)
     }
 
-    /// Get dimensions for multiple images using ImageIOHelper.
-    /// - Parameter imagePaths: Array of image file paths.
-    /// - Returns: Dictionary mapping image paths to their dimensions.
+    /// Retrieves dimensions for multiple images in a batch using `ImageIOHelper`.
+    /// - Parameter imagePaths: An array of image file paths.
+    /// - Returns: A dictionary mapping image paths to their dimensions.
     static func getBatchImageDimensions(imagePaths: [String]) -> [String: (width: Int, height: Int)] {
         return ImageIOHelper.getBatchImageDimensions(imagePaths: imagePaths)
     }
