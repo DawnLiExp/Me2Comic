@@ -11,6 +11,17 @@ import ImageIO
 import os.lock
 
 enum ImageIOHelper {
+    // Thread-safe lock wrapper for os_unfair_lock
+    private final class UnfairLock {
+        private var _lock = os_unfair_lock()
+
+        func withLock<R>(_ body: () throws -> R) rethrows -> R {
+            os_unfair_lock_lock(&_lock)
+            defer { os_unfair_lock_unlock(&_lock) }
+            return try body()
+        }
+    }
+
     /// Retrieves image dimensions (width and height) using the ImageIO framework.
     /// - Parameter imagePath: The full path to the image file.
     /// - Returns: A tuple containing the image's width and height, or nil if dimensions cannot be retrieved.
@@ -40,36 +51,30 @@ enum ImageIOHelper {
         return (width: pixelWidth, height: pixelHeight)
     }
 
-    /// Retrieves dimensions for multiple images in a batch using ImageIO with concurrent processing.
-    /// This function uses `DispatchQueue.concurrentPerform` for parallel execution and `os_unfair_lock` for thread safety.
+    /// Retrieves dimensions for multiple images in parallel using concurrent processing.
+    /// Uses optimized task distribution based on available CPU cores and thread-safe result collection.
     /// - Parameter imagePaths: An array of full paths to the image files.
     /// - Returns: A dictionary mapping image paths to their dimensions (width and height).
     static func getBatchImageDimensions(imagePaths: [String]) -> [String: (width: Int, height: Int)] {
         guard !imagePaths.isEmpty else { return [:] }
 
-        var result: [String: (width: Int, height: Int)] = Dictionary(minimumCapacity: imagePaths.count)
-
-        // Wrapper for os_unfair_lock to ensure Swift compatibility and proper lock management.
-        final class UnfairLock {
-            private var _lock = os_unfair_lock()
-
-            func withLock<R>(_ body: () throws -> R) rethrows -> R {
-                os_unfair_lock_lock(&_lock)
-                defer { os_unfair_lock_unlock(&_lock) }
-                return try body()
-            }
-        }
-
+        var result: [String: (width: Int, height: Int)] = [:]
         let lock = UnfairLock()
-        // Determine stride length to optimize task granularity for concurrent processing.
-        let strideLength = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount * 2)
 
-        DispatchQueue.concurrentPerform(iterations: imagePaths.count) { index in
-            // Process images in chunks to reduce scheduling overhead.
-            for realIndex in stride(from: index, to: imagePaths.count, by: strideLength) {
-                // Use autoreleasepool to manage memory during image processing.
+        // Calculate optimal task distribution based on CPU cores
+        let taskCount = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount)
+        let imagesPerTask = (imagePaths.count + taskCount - 1) / taskCount
+
+        DispatchQueue.concurrentPerform(iterations: taskCount) { taskIndex in
+            // Determine the range of images this task should process
+            let start = taskIndex * imagesPerTask
+            let end = min(start + imagesPerTask, imagePaths.count)
+
+            // Process assigned image chunk
+            for index in start ..< end {
+                // Use autoreleasepool to manage memory for each image processing
                 autoreleasepool {
-                    let path = imagePaths[realIndex]
+                    let path = imagePaths[index]
                     if let dims = getImageDimensions(imagePath: path) {
                         lock.withLock {
                             result[path] = dims
