@@ -32,7 +32,10 @@ enum ImageIOHelper {
 
         let imageURL = URL(fileURLWithPath: imagePath)
 
-        guard let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, nil) else {
+        // Retain the URL strongly to ensure it's not deallocated while ImageIO is using it.
+        let retainedURL = imageURL as CFURL
+
+        guard let imageSource = CGImageSourceCreateWithURL(retainedURL, nil) else {
             return nil
         }
 
@@ -54,8 +57,9 @@ enum ImageIOHelper {
     /// Retrieves dimensions for multiple images in parallel using concurrent processing.
     /// Uses optimized task distribution based on available CPU cores and thread-safe result collection.
     /// - Parameter imagePaths: An array of full paths to the image files.
+    /// - Parameter shouldContinue: A closure that returns `true` if processing should continue, `false` otherwise.
     /// - Returns: A dictionary mapping image paths to their dimensions (width and height).
-    static func getBatchImageDimensions(imagePaths: [String]) -> [String: (width: Int, height: Int)] {
+    static func getBatchImageDimensions(imagePaths: [String], shouldContinue: () -> Bool) -> [String: (width: Int, height: Int)] {
         guard !imagePaths.isEmpty else { return [:] }
 
         var result: [String: (width: Int, height: Int)] = [:]
@@ -66,6 +70,9 @@ enum ImageIOHelper {
         let imagesPerTask = (imagePaths.count + taskCount - 1) / taskCount
 
         DispatchQueue.concurrentPerform(iterations: taskCount) { taskIndex in
+            // Check for cancellation before processing each task chunk
+            guard shouldContinue() else { return }
+
             // Determine the range of images this task should process
             let start = taskIndex * imagesPerTask
             let end = min(start + imagesPerTask, imagePaths.count)
@@ -75,6 +82,9 @@ enum ImageIOHelper {
 
             // Process assigned image chunk
             for index in start ..< end {
+                // Check for cancellation before processing each individual image
+                guard shouldContinue() else { return }
+
                 // Use autoreleasepool to manage memory for each image processing
                 autoreleasepool {
                     let path = imagePaths[index]

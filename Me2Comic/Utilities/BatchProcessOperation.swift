@@ -78,6 +78,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         var processedCount = 0
         var failedFiles: [String] = []
 
+        // Defer block to ensure onCompleted is called, but only if not cancelled at the end
         defer {
             if !isCancelled {
                 onCompleted?(processedCount, failedFiles)
@@ -91,12 +92,30 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         // Filter for supported image extensions
         let supportedExtensions = ["jpg", "jpeg", "png"]
         let validImages = batchImages.filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
+
+        // Pass a closure to ImageIOHelper to check for cancellation.
         let batchDimensions = GraphicsMagickHelper.getBatchImageDimensions(
-            imagePaths: validImages.map { $0.path }
+            imagePaths: validImages.map { $0.path },
+            shouldContinue: { [weak self] in
+                // Check if the operation itself has been cancelled
+                self?.isCancelled == false
+            }
         )
 
+        // If cancelled during ImageIO dimension fetching, return early.
+        guard !isCancelled else {
+            #if DEBUG
+            print("BatchProcessOperation: Operation cancelled during ImageIO dimension fetching.")
+            #endif
+            return
+        }
+
         if batchDimensions.isEmpty {
-            onCompleted?(0, validImages.map { $0.lastPathComponent })
+            // If no dimensions could be retrieved (e.g., all files invalid or cancelled early)
+            // Report all valid images as failed if not cancelled, otherwise just return.
+            if !isCancelled {
+                onCompleted?(0, validImages.map { $0.lastPathComponent })
+            }
             return
         }
 
@@ -113,7 +132,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
         // Build batch commands
         for imageFile in batchImages {
-            guard !isCancelled else { break }
+            guard !isCancelled else { break } // Check cancellation before processing each image
 
             let filename = imageFile.lastPathComponent
             let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
@@ -184,6 +203,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         }
 
         guard !batchCommands.isEmpty, !isCancelled else {
+            // If cancelled after building commands but before writing/running GM
             return
         }
 
@@ -205,6 +225,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             processLock.unlock()
 
             guard !isCancelled else {
+                // If cancelled after process setup but before run
                 processLock.lock()
                 internalProcess = nil
                 processLock.unlock()
@@ -219,6 +240,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             try batchTask.run()
 
             guard !isCancelled else {
+                // If cancelled immediately after run()
                 processLock.lock()
                 internalProcess?.terminate()
                 internalProcess = nil
@@ -238,8 +260,11 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             processLock.unlock()
 
             if batchTask.terminationStatus != 0 {
-                failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
-                processedCount = 0
+                // Only append failed files if not cancelled, otherwise assume cancellation handled it
+                if !isCancelled {
+                    failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
+                    processedCount = 0
+                }
             }
         } catch {
             if let posixError = error as? POSIXError, posixError.code == .EPIPE {
@@ -252,8 +277,11 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 print("BatchProcessOperation: Error during process execution: \(error.localizedDescription)")
                 #endif
             }
-            failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
-            processedCount = 0
+            // Only append failed files if not cancelled
+            if !isCancelled {
+                failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
+                processedCount = 0
+            }
             processLock.lock()
             internalProcess = nil
             processLock.unlock()
@@ -303,9 +331,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     }
 
     deinit {
+        // Restore default SIGPIPE handler when operation is deallocated
         if shouldIgnoreSIGPIPE {
-            // Restore default SIGPIPE handler when operation is deallocated
             signal(SIGPIPE, SIG_DFL)
         }
+        #if DEBUG
+        print("BatchProcessOperation deinitialized.")
+        #endif
     }
 }

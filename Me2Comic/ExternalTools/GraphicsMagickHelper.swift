@@ -104,17 +104,8 @@ class GraphicsMagickHelper {
     }
 
     /// Constructs a GraphicsMagick `convert` command string based on the provided parameters.
-    /// - Parameters:
-    ///   - inputPath:
-    ///   - outputPath:
     ///   - cropParams: Optional cropping parameters (e.g., "100x100+0+0").
     ///   - resizeHeight: The target height for resizing.
-    ///   - quality:
-    ///   - unsharpRadius:
-    ///   - unsharpSigma:
-    ///   - unsharpAmount:
-    ///   - unsharpThreshold:
-    ///   - useGrayColorspace:
     /// - Returns: A complete GraphicsMagick command string ready for execution.
     static func buildConvertCommand(
         inputPath: String,
@@ -162,7 +153,8 @@ class GraphicsMagickHelper {
     /// Retrieves dimensions for multiple images in a batch using `ImageIOHelper`.
     /// - Parameter imagePaths: An array of image file paths.
     /// - Returns: A dictionary mapping image paths to their dimensions.
-    static func getBatchImageDimensions(imagePaths: [String]) -> [String: (width: Int, height: Int)] {
-        return ImageIOHelper.getBatchImageDimensions(imagePaths: imagePaths)
+    static func getBatchImageDimensions(imagePaths: [String], shouldContinue: () -> Bool) -> [String: (width: Int, height: Int)] {
+        // Pass the shouldContinue closure directly to ImageIOHelper
+        return ImageIOHelper.getBatchImageDimensions(imagePaths: imagePaths, shouldContinue: shouldContinue)
     }
 }
