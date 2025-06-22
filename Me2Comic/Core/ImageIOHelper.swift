@@ -70,6 +70,9 @@ enum ImageIOHelper {
             let start = taskIndex * imagesPerTask
             let end = min(start + imagesPerTask, imagePaths.count)
 
+            // Add this check to prevent invalid ranges
+            guard start < end else { return }
+
             // Process assigned image chunk
             for index in start ..< end {
                 // Use autoreleasepool to manage memory for each image processing

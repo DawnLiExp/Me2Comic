@@ -95,6 +95,11 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             imagePaths: validImages.map { $0.path }
         )
 
+        if batchDimensions.isEmpty {
+            onCompleted?(0, validImages.map { $0.lastPathComponent })
+            return
+        }
+
         // Prepare temporary batch file
         let fileManager = FileManager.default
         let batchFilePath = fileManager.temporaryDirectory

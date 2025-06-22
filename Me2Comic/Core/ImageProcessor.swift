@@ -91,6 +91,8 @@ class ImageProcessor: ObservableObject {
 
     /// Splits image array into processing batches
     private func splitIntoBatches(_ images: [URL], batchSize: Int) -> [[URL]] {
+        guard batchSize > 0 else { return [] }
+        guard !images.isEmpty else { return [] }
         var result: [[URL]] = []
         var currentBatch: [URL] = []
 
