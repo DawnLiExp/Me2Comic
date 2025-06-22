@@ -60,6 +60,9 @@ class ImageProcessor: ObservableObject {
 
     /// Stops all active processing tasks
     func stopProcessing() {
+        #if DEBUG
+            print("ImageProcessor: stopProcessing called. Cancelling all operations.")
+        #endif
         processingQueue.cancelAllOperations()
         DispatchQueue.main.async {
             self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
@@ -317,9 +320,14 @@ class ImageProcessor: ObservableObject {
                     self?.handleBatchCompletion(processedCount: count, failedFiles: fails)
                 }
                 allOps.append(op)
+                #if DEBUG
+                    print("ImageProcessor: Added BatchProcessOperation for batch of \(batch.count) images from \(subdir.lastPathComponent).")
+                #endif
             }
         }
-
+        #if DEBUG
+            print("ImageProcessor: Adding \(allOps.count) operations to processingQueue.")
+        #endif
         processingQueue.addOperations(allOps, waitUntilFinished: false)
 
         // Final completion handler
