@@ -4,16 +4,15 @@
 //
 //  Created by Me2 on 2025/6/19.
 //
+
 import Foundation
 
-/// `BatchProcessOperation` is an `Operation` subclass that encapsulates the logic for batch processing images
-/// using GraphicsMagick. It handles image dimension retrieval, conditional cropping/resizing, and command execution.
 class BatchProcessOperation: Operation, @unchecked Sendable {
     // MARK: - Input Parameters
 
-    private let batchImages: [URL] // Array of URLs for images in this batch.
+    private let batchImages: [URL]
     private let outputDir: URL
-    private let widthThreshold: Int // Width threshold to determine if an image needs splitting.
+    private let widthThreshold: Int
     private let resizeHeight: Int
     private let quality: Int
     private let unsharpRadius: Float
@@ -21,22 +20,20 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     private let unsharpAmount: Float
     private let unsharpThreshold: Float
     private let useGrayColorspace: Bool
-    private let gmPath: String // Path to the GraphicsMagick executable.
+    private let gmPath: String
 
     // MARK: - Output Callbacks
 
-    /// A closure that is called upon completion of the operation, providing the count of successfully processed images
-    /// and a list of files that failed processing.
     var onCompleted: ((_ processedCount: Int, _ failedFiles: [String]) -> Void)?
 
     // MARK: - Internal State
 
     private var internalProcess: Process?
     private let processLock = NSLock()
+    private var shouldIgnoreSIGPIPE = false
 
     // MARK: - Initialization
 
-    /// Initializes a new batch processing operation with the specified image processing parameters.
     init(
         images: [URL],
         outputDir: URL,
@@ -66,41 +63,50 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
     // MARK: - Core Execution Method
 
-    /// The main execution logic for the operation. This method is called when the operation starts.
-    /// It processes each image in the batch, generates GraphicsMagick commands, and executes them.
     override func main() {
-        guard !isCancelled else { return }
+        signal(SIGPIPE, SIG_IGN)
+        defer {
+            signal(SIGPIPE, SIG_DFL)
+        }
+        guard !isCancelled else {
+            #if DEBUG
+            print("BatchProcessOperation: Operation cancelled before starting.")
+            #endif
+            return
+        }
 
         var processedCount = 0
         var failedFiles: [String] = []
 
-        // Ensure the completion callback is always invoked, unless the operation was cancelled.
         defer {
             if !isCancelled {
                 onCompleted?(processedCount, failedFiles)
             }
         }
 
-        guard !batchImages.isEmpty else { return }
+        guard !batchImages.isEmpty else {
+            return
+        }
 
-        // Filter for supported image extensions and get dimensions in batch for efficiency.
+        // Filter for supported image extensions
         let supportedExtensions = ["jpg", "jpeg", "png"]
         let validImages = batchImages.filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
         let batchDimensions = GraphicsMagickHelper.getBatchImageDimensions(
             imagePaths: validImages.map { $0.path }
         )
 
-        // Prepare a temporary file to store batch commands for GraphicsMagick.
+        // Prepare temporary batch file
         let fileManager = FileManager.default
         let batchFilePath = fileManager.temporaryDirectory
             .appendingPathComponent("me2comic_batch_\(UUID().uuidString).txt")
+
         defer {
             try? fileManager.removeItem(at: batchFilePath)
         }
 
         var batchCommands = ""
 
-        // Iterate through each image to determine processing logic and build commands.
+        // Build batch commands
         for imageFile in batchImages {
             guard !isCancelled else { break }
 
@@ -108,14 +114,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
             let outputBasePath = outputDir.appendingPathComponent(filenameWithoutExt).path
 
-            // Retrieve image dimensions, prioritizing batch results.
+            // Get dimensions (from batch or individually)
             var dimensions: (width: Int, height: Int)?
             if let batchDim = batchDimensions[imageFile.path] {
                 dimensions = batchDim
             } else {
-                dimensions = GraphicsMagickHelper.getImageDimensions(
-                    imagePath: imageFile.path
-                )
+                dimensions = GraphicsMagickHelper.getImageDimensions(imagePath: imageFile.path)
             }
 
             guard let dimensions = dimensions else {
@@ -125,9 +129,8 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
             let (width, height) = dimensions
 
-            // Apply processing based on image width threshold.
             if width < widthThreshold {
-                // Single image processing: resize and apply effects.
+                // Single image processing
                 let command = GraphicsMagickHelper.buildConvertCommand(
                     inputPath: imageFile.path,
                     outputPath: "\(outputBasePath).jpg",
@@ -143,7 +146,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 batchCommands.append(command + "\n")
                 processedCount += 1
             } else {
-                // Split processing: image is wider than threshold, split into two parts.
+                // Split processing
                 let cropWidth = width / 2
                 // Right half.
                 batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
@@ -175,7 +178,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             }
         }
 
-        // Execute the generated GraphicsMagick batch commands.
         guard !batchCommands.isEmpty, !isCancelled else {
             return
         }
@@ -192,7 +194,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             batchTask.standardOutput = pipes.output
             batchTask.standardError = pipes.error
 
-            // Store process reference for potential cancellation.
+            // Store process reference
             processLock.lock()
             internalProcess = batchTask
             processLock.unlock()
@@ -201,26 +203,50 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 processLock.lock()
                 internalProcess = nil
                 processLock.unlock()
+                pipes.input.fileHandleForWriting.closeFile()
                 return
             }
 
+            // Ignore SIGPIPE signal to prevent app termination
+            signal(SIGPIPE, SIG_IGN)
+            shouldIgnoreSIGPIPE = true
+
             try batchTask.run()
-            try pipes.input.fileHandleForWriting.write(Data(contentsOf: batchFilePath))
+
+            guard !isCancelled else {
+                processLock.lock()
+                internalProcess?.terminate()
+                internalProcess = nil
+                processLock.unlock()
+                pipes.input.fileHandleForWriting.closeFile()
+                return
+            }
+
+            // Safe write implementation
+            try safeWrite(data: Data(contentsOf: batchFilePath), to: pipes.input.fileHandleForWriting)
             pipes.input.fileHandleForWriting.closeFile()
+
             batchTask.waitUntilExit()
 
-            // Clear process reference after completion.
             processLock.lock()
             internalProcess = nil
             processLock.unlock()
 
-            // Handle the outcome of the batch execution.
             if batchTask.terminationStatus != 0 {
                 failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
                 processedCount = 0
             }
         } catch {
-            // Log any exceptions during process execution.
+            if let posixError = error as? POSIXError, posixError.code == .EPIPE {
+                // Broken pipe is expected during cancellation
+                #if DEBUG
+                print("BatchProcessOperation: Broken pipe during write (expected during cancellation)")
+                #endif
+            } else {
+                #if DEBUG
+                print("BatchProcessOperation: Error during process execution: \(error.localizedDescription)")
+                #endif
+            }
             failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
             processedCount = 0
             processLock.lock()
@@ -229,15 +255,52 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         }
     }
 
+    // MARK: - Safe Write Implementation
+
+    private func safeWrite(data: Data, to fileHandle: FileHandle) throws {
+        let chunkSize = 4096
+        var bytesRemaining = data.count
+        var offset = 0
+
+        while bytesRemaining > 0, !isCancelled {
+            let chunkLength = min(chunkSize, bytesRemaining)
+            let chunk = data.subdata(in: offset ..< (offset + chunkLength))
+
+            try chunk.withUnsafeBytes { ptr in
+                let bytesWritten = write(fileHandle.fileDescriptor,
+                                         ptr.baseAddress,
+                                         chunkLength)
+                if bytesWritten == -1 {
+                    if errno == EPIPE {
+                        throw POSIXError(.EPIPE)
+                    } else {
+                        throw NSError(domain: NSPOSIXErrorDomain,
+                                      code: Int(errno),
+                                      userInfo: nil)
+                    }
+                }
+                offset += bytesWritten
+                bytesRemaining -= bytesWritten
+            }
+        }
+    }
+
     // MARK: - Cancellation Mechanism
 
-    /// Overrides the default `cancel` method to terminate the running GraphicsMagick process if the operation is cancelled.
     override func cancel() {
         super.cancel()
+
         processLock.lock()
         if let process = internalProcess, process.isRunning {
             process.terminate()
         }
         processLock.unlock()
+    }
+
+    deinit {
+        if shouldIgnoreSIGPIPE {
+            // Restore default SIGPIPE handler when operation is deallocated
+            signal(SIGPIPE, SIG_DFL)
+        }
     }
 }
