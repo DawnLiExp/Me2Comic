@@ -235,6 +235,7 @@ struct ParameterDescriptionView: View {
 struct ActionButtonView: View {
     let isProcessing: Bool
     let action: () -> Void
+    @State private var isHovered: Bool = false
 
     var body: some View {
         Button(action: action) {
@@ -251,6 +252,7 @@ struct ActionButtonView: View {
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 38)
+            .frame(width: 120)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(
@@ -261,6 +263,15 @@ struct ActionButtonView: View {
             )
         }
         .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.accent.opacity(0.5), lineWidth: 1)
+                .opacity(isHovered ? 1 : 0)
+            // .opacity(isHovered && !isProcessing ? 1 : 0)
+        )
         .shadow(
             color: .accent.opacity(0.3),
             radius: 2,
