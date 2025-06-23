@@ -5,6 +5,7 @@
 //  Created by Me2 on 2025/6/19.
 //
 
+import Darwin
 import Foundation
 
 class BatchProcessOperation: Operation, @unchecked Sendable {
@@ -30,7 +31,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
     private var internalProcess: Process?
     private let processLock = NSLock()
-    private var shouldIgnoreSIGPIPE = false
+    // private var shouldIgnoreSIGPIPE = false // No longer needed with sigaction
 
     // MARK: - Initialization
 
@@ -64,10 +65,17 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     // MARK: - Core Execution Method
 
     override func main() {
-        signal(SIGPIPE, SIG_IGN)
+        // Configure to ignore SIGPIPE signals to prevent crashes on broken pipes
+        var oldSigpipeHandler = sigaction()
+        var newSigpipeHandler = sigaction()
+        newSigpipeHandler.__sigaction_u.__sa_handler = SIG_IGN
+        _ = sigaction(SIGPIPE, &newSigpipeHandler, &oldSigpipeHandler)
+
         defer {
-            signal(SIGPIPE, SIG_DFL)
+            // Restore original SIGPIPE handler when main() exits
+            _ = sigaction(SIGPIPE, &oldSigpipeHandler, nil)
         }
+
         guard !isCancelled else {
             #if DEBUG
             print("BatchProcessOperation: Operation cancelled before starting.")
@@ -233,19 +241,16 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 return
             }
 
-            // Ignore SIGPIPE signal to prevent app termination
-            signal(SIGPIPE, SIG_IGN)
-            shouldIgnoreSIGPIPE = true
-
             try batchTask.run()
 
             guard !isCancelled else {
                 // If cancelled immediately after run()
                 processLock.lock()
                 internalProcess?.terminate()
+                // Ensure pipe write end is closed as fallback
+                (batchTask.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
                 internalProcess = nil
                 processLock.unlock()
-                pipes.input.fileHandleForWriting.closeFile()
                 return
             }
 
@@ -289,31 +294,47 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     }
 
     // MARK: - Safe Write Implementation
-
+/// Writes data to file handle in chunks with cancellation checks
     private func safeWrite(data: Data, to fileHandle: FileHandle) throws {
         let chunkSize = 4096
         var bytesRemaining = data.count
         var offset = 0
 
-        while bytesRemaining > 0, !isCancelled {
+        while bytesRemaining > 0 {
+            guard !isCancelled else { return }
+
             let chunkLength = min(chunkSize, bytesRemaining)
             let chunk = data.subdata(in: offset ..< (offset + chunkLength))
 
-            try chunk.withUnsafeBytes { ptr in
-                let bytesWritten = write(fileHandle.fileDescriptor,
-                                         ptr.baseAddress,
-                                         chunkLength)
-                if bytesWritten == -1 {
-                    if errno == EPIPE {
-                        throw POSIXError(.EPIPE)
-                    } else {
-                        throw NSError(domain: NSPOSIXErrorDomain,
-                                      code: Int(errno),
-                                      userInfo: nil)
+            do {
+                try chunk.withUnsafeBytes { ptr in
+                    guard !isCancelled else { return }
+
+                    let bytesWritten = write(fileHandle.fileDescriptor,
+                                             ptr.baseAddress,
+                                             chunkLength)
+                    if bytesWritten == -1 {
+                        if errno == EPIPE {
+                            #if DEBUG
+                            print("BatchProcessOperation: safeWrite encountered EPIPE (pipe closed), stopping write.")
+                            #endif
+                            throw POSIXError(.EPIPE)
+                        } else {
+                            throw NSError(domain: NSPOSIXErrorDomain,
+                                          code: Int(errno),
+                                          userInfo: nil)
+                        }
                     }
+                    offset += bytesWritten
+                    bytesRemaining -= bytesWritten
                 }
-                offset += bytesWritten
-                bytesRemaining -= bytesWritten
+            } catch let error as POSIXError where error.code == .EPIPE {
+                #if DEBUG
+                print("BatchProcessOperation: safeWrite caught EPIPE, stopping write.")
+                #endif
+                return
+            } catch {
+                throw error
             }
         }
     }
@@ -326,15 +347,18 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         processLock.lock()
         if let process = internalProcess, process.isRunning {
             process.terminate()
+            //  Immediately close pipe's write end
+            (process.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
         }
+        internalProcess = nil
         processLock.unlock()
     }
 
     deinit {
-        // Restore default SIGPIPE handler when operation is deallocated
-        if shouldIgnoreSIGPIPE {
-            signal(SIGPIPE, SIG_DFL)
-        }
+        // This defer in main() handles it, but keeping this for robustness if main() exits abnormally
+        // if shouldIgnoreSIGPIPE { // No longer needed with sigaction
+        //     signal(SIGPIPE, SIG_DFL)
+        // }
         #if DEBUG
         print("BatchProcessOperation deinitialized.")
         #endif

@@ -120,7 +120,7 @@ class ImageProcessor: ObservableObject {
 
     /// Validates and sanitizes batch size input
     private func validateBatchSize(_ batchSizeStr: String) -> Int {
-        guard let batchSize = Int(batchSizeStr), batchSize >= 1, batchSize <= 618 else {
+        guard let batchSize = Int(batchSizeStr), batchSize >= 1, batchSize <= 1000 else {
             DispatchQueue.main.async {
                 self.logMessages.append(NSLocalizedString("InvalidBatchSize", comment: ""))
             }
