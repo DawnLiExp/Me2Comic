@@ -57,6 +57,7 @@
 "SelectedInputDir" = "已选择输入目录：%@";
 "SelectedOutputDir" = "已选择输出目录：%@";
 "Open" = "打开";
+"LoadedLastOutputDir" = "已加载上次使用的输出目录: %@";
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "错误：未选择输入或输出目录";

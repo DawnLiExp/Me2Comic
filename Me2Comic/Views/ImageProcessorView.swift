@@ -9,6 +9,9 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
+/// UserDefault key for storing the last used output directory.
+private let lastUsedOutputDirKey = "lastUsedOutputDirectory"
+
 /// `ImageProcessorView` defines the main user interface for the image processing application.
 /// It manages user inputs, displays processing logs, and orchestrates image processing operations.
 struct ImageProcessorView: View {
@@ -66,6 +69,8 @@ struct ImageProcessorView: View {
                     onDropAction: { url in
                         self.outputDirectory = url
                         self.processor.logMessages.append(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
+                        // Save the newly selected output directory
+                        UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
                     }
                 )
                 .padding(.bottom, 10)
@@ -130,6 +135,12 @@ struct ImageProcessorView: View {
                     }
                 }
             }
+            
+            // Load last used output directory
+            if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
+                outputDirectory = URL(fileURLWithPath: savedPath)
+                processor.logMessages.append(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
+            }
         }
     }
 
@@ -156,6 +167,8 @@ struct ImageProcessorView: View {
         if panel.runModal() == .OK, let url = panel.url {
             outputDirectory = url
             processor.logMessages.append(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
+            // Save the newly selected output directory
+            UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
         }
     }
 

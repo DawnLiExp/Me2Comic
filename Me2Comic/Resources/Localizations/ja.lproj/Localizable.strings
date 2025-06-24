@@ -57,6 +57,7 @@
 "SelectedInputDir" = "入力ディレクトリ選択済:%@";
 "SelectedOutputDir" = "出力ディレクトリ選択済:%@";
 "Open" = "開く";
+"LoadedLastOutputDir" = "最後に使用した出力ディレクトリを読み込みました: %@";
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "エラー:入力/出力ディレクトリ未指定";

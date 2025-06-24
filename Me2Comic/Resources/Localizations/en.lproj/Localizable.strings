@@ -57,6 +57,7 @@
 "SelectedInputDir" = "Selected input directory: %@";
 "SelectedOutputDir" = "Selected output directory: %@";
 "Open" = "Open";
+"LoadedLastOutputDir" = "Loaded last used output directory: %@";
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "Error: Input or output directory not selected";
