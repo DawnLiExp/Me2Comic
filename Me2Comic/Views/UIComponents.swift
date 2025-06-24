@@ -236,29 +236,43 @@ struct ActionButtonView: View {
     let isProcessing: Bool
     let action: () -> Void
     @State private var isHovered: Bool = false
+    @State private var dotCount: Int = 0
+    @State private var timer: Timer? = nil
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                Text(isProcessing ? "Stop" : "Go")
-                    .foregroundColor(.accent) // 主文字颜色
-                    .font(.system(size: 16, weight: .black))
-                    .scaleEffect(1.1) // 放大1.1倍（微调视觉重量）
-                Text(isProcessing ? "Stop" : "Go") // 水印效果层
-                    .foregroundColor(.accent.opacity(0.3)) // 水印透明度30%
-                    .font(.system(size: 18, weight: .black)) // 比主文字大2pt（增强水印感）
-                    .offset(x: 1, y: 1)
-                    .blendMode(.screen)
+                if isProcessing {
+                    Text("Stop" + String(repeating: ".", count: dotCount))
+                        .foregroundColor(.accent)
+                        .font(.system(size: 16, weight: .black))
+                        .scaleEffect(1.1)
+                    Text("Stop" + String(repeating: ".", count: dotCount))
+                        .foregroundColor(.accent.opacity(0.3))
+                        .font(.system(size: 18, weight: .black))
+                        .offset(x: 1, y: 1)
+                        .blendMode(.screen)
+                } else {
+                    Text("Go")
+                        .foregroundColor(.accent)
+                        .font(.system(size: 16, weight: .black))
+                        .scaleEffect(1.1)
+                    Text("Go")
+                        .foregroundColor(.accent.opacity(0.3))
+                        .font(.system(size: 18, weight: .black))
+                        .offset(x: 1, y: 1)
+                        .blendMode(.screen)
+                }
             }
             .padding(.vertical, 10)
-            .padding(.horizontal, 38)
+            .padding(.horizontal, 18)
             .frame(width: 120)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(
                         isProcessing ?
-                            .backgroundSecondary :
-                            .backgroundPrimary
+                            .panelBackground : // Stop
+                            .backgroundPrimary // Go
                     )
             )
         }
@@ -270,13 +284,40 @@ struct ActionButtonView: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(.accent.opacity(0.5), lineWidth: 1)
                 .opacity(isHovered ? 1 : 0)
-            // .opacity(isHovered && !isProcessing ? 1 : 0)
         )
         .shadow(
             color: .accent.opacity(0.3),
             radius: 2,
             x: 0, y: 0
         )
+        .onChange(of: isProcessing) { newValue in
+            if newValue {
+                startAnimation()
+            } else {
+                stopAnimation()
+            }
+        }
+        .onAppear {
+            if isProcessing {
+                startAnimation()
+            }
+        }
+        .onDisappear {
+            stopAnimation()
+        }
+    }
+
+    private func startAnimation() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            dotCount = (dotCount + 1) % 4
+        }
+    }
+
+    private func stopAnimation() {
+        timer?.invalidate()
+        timer = nil
+        dotCount = 0
     }
 }
 
