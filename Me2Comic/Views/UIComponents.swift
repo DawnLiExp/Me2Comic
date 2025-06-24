@@ -15,6 +15,7 @@ struct DirectoryButtonView: View {
     let isProcessing: Bool
     let openAction: (() -> Void)?
     let showOpenButton: Bool
+    let onDropAction: ((URL) -> Void)? // drag and drop
 
     @State private var isHovered: Bool = false
     @State private var isMainButtonHovered: Bool = false
@@ -43,6 +44,17 @@ struct DirectoryButtonView: View {
             )
             .onHover { hovering in
                 isMainButtonHovered = hovering
+            }
+            .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                guard let itemProvider = providers.first else { return false }
+                itemProvider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { item, _ in
+                    if let data = item as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) {
+                        DispatchQueue.main.async {
+                            onDropAction?(url)
+                        }
+                    }
+                }
+                return true
             }
 
             if showOpenButton && !isProcessing {

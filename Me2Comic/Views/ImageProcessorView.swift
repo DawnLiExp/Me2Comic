@@ -43,7 +43,11 @@ struct ImageProcessorView: View {
                     action: { selectInputDirectory() },
                     isProcessing: processor.isProcessing,
                     openAction: nil,
-                    showOpenButton: false
+                    showOpenButton: false,
+                    onDropAction: { url in
+                        self.inputDirectory = url
+                        self.processor.logMessages.append(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
+                    }
                 )
                 .padding(.top, -11)
 
@@ -58,7 +62,11 @@ struct ImageProcessorView: View {
                             NSWorkspace.shared.open(url)
                         }
                     },
-                    showOpenButton: outputDirectory != nil
+                    showOpenButton: outputDirectory != nil,
+                    onDropAction: { url in
+                        self.outputDirectory = url
+                        self.processor.logMessages.append(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
+                    }
                 )
                 .padding(.bottom, 10)
 
