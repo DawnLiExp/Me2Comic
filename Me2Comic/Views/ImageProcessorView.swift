@@ -57,7 +57,8 @@ struct ImageProcessorView: View {
                 // Output Directory Selection Button.
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Output Directory", comment: ""),
-                                  outputDirectory?.path ?? NSLocalizedString("Output Directory Placeholder", comment: "")),
+                                  //  outputDirectory?.path ?? NSLocalizedString("Output Directory Placeholder", comment: "")),
+                                  outputDirectory?.path ?? ""),
                     action: { selectOutputDirectory() },
                     isProcessing: processor.isProcessing,
                     openAction: { // Action to open the output directory in Finder.
@@ -65,7 +66,8 @@ struct ImageProcessorView: View {
                             NSWorkspace.shared.open(url)
                         }
                     },
-                    showOpenButton: outputDirectory != nil,
+
+                    showOpenButton: true,
                     onDropAction: { url in
                         self.outputDirectory = url
                         self.processor.logMessages.append(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
@@ -135,7 +137,7 @@ struct ImageProcessorView: View {
                     }
                 }
             }
-            
+
             // Load last used output directory
             if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
                 outputDirectory = URL(fileURLWithPath: savedPath)
