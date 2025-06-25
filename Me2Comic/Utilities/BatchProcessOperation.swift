@@ -139,73 +139,75 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
         // Build batch commands
         for imageFile in batchImages {
-            guard !isCancelled else { break } // Check cancellation before processing each image
+            autoreleasepool {
+                guard !isCancelled else { return } // Check cancellation before processing each image
 
-            let filename = imageFile.lastPathComponent
-            let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
-            let outputBasePath = outputDir.appendingPathComponent(filenameWithoutExt).path
+                let filename = imageFile.lastPathComponent
+                let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
+                let outputBasePath = outputDir.appendingPathComponent(filenameWithoutExt).path
 
-            // Get dimensions (from batch or individually)
-            var dimensions: (width: Int, height: Int)?
-            if let batchDim = batchDimensions[imageFile.path] {
-                dimensions = batchDim
-            } else {
-                dimensions = GraphicsMagickHelper.getImageDimensions(imagePath: imageFile.path)
-            }
+                // Get dimensions (from batch or individually)
+                var dimensions: (width: Int, height: Int)?
+                if let batchDim = batchDimensions[imageFile.path] {
+                    dimensions = batchDim
+                } else {
+                    dimensions = GraphicsMagickHelper.getImageDimensions(imagePath: imageFile.path)
+                }
 
-            guard let dimensions = dimensions else {
-                failedFiles.append(filename)
-                continue
-            }
+                guard let dimensions = dimensions else {
+                    failedFiles.append(filename)
+                    return
+                }
 
-            let (width, height) = dimensions
+                let (width, height) = dimensions
 
-            if width < widthThreshold {
-                // Single image processing
-                let command = GraphicsMagickHelper.buildConvertCommand(
-                    inputPath: imageFile.path,
-                    outputPath: "\(outputBasePath).jpg",
-                    cropParams: nil,
-                    resizeHeight: resizeHeight,
-                    quality: quality,
-                    unsharpRadius: unsharpRadius,
-                    unsharpSigma: unsharpSigma,
-                    unsharpAmount: unsharpAmount,
-                    unsharpThreshold: unsharpThreshold,
-                    useGrayColorspace: useGrayColorspace
-                )
-                batchCommands.append(command + "\n")
-                processedCount += 1
-            } else {
-                // Split processing
-                let cropWidth = width / 2
-                // Right half.
-                batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                    inputPath: imageFile.path,
-                    outputPath: "\(outputBasePath)-1.jpg",
-                    cropParams: "\(cropWidth)x\(height)+\(cropWidth)+0",
-                    resizeHeight: resizeHeight,
-                    quality: quality,
-                    unsharpRadius: unsharpRadius,
-                    unsharpSigma: unsharpSigma,
-                    unsharpAmount: unsharpAmount,
-                    unsharpThreshold: unsharpThreshold,
-                    useGrayColorspace: useGrayColorspace
-                ) + "\n")
-                // Left half.
-                batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                    inputPath: imageFile.path,
-                    outputPath: "\(outputBasePath)-2.jpg",
-                    cropParams: "\(cropWidth)x\(height)+0+0",
-                    resizeHeight: resizeHeight,
-                    quality: quality,
-                    unsharpRadius: unsharpRadius,
-                    unsharpSigma: unsharpSigma,
-                    unsharpAmount: unsharpAmount,
-                    unsharpThreshold: unsharpThreshold,
-                    useGrayColorspace: useGrayColorspace
-                ) + "\n")
-                processedCount += 1
+                if width < widthThreshold {
+                    // Single image processing
+                    let command = GraphicsMagickHelper.buildConvertCommand(
+                        inputPath: imageFile.path,
+                        outputPath: "\(outputBasePath).jpg",
+                        cropParams: nil,
+                        resizeHeight: resizeHeight,
+                        quality: quality,
+                        unsharpRadius: unsharpRadius,
+                        unsharpSigma: unsharpSigma,
+                        unsharpAmount: unsharpAmount,
+                        unsharpThreshold: unsharpThreshold,
+                        useGrayColorspace: useGrayColorspace
+                    )
+                    batchCommands.append(command + "\n")
+                    processedCount += 1
+                } else {
+                    // Split processing
+                    let cropWidth = width / 2
+                    // Right half.
+                    batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
+                        inputPath: imageFile.path,
+                        outputPath: "\(outputBasePath)-1.jpg",
+                        cropParams: "\(cropWidth)x\(height)+\(cropWidth)+0",
+                        resizeHeight: resizeHeight,
+                        quality: quality,
+                        unsharpRadius: unsharpRadius,
+                        unsharpSigma: unsharpSigma,
+                        unsharpAmount: unsharpAmount,
+                        unsharpThreshold: unsharpThreshold,
+                        useGrayColorspace: useGrayColorspace
+                    ) + "\n")
+                    // Left half.
+                    batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
+                        inputPath: imageFile.path,
+                        outputPath: "\(outputBasePath)-2.jpg",
+                        cropParams: "\(cropWidth)x\(height)+0+0",
+                        resizeHeight: resizeHeight,
+                        quality: quality,
+                        unsharpRadius: unsharpRadius,
+                        unsharpSigma: unsharpSigma,
+                        unsharpAmount: unsharpAmount,
+                        unsharpThreshold: unsharpThreshold,
+                        useGrayColorspace: useGrayColorspace
+                    ) + "\n")
+                    processedCount += 1
+                }
             }
         }
 
@@ -301,14 +303,18 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         var offset = 0
 
         while bytesRemaining > 0 {
-            guard !isCancelled else { return }
+            guard !isCancelled else {
+                return
+            }
 
             let chunkLength = min(chunkSize, bytesRemaining)
             let chunk = data.subdata(in: offset ..< (offset + chunkLength))
 
             do {
                 try chunk.withUnsafeBytes { ptr in
-                    guard !isCancelled else { return }
+                    guard !isCancelled else {
+                        return
+                    }
 
                     let bytesWritten = write(fileHandle.fileDescriptor,
                                              ptr.baseAddress,
