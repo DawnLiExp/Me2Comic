@@ -61,6 +61,7 @@
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "Error: Input or output directory not selected";
+"ErrorReadingDirectory" = "Error reading directory: %@";
 "NotificationPermissionFailed" = "Error: Failed to request notification permission: %@";
 "NotificationPermissionNotGranted" = "Warning: Notification permission not granted, notifications may not display";
 

@@ -87,7 +87,11 @@ class ImageProcessor: ObservableObject {
             return files.filter { imageExtensions.contains($0.pathExtension.lowercased()) }
         } catch {
             // Log error if directory contents cannot be read.
-            // self.logMessages.append("Error reading directory: \(error.localizedDescription)")
+            #if DEBUG
+                DispatchQueue.main.async {
+                    self.logMessages.append(String(format: NSLocalizedString("ErrorReadingDirectory", comment: ""), error.localizedDescription))
+                }
+            #endif
             return []
         }
     }

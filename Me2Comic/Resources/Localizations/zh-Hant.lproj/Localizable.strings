@@ -61,6 +61,7 @@
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "錯誤：未選擇輸入或輸出目錄";
+"ErrorReadingDirectory" = "讀取目錄錯誤: %@";
 "NotificationPermissionFailed" = "錯誤：請求通知權限失敗：%@";
 "NotificationPermissionNotGranted" = "警告：通知權限未授予，通知可能無法顯示";
 

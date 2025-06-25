@@ -31,7 +31,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
     private var internalProcess: Process?
     private let processLock = NSLock()
-    // private var shouldIgnoreSIGPIPE = false // No longer needed with sigaction
 
     // MARK: - Initialization
 
@@ -294,7 +293,8 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     }
 
     // MARK: - Safe Write Implementation
-/// Writes data to file handle in chunks with cancellation checks
+
+    /// Writes data to file handle in chunks with cancellation checks
     private func safeWrite(data: Data, to fileHandle: FileHandle) throws {
         let chunkSize = 4096
         var bytesRemaining = data.count
