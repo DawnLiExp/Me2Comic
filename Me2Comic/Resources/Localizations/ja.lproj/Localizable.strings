@@ -25,6 +25,7 @@
 "UnsharpSigma" = "アンシャープσ:";
 "UnsharpAmount" = "アンシャープ強度:";
 "UnsharpThreshold" = "アンシャープ閾値:";
+"BatchSize" = "バッチごとの画像数：";
 "ThreadCount" = "並列スレッド数:";
 "GrayColorspace" = "グレースケール変換:";
 
@@ -38,6 +39,7 @@
 "Sigma" = "シグマ（σ）:";
 "Amount" = "強度:";
 "Thresh" = "閾値:";
+"BatchSizeLabel" = "バッチ画像数：";
 "Threads" = "スレッド数:";
 "Gray" = "グレー:";
 
@@ -50,7 +52,8 @@
 "SigmaDesc" = "ぼかしの度合い（値が大きいほどソフト）";
 "AmountDesc" = "シャープネスの強度調整（強度=0でアンシャープ処理全体が無効になります）";
 "ThreshDesc" = "エッジ検出の閾値（この値以上を効果対象）";
-"ThreadsDesc" = "並列処理数（CPUコア数とは異なります）";
+"BatchSizeDesc" = "各スレッドが処理する画像数（1～1000）。設定により効率向上・負荷軽減が可能です。既定値は40枚です";
+"ThreadsDesc" = "画像処理用スレッド数はCPUコア数で調整";
 "GrayDesc" = "ON=8bitグレースケール／OFF=元のカラースペース";
 
 /* Log messages for directory selection */
@@ -118,15 +121,5 @@
 "NoSubdirectories" = "入力ディレクトリにサブディレクトリが見つかりません";
 "NoImagesInDir" = "ディレクトリに画像が見つかりません:%@";
 
-/* Batch Size parameter label */
-"BatchSize" = "バッチごとの画像数：";
-
-/* Batch Size parameter label in description area */
-"BatchSizeLabel" = "バッチ画像数：";
-
-/* Batch Size description */
-"BatchSizeDesc" = "各スレッドが処理する画像数（1～618）。設定により効率向上・負荷軽減が可能です。既定値は40枚です";
-
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "バッチサイズが無効です。1〜618の整数を入力してください。既定値（40）を使用します。";
-
+"InvalidBatchSize" = "バッチサイズが無効です。1〜1000の整数を入力してください。既定値（40）を使用します。";

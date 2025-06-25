@@ -25,8 +25,9 @@
 "UnsharpSigma" = "Unsharp Sigma：";
 "UnsharpAmount" = "Unsharp Amount：";
 "UnsharpThreshold" = "Unsharp Threshold：";
+"BatchSize" = "每批影像數（張）：";
 "ThreadCount" = "並行執行緒數：";
-"GrayColorspace" = "灰階色彩空間：";
+"GrayColorspace" = "灰階色彩空間（黑白）：";
 
 /* Parameter description section */
 "ParamDesc" = "參數說明：";
@@ -38,8 +39,9 @@
 "Sigma" = "Sigma：";
 "Amount" = "Amount：";
 "Thresh" = "Threshold：";
+"BatchSizeLabel" = "每批影像數：";
 "Threads" = "執行緒數：";
-"Gray" = "Gray：";
+"Gray" = "灰階模式：";
 
 /* Parameter descriptions */
 "UnderWidthDesc" = "寬度小於此值時直接轉換，否則均分裁切為左右兩部分";
@@ -50,7 +52,8 @@
 "SigmaDesc" = "銳化模糊半徑，越大銳化效果越柔和";
 "AmountDesc" = "銳化量，控制銳化效果的強度";
 "ThreshDesc" = "銳化閾值，只對高於此值的邊緣進行銳化";
-"ThreadsDesc" = "並行處理圖片的執行緒數量，非CPU核心數量";
+"BatchSizeDesc" = "每個執行緒處理的影像張數，適當設定可提升處理效率並降低系統資源消耗，設定範圍1–1000，預設為40張";
+"ThreadsDesc" = "並行處理圖片的執行緒數量，應根據CPU核心數量進行合理設置";
 "GrayDesc" = "on=轉換至灰階空間（8-bit），off=保留原始色彩空間";
 
 /* Log messages for directory selection */
@@ -118,15 +121,5 @@
 "NoSubdirectories" = "輸入目錄中未找到子目錄";
 "NoImagesInDir" = "目錄中未找到圖片：%@";
 
-/* Batch Size parameter label */
-"BatchSize" = "每批影像數：";
-
-/* Batch Size parameter label in description area */
-"BatchSizeLabel" = "每批影像數：";
-
-/* Batch Size description */
-"BatchSizeDesc" = "每個執行緒處理的影像張數，適當設定可提升處理效率並降低系統資源消耗，設定範圍1–618，預設為40張";
-
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "每批影像數無效。請輸入 1 至 618 的整數。已套用預設值（40）。";
-
+"InvalidBatchSize" = "每批影像數無效。請輸入 1 至 1000 的整數。已套用預設值（40）。";

@@ -25,6 +25,7 @@
 "UnsharpSigma" = "Unsharp Sigma:";
 "UnsharpAmount" = "Unsharp Amount:";
 "UnsharpThreshold" = "Unsharp Threshold:";
+"BatchSize" = "Images per batch:";
 "ThreadCount" = "Thread Count:";
 "GrayColorspace" = "Grayscale Mode:";
 
@@ -38,6 +39,7 @@
 "Sigma" = "Sigma:";
 "Amount" = "Amount:";
 "Thresh" = "Threshold:";
+"BatchSizeLabel" = "Per batch:";
 "Threads" = "Thread Count:";
 "Gray" = "Gray:";
 
@@ -50,7 +52,8 @@
 "SigmaDesc" = "Larger values create softer edges";
 "AmountDesc" = "Controls the effect strength, higher values enhance edges";
 "ThreshDesc" = "Controls the minimum edge contrast to apply sharpening";
-"ThreadsDesc" = "Number of threads used in parallel (not CPU core count)";
+"BatchSizeDesc" = "Number of images per batch (1–1000). Adjusting may improve processing speed and reduce load. Default: 40";
+"ThreadsDesc" = "Threads for image processing, based on CPU cores";
 "GrayDesc" = "ON = Convert to grayscale (8-bit); OFF = Retain original color space";
 
 /* Log messages for directory selection */
@@ -118,16 +121,5 @@
 "NoSubdirectories" = "No subdirectories found in input directory";
 "NoImagesInDir" = "No images found in directory: %@";
 
-/* Batch Size parameter label */
-"BatchSize" = "Images per batch:";
-
-/* Batch Size parameter label in description area */
-"BatchSizeLabel" = "Per batch:";
-
-/* Batch Size description (shortened for UI) */
-"BatchSizeDesc" = "Number of images per batch (1–618). Adjusting may improve processing speed and reduce load. Default: 40";
-
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 618. Default (40) will be used.";
-
-
+"InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 1000. Default (40) will be used.";

@@ -25,8 +25,9 @@
 "UnsharpSigma" = "Unsharp Sigma：";
 "UnsharpAmount" = "Unsharp Amount：";
 "UnsharpThreshold" = "Unsharp Threshold：";
-"ThreadCount" = "并行线程数：";
-"GrayColorspace" = "灰度色彩空间：";
+"BatchSize" = "每批图像数（张）：";
+"ThreadCount" = "并发线程数：";
+"GrayColorspace" = "灰度色彩空间（黑白）：";
 
 /* Parameter description section */
 "ParamDesc" = "参数说明：";
@@ -38,8 +39,9 @@
 "Sigma" = "Sigma：";
 "Amount" = "Amount：";
 "Thresh" = "Threshold：";
+"BatchSizeLabel" = "每批图像数：";
 "Threads" = "线程数：";
-"Gray" = "Gray：";
+"Gray" = "灰度模式：";
 
 /* Parameter descriptions */
 "UnderWidthDesc" = "宽度小于此值时直接转换，否则均分裁切为左右两部分";
@@ -50,7 +52,8 @@
 "SigmaDesc" = "锐化模糊半径，越大锐化效果越柔和";
 "AmountDesc" = "锐化量，控制锐化效果的强度";
 "ThreshDesc" = "锐化阈值，只对高于此值的边缘进行锐化";
-"ThreadsDesc" = "并行处理图片的线程数量，非CPU核心数量";
+"BatchSizeDesc" = "每线程处理的图像数量，合适的设置能提升处理效率，降低系统开销，设置范围1-1000，默认40张";
+"ThreadsDesc" = "并行处理图片的线程数，应根据CPU核心数量进行合理设置";
 "GrayDesc" = "on=转换至灰度空间（8-bit），off=保留原始色彩空间";
 
 /* Log messages for directory selection */
@@ -118,14 +121,5 @@
 "NoSubdirectories" = "输入目录中未找到子目录";
 "NoImagesInDir" = "目录中未找到图片：%@";
 
-/* Batch Size parameter label */
-"BatchSize" = "每批图像数：";
-
-/* Batch Size parameter label in description area */
-"BatchSizeLabel" = "每批图像数：";
-
-/* Batch Size description */
-"BatchSizeDesc" = "每线程处理的图像数量，合适的设置能提升处理效率，降低系统开销，设置范围1-618，默认40张";
-
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "每批图像数无效。请输入 1-618 之间的整数。已自动使用默认值（40）。";
+"InvalidBatchSize" = "每批图像数无效。请输入 1-1000 之间的整数。已自动使用默认值（40）。";
