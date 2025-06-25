@@ -36,7 +36,7 @@ struct ImageProcessorView: View {
 
             GradientDividerView() // Visual divider between panels.
 
-            VStack(spacing: 25) {
+            VStack(spacing: 20) {
                 Spacer().frame(height: 5)
 
                 // Input Directory Selection Button.
@@ -115,8 +115,7 @@ struct ImageProcessorView: View {
                 // Log console for displaying messages and progress.
                 DecoratedView(content: LogTextView(processor: processor))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.bottom, 15)
-                    .padding(.bottom, 5)
+                    .padding(.bottom, 18)
                     .padding(.trailing, 1)
             }
             .padding(.horizontal, 15)
