@@ -250,8 +250,59 @@ class ImageProcessor: ObservableObject {
                 return
             }
 
-            processSubdirectories(subdirectories: subdirs, outputDir: outputDir, parameters: parameters)
+            // Calculate total images across all subdirectories
+            var totalImages = 0
+            for subdir in subdirs {
+                totalImages += getImageFiles(subdir).count
+            }
 
+            // --- Smart Allocation Logic ---
+            var effectiveThreadCount = parameters.threadCount
+            var effectiveBatchSize = validateBatchSize(parameters.batchSize)
+            var autoAllocatedLogMessage: String? = nil
+
+            if parameters.threadCount == 0 { // User selected Auto
+                // Apply smart allocation strategy for threadCount
+                if totalImages <= 15 {
+                    effectiveThreadCount = 1
+                } else if totalImages <= 100 {
+                    effectiveThreadCount = 2
+                } else if totalImages <= 5000 {
+                    effectiveThreadCount = 5 // For 100 to 5000 images, use 5 threads
+                } else { // totalImages > 5000
+                    effectiveThreadCount = 1000 // For more than 5000 images, cap at 1000 threads
+                }
+                // Calculate batchSize based on effectiveThreadCount and totalImages
+                // Ensure at least 2 batches per thread to avoid 'orphan' operations
+                // batchSize = ceil(总图片数 / (threadCount × 2))
+                // If totalImages is very small, ensure batchSize is at least 1
+                let calculatedBatchSize = Int(ceil(Double(totalImages) / Double(effectiveThreadCount) / 2.0))
+                effectiveBatchSize = max(1, min(1000, calculatedBatchSize))
+                autoAllocatedLogMessage = String(format: NSLocalizedString("AutoAllocatedParams", comment: ""), effectiveThreadCount, effectiveBatchSize)
+            }
+            // --- End Smart Allocation ---
+
+            // Create parameters with effective values
+            let processedParameters = ProcessingParameters(
+                widthThreshold: parameters.widthThreshold,
+                resizeHeight: parameters.resizeHeight,
+                quality: parameters.quality,
+                threadCount: effectiveThreadCount, // Use effectiveThreadCount
+                unsharpRadius: parameters.unsharpRadius,
+                unsharpSigma: parameters.unsharpSigma,
+                unsharpAmount: parameters.unsharpAmount,
+                unsharpThreshold: parameters.unsharpThreshold,
+                batchSize: String(effectiveBatchSize), // Use effectiveBatchSize
+                useGrayColorspace: parameters.useGrayColorspace
+            )
+
+            // Process with auto-allocated parameters
+            processSubdirectories(
+                subdirectories: subdirs,
+                outputDir: outputDir,
+                parameters: processedParameters,
+                autoAllocatedLogMessage: autoAllocatedLogMessage
+            )
         } catch {
             DispatchQueue.main.async {
                 self.logMessages.append(String(format: NSLocalizedString("ProcessingFailed", comment: ""), error.localizedDescription))
@@ -261,7 +312,18 @@ class ImageProcessor: ObservableObject {
     }
 
     /// Coordinates processing of multiple subdirectories
-    private func processSubdirectories(subdirectories: [URL], outputDir: URL, parameters: ProcessingParameters) {
+    private func processSubdirectories(
+        subdirectories: [URL],
+        outputDir: URL,
+        parameters: ProcessingParameters,
+        autoAllocatedLogMessage: String? = nil
+    ) {
+        // Log allocation parameters (if available)
+        if let logMessage = autoAllocatedLogMessage {
+            DispatchQueue.main.async {
+                self.logMessages.append(logMessage)
+            }
+        }
         guard let threshold = Int(parameters.widthThreshold),
               let resize = Int(parameters.resizeHeight),
               let qual = Int(parameters.quality),
@@ -335,7 +397,7 @@ class ImageProcessor: ObservableObject {
         processingQueue.addOperations(allOps, waitUntilFinished: false)
 
         // Final completion handler
-        processingQueue.addBarrierBlock { [weak self, subdirectories] in
+        processingQueue.addBarrierBlock { [weak self] in
             guard let self = self else { return }
 
             // Thread-safe state access
@@ -346,50 +408,63 @@ class ImageProcessor: ObservableObject {
                 failedFiles = self.allFailedFiles
             }
 
-            let elapsed = Int(Date().timeIntervalSince(self.processingStartTime ?? Date()))
-            let duration = self.formatProcessingTime(elapsed)
-
+            // Log completion message
             DispatchQueue.main.async {
-                if self.processingQueue.operationCount == 0 && processedCount == 0 {
-                    self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
-                } else {
-                    // Log processing results
-                    for dir in subdirectories {
-                        self.logMessages.append(String(format: NSLocalizedString("ProcessedSubdir", comment: ""), dir.lastPathComponent))
-                    }
-
-                    // Error reporting
-                    if !failedFiles.isEmpty {
-                        self.logMessages.append(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
-                        for file in failedFiles.prefix(10) {
-                            self.logMessages.append("- \(file)")
-                        }
-                        if failedFiles.count > 10 {
-                            self.logMessages.append(String(format: ". %d more", failedFiles.count - 10))
-                        }
-                    }
-
-                    // Log processing summary
-                    self.logMessages.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
-                    self.logMessages.append(duration)
+                if failedFiles.isEmpty {
                     self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
-                    self.sendCompletionNotification(totalProcessed: processedCount, failedCount: failedFiles.count)
+                    self.logMessages.append(String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount))
+                } else {
+                    self.logMessages.append(String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""), processedCount, failedFiles.count))
+                    self.logMessages.append(NSLocalizedString("FailedFiles", comment: "") + ":")
+                    self.logMessages.append(contentsOf: failedFiles)
+                }
+
+                // Calculate and log total processing time
+                if let startTime = self.processingStartTime {
+                    let duration = Int(Date().timeIntervalSince(startTime))
+                    self.logMessages.append(self.formatProcessingTime(duration))
                 }
 
                 self.isProcessing = false
+
+                // Show notification
+                self.showNotification(
+                    title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
+                    body: String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount)
+                )
             }
         }
     }
 
-    /// Sends system notification when processing completes
-    private func sendCompletionNotification(totalProcessed: Int, failedCount: Int) {
-        let center = UNUserNotificationCenter.current()
-        let content = UNMutableNotificationContent()
-        content.title = NSLocalizedString("ProcessingCompleteTitle", comment: "")
-        content.body = failedCount > 0 ?
-            String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""), totalProcessed, failedCount) :
-            String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), totalProcessed)
-        content.sound = .default
-        center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+    /// Shows a user notification
+    private func showNotification(title: String, body: String) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.logMessages.append(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
+                }
+                return
+            }
+            if !granted {
+                DispatchQueue.main.async {
+                    self.logMessages.append(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
+                }
+                return
+            }
+
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = UNNotificationSound.default
+
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        self.logMessages.append("Failed to show notification: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
     }
 }

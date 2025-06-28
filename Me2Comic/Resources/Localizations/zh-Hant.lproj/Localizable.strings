@@ -123,3 +123,7 @@
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "每批影像數無效。請輸入 1 至 1000 的整數。已套用預設值（40）。";
+
+/* Smart scheduling parameters */
+"Auto" = "自動";
+"AutoAllocatedParams" = "智能分配參數：線程數=%d，每批圖像數=%d";

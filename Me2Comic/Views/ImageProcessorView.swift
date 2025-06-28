@@ -20,7 +20,7 @@ struct ImageProcessorView: View {
     @State private var widthThreshold: String = "3000"
     @State private var resizeHeight: String = "1648"
     @State private var quality: String = "85"
-    @State private var threadCount: Int = 5
+    @State private var threadCount: Int = 0
     @State private var unsharpRadius: String = "1.5"
     @State private var useGrayColorspace: Bool = true
     @State private var unsharpSigma: String = "1"

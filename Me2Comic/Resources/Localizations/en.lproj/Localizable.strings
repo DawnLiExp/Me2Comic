@@ -123,3 +123,7 @@
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 1000. Default (40) will be used.";
+
+/* Smart scheduling parameters */
+"Auto" = "Auto";
+"AutoAllocatedParams" = "Smart scheduling parameters: Thread Count=%d, Batch Size=%d";
