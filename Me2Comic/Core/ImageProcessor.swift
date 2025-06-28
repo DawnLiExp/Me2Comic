@@ -261,24 +261,39 @@ class ImageProcessor: ObservableObject {
             var effectiveBatchSize = validateBatchSize(parameters.batchSize)
             var autoAllocatedLogMessage: String? = nil
 
-            if parameters.threadCount == 0 { // User selected Auto
-                // Apply smart allocation strategy for threadCount
-                if totalImages <= 15 {
+            if parameters.threadCount == 0 {
+                // Thread allocation based on total image count
+                if totalImages < 20 {
                     effectiveThreadCount = 1
-                } else if totalImages <= 100 {
-                    effectiveThreadCount = 2
-                } else if totalImages <= 5000 {
-                    effectiveThreadCount = 5 // For 100 to 5000 images, use 5 threads
-                } else { // totalImages > 5000
-                    effectiveThreadCount = 1000 // For more than 5000 images, cap at 1000 threads
+                } else if totalImages < 100 {
+                    effectiveThreadCount = min(4, max(2, totalImages / 25)) // 2-4 threads
+                } else {
+                    effectiveThreadCount = 6 // Max threads
                 }
-                // Calculate batchSize based on effectiveThreadCount and totalImages
-                // Ensure at least 2 batches per thread to avoid 'orphan' operations
-                // batchSize = ceil(总图片数 / (threadCount × 2))
-                // If totalImages is very small, ensure batchSize is at least 1
-                let calculatedBatchSize = Int(ceil(Double(totalImages) / Double(effectiveThreadCount) / 2.0))
-                effectiveBatchSize = max(1, min(1000, calculatedBatchSize))
-                autoAllocatedLogMessage = String(format: NSLocalizedString("AutoAllocatedParams", comment: ""), effectiveThreadCount, effectiveBatchSize)
+
+                // Dynamic batch size calculation
+                let baseBatchSize: Int
+                switch effectiveThreadCount {
+                case 1:
+                    baseBatchSize = min(40, max(10, totalImages / 2))
+                case 2 ... 4:
+                    baseBatchSize = min(60, max(15, totalImages / effectiveThreadCount))
+                default: // 5-6 threads
+                    // Dynamic round calculation (1k images/round)
+                    let idealRounds = max(2, min(4, totalImages / 1000))
+                    baseBatchSize = min(1000, max(100, totalImages / (effectiveThreadCount * idealRounds)))
+                }
+
+                // Ensure total batches are multiples of thread count
+                let totalBatches = Int(ceil(Double(totalImages) / Double(baseBatchSize)))
+                let adjustedBatches = (totalBatches + effectiveThreadCount - 1) / effectiveThreadCount * effectiveThreadCount
+                effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImages) / Double(adjustedBatches)))))
+
+                autoAllocatedLogMessage = String(
+                    format: NSLocalizedString("AutoAllocatedParams", comment: ""),
+                    effectiveThreadCount,
+                    effectiveBatchSize
+                )
             }
             // --- End Smart Allocation ---
 
