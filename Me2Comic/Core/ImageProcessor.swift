@@ -422,27 +422,30 @@ class ImageProcessor: ObservableObject {
                 processedCount = self.totalImagesProcessed
                 failedFiles = self.allFailedFiles
             }
-
             // Log completion message
+            let elapsed = Int(Date().timeIntervalSince(self.processingStartTime ?? Date()))
+            let duration = self.formatProcessingTime(elapsed)
+
             DispatchQueue.main.async {
-                if failedFiles.isEmpty {
-                    self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
-                    self.logMessages.append(String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount))
-                } else {
-                    self.logMessages.append(String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""), processedCount, failedFiles.count))
-                    self.logMessages.append(NSLocalizedString("FailedFiles", comment: "") + ":")
-                    self.logMessages.append(contentsOf: failedFiles)
+                if !failedFiles.isEmpty {
+                    self.logMessages.append(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
+                    let displayFiles = failedFiles.prefix(10)
+                    for file in displayFiles {
+                        self.logMessages.append("- \(file)")
+                    }
+                    if failedFiles.count > 10 {
+                        self.logMessages.append(String(format: ". %d more", failedFiles.count - 10))
+                    }
                 }
 
-                // Calculate and log total processing time
-                if let startTime = self.processingStartTime {
-                    let duration = Int(Date().timeIntervalSince(startTime))
-                    self.logMessages.append(self.formatProcessingTime(duration))
-                }
+                self.logMessages.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
+
+                self.logMessages.append(duration)
+
+                self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
 
                 self.isProcessing = false
 
-                // Show notification
                 self.showNotification(
                     title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
                     body: String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount)
