@@ -263,10 +263,12 @@ class ImageProcessor: ObservableObject {
 
             if parameters.threadCount == 0 {
                 // Thread allocation based on total image count
-                if totalImages < 20 {
+                if totalImages <= 10 {
                     effectiveThreadCount = 1
-                } else if totalImages < 100 {
-                    effectiveThreadCount = min(4, max(2, totalImages / 25)) // 2-4 threads
+                } else if totalImages < 50 { // Small to medium range, scale up to 4 threads
+                    effectiveThreadCount = min(4, max(2, totalImages / 10)) // More aggressive scaling, e.g., 20 images -> 2 threads, 40 images -> 4 threads
+                } else if totalImages < 200 { // Medium to large range, scale up to 6 threads
+                    effectiveThreadCount = min(6, max(4, totalImages / 30)) // Adjust threshold and divisor for smoother ramp-up
                 } else {
                     effectiveThreadCount = 6 // Max threads
                 }
@@ -275,13 +277,17 @@ class ImageProcessor: ObservableObject {
                 let baseBatchSize: Int
                 switch effectiveThreadCount {
                 case 1:
-                    baseBatchSize = min(40, max(10, totalImages / 2))
+                    // For single thread, aim for larger batches, up to 100 images, or half of total images
+                    baseBatchSize = min(100, max(10, totalImages / 2))
                 case 2 ... 4:
-                    baseBatchSize = min(60, max(15, totalImages / effectiveThreadCount))
-                default: // 5-6 threads
-                    // Dynamic round calculation (1k images/round)
-                    let idealRounds = max(2, min(4, totalImages / 1000))
-                    baseBatchSize = min(1000, max(100, totalImages / (effectiveThreadCount * idealRounds)))
+                    // For 2-4 threads, aim for batches that are multiples of 50-100, or a reasonable fraction of total images per thread
+                    let targetBatchSizePerThread = max(50, totalImages / (effectiveThreadCount * 5)) // Aim for 5 batches per thread initially
+                    baseBatchSize = min(200, max(15, targetBatchSizePerThread * effectiveThreadCount))
+                default:
+                    // For 5-6 threads, aim for even larger batches, leveraging the orphan process tolerance
+                    // Adjust idealRounds to allow for larger batch sizes, e.g., fewer rounds for the same total images
+                    let idealRounds = max(1, min(3, totalImages / 1500)) // Reduce idealRounds to increase baseBatchSize
+                    baseBatchSize = min(1000, max(150, totalImages / (effectiveThreadCount * idealRounds))) // Increase lower bound to 150
                 }
 
                 // Ensure total batches are multiples of thread count
