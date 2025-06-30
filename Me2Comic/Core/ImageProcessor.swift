@@ -287,7 +287,7 @@ class ImageProcessor: ObservableObject {
                 // Ensure total batches are multiples of thread count
                 let totalBatches = Int(ceil(Double(totalImages) / Double(baseBatchSize)))
                 let adjustedBatches = (totalBatches + effectiveThreadCount - 1) / effectiveThreadCount * effectiveThreadCount
-                effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImages) / Double(adjustedBatches)))))
+                effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImages) / Double(max(1, adjustedBatches))))))
 
                 autoAllocatedLogMessage = String(
                     format: NSLocalizedString("AutoAllocatedParams", comment: ""),
