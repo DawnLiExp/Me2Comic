@@ -27,6 +27,9 @@ enum ImageIOHelper {
     /// - Returns: A tuple containing the image's width and height, or nil if dimensions cannot be retrieved.
     static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
         guard FileManager.default.fileExists(atPath: imagePath) else {
+            #if DEBUG
+            print("ImageIOHelper: File does not exist at path: \(imagePath)")
+            #endif
             return nil
         }
 
@@ -36,18 +39,27 @@ enum ImageIOHelper {
         let retainedURL = imageURL as CFURL
 
         guard let imageSource = CGImageSourceCreateWithURL(retainedURL, nil) else {
+            #if DEBUG
+            print("ImageIOHelper: Could not create image source for URL: \(imageURL.lastPathComponent)")
+            #endif
             return nil
         }
 
         // Prevent caching image data for performance when only metadata is needed.
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, options) as NSDictionary? else {
+            #if DEBUG
+            print("ImageIOHelper: Could not copy image properties for \(imageURL.lastPathComponent)")
+            #endif
             return nil
         }
 
         guard let pixelWidth = imageProperties[kCGImagePropertyPixelWidth] as? Int,
               let pixelHeight = imageProperties[kCGImagePropertyPixelHeight] as? Int
         else {
+            #if DEBUG
+            print("ImageIOHelper: Could not retrieve pixel dimensions for \(imageURL.lastPathComponent)")
+            #endif
             return nil
         }
 
