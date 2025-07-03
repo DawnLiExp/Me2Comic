@@ -147,8 +147,16 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
                 // Determine the original subdirectory name for the image
                 let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
-                // Construct the final output directory for this specific image
-                let finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
+
+                // Decide final output directory: avoid duplicate subdir when outputDir already ends with it
+                let finalOutputDirForImage: URL
+                if self.outputDir.lastPathComponent == originalSubdirName {
+                    // Already in the correct subdirectory (Isolated case)
+                    finalOutputDirForImage = self.outputDir
+                } else {
+                    // Append subdirectory for GlobalBatch case
+                    finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
+                }
 
                 // Ensure the final output directory exists
                 do {
@@ -163,7 +171,9 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     return
                 }
 
-                let outputBasePath = finalOutputDirForImage.appendingPathComponent(filenameWithoutExt).path
+                let outputBasePath = finalOutputDirForImage
+                    .appendingPathComponent(filenameWithoutExt)
+                    .path
 
                 // Get dimensions (from batch or individually)
                 var dimensions: (width: Int, height: Int)?

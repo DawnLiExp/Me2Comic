@@ -93,8 +93,10 @@
 "ProcessingCancelledNoStart" = "処理が開始される前にキャンセルされました";
 
 /* Log messages for asynchronous image processing */
-"StartProcessingSubdir" = "サブディレクトリ処理開始:%@";
-"ProcessedSubdir" = "サブディレクトリの処理が完了しました:%@";
+"StartProcessingGlobalBatch" = "単ページ画像をまとめて処理しています...";
+"CompletedGlobalBatchWithCount" = "単ページ画像の処理が完了しました（合計 %d 枚）";
+"StartProcessingSubdir" = "見開き画像ディレクトリを処理中：%@";
+"ProcessedSubdir" = "見開き画像ディレクトリの処理が完了しました：%@";
 
 /* Log messages for stopping processing */
 "ProcessingStopped" = "処理停止完了";

@@ -93,8 +93,10 @@
 "ProcessingCancelledNoStart" = "處理已取消，尚未開始執行";
 
 /* Log messages for asynchronous image processing */
-"StartProcessingSubdir" = "開始處理子目錄：%@";
-"ProcessedSubdir" = "完成處理子目錄：%@";
+"StartProcessingGlobalBatch" = "正在合併處理單頁圖片...";
+"CompletedGlobalBatchWithCount" = "單頁圖片隊列處理完成，共處理 %d 張";
+"StartProcessingSubdir" = "開始處理雙頁圖片目錄：%@";
+"ProcessedSubdir" = "完成處理雙頁圖片目錄：%@";
 
 /* Log messages for stopping processing */
 "ProcessingStopped" = "處理已停止";

@@ -332,16 +332,25 @@ class ImageProcessor: ObservableObject {
             // Step 3: Process Global Batch category images
             if !globalBatchImages.isEmpty {
                 // Calculate new batchSize based on total global images and thread count
+                DispatchQueue.main.async {
+                    self.logMessages.append(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+                }
+
                 let newBatchSize = Int(ceil(Double(globalBatchImages.count) / Double(parameters.threadCount)))
                 // Ensure newBatchSize respects the maximum limit (1000)
                 let effectiveGlobalBatchSize = min(newBatchSize, 1000)
-
                 let globalBatches = splitIntoBatches(globalBatchImages, batchSize: effectiveGlobalBatchSize)
+
+                var completedGlobalBatches = 0
+                let totalGlobalBatches = globalBatches.count
+                var globalProcessedCount = 0
+                var globalFailedFiles: [String] = []
+                let globalBatchLock = NSLock()
 
                 for batch in globalBatches {
                     let op = BatchProcessOperation(
                         images: batch,
-                        outputDir: outputDir, // BatchProcessOperation will handle subdir mapping
+                        outputDir: outputDir,
                         widthThreshold: Int(parameters.widthThreshold)!,
                         resizeHeight: Int(parameters.resizeHeight)!,
                         quality: Int(parameters.quality)!,
@@ -352,9 +361,29 @@ class ImageProcessor: ObservableObject {
                         useGrayColorspace: parameters.useGrayColorspace,
                         gmPath: gmPath
                     )
+
                     op.onCompleted = { [weak self] count, fails in
-                        self?.handleBatchCompletion(processedCount: count, failedFiles: fails)
+                        guard let self = self else { return }
+                        self.handleBatchCompletion(processedCount: count, failedFiles: fails)
+
+                        globalBatchLock.lock()
+                        globalProcessedCount += count
+                        globalFailedFiles.append(contentsOf: fails)
+                        completedGlobalBatches += 1
+                        let isLast = (completedGlobalBatches == totalGlobalBatches)
+                        globalBatchLock.unlock()
+
+                        if isLast {
+                            DispatchQueue.main.async {
+                                let formatted = String(
+                                    format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
+                                    globalProcessedCount
+                                )
+                                self.logMessages.append(formatted)
+                            }
+                        }
                     }
+
                     allOps.append(op)
                     #if DEBUG
                         print("ImageProcessor: Added Global BatchProcessOperation for \(batch.count) images.")
@@ -367,7 +396,7 @@ class ImageProcessor: ObservableObject {
                 let subName = scanResult.directoryURL.lastPathComponent
                 let outputSubdir = outputDir.appendingPathComponent(subName)
 
-                // Create output subdirectory if it doesn\"t exist
+                // Create output subdirectory if it does not exist
                 do {
                     if !fileManager.fileExists(atPath: outputSubdir.path) {
                         try fileManager.createDirectory(at: outputSubdir, withIntermediateDirectories: true)

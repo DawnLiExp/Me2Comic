@@ -93,8 +93,10 @@
 "ProcessingCancelledNoStart" = "Processing cancelled before it started";
 
 /* Log messages for asynchronous image processing */
-"StartProcessingSubdir" = "Starting processing subdirectory: %@";
-"ProcessedSubdir" = "Completed processing subdirectory: %@";
+"StartProcessingGlobalBatch" = "Merging and processing single-page images...";
+"CompletedGlobalBatchWithCount" = "Single-page image queue completed, total %d images processed";
+"StartProcessingSubdir" = "Processing double-page image directory: %@";
+"ProcessedSubdir" = "Completed processing double-page image directory: %@";
 
 /* Log messages for stopping processing */
 "ProcessingStopped" = "Processing stopped";
