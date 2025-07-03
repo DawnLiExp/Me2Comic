@@ -144,7 +144,26 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
                 let filename = imageFile.lastPathComponent
                 let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
-                let outputBasePath = outputDir.appendingPathComponent(filenameWithoutExt).path
+
+                // Determine the original subdirectory name for the image
+                let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
+                // Construct the final output directory for this specific image
+                let finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
+
+                // Ensure the final output directory exists
+                do {
+                    if !fileManager.fileExists(atPath: finalOutputDirForImage.path) {
+                        try fileManager.createDirectory(at: finalOutputDirForImage, withIntermediateDirectories: true)
+                    }
+                } catch {
+                    #if DEBUG
+                    print("BatchProcessOperation: Could not create output directory for \(filename): \(error.localizedDescription)")
+                    #endif
+                    failedFiles.append(filename)
+                    return
+                }
+
+                let outputBasePath = finalOutputDirForImage.appendingPathComponent(filenameWithoutExt).path
 
                 // Get dimensions (from batch or individually)
                 var dimensions: (width: Int, height: Int)?
