@@ -106,21 +106,21 @@ struct SettingsPanelView: View {
             ParameterInputView(title: NSLocalizedString("UnsharpSigma", comment: ""), text: $unsharpSigma, isProcessing: isProcessing)
             ParameterInputView(title: NSLocalizedString("UnsharpAmount", comment: ""), text: $unsharpAmount, isProcessing: isProcessing)
             ParameterInputView(title: NSLocalizedString("UnsharpThreshold", comment: ""), text: $unsharpThreshold, isProcessing: isProcessing)
-            ParameterInputView(title: NSLocalizedString("BatchSize", comment: ""), text: $batchSize, isProcessing: isProcessing)
-
+            ParameterInputView(title: NSLocalizedString("BatchSize", comment: ""), text: $batchSize, isProcessing: isProcessing || threadCount == 0)
             // Thread count picker
             HStack {
                 Text(NSLocalizedString("ThreadCount", comment: ""))
                     .foregroundColor(.textPrimary)
                     .frame(width: 150, alignment: .leading)
-                Spacer().frame(width: 8)
+                    .padding(.trailing, -14)  
                 Picker("", selection: $threadCount) {
+                    Text(NSLocalizedString("Auto", comment: "")).tag(0)
                     ForEach(1 ... 6, id: \.self) { count in
                         Text("\(count)").tag(count)
                     }
                 }
                 .pickerStyle(.menu)
-                .frame(width: 51)
+                .frame(width: 65)
                 .disabled(isProcessing)
                 .background(
                     RoundedRectangle(cornerRadius: 4)

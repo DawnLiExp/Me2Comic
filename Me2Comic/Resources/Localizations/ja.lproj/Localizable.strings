@@ -125,3 +125,8 @@
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "バッチサイズが無効です。1〜1000の整数を入力してください。既定値（40）を使用します。";
+
+/* Auto-allocated parameters */
+"Auto" = "自動";
+"AutoModeEnabled" = "自動モードが有効になりました";
+"AutoAllocatedParameters" = "自動割り当てパラメータ：スレッド数 %ld、バッチサイズ %ld";

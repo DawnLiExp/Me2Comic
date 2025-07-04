@@ -125,3 +125,8 @@
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "每批图像数无效。请输入 1-1000 之间的整数。已自动使用默认值（40）。";
+
+/* Auto-allocated parameters */
+"Auto" = "自动";
+"AutoModeEnabled" = "已启用自动模式";
+"AutoAllocatedParameters" = "自动分配参数：线程数 %ld，批处理大小 %ld";

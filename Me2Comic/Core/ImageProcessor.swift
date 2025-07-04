@@ -158,6 +158,24 @@ class ImageProcessor: ObservableObject {
         }
     }
 
+    /// Calculates auto-allocated thread count and batch size based on total image count.
+    private func calculateAutoParameters(totalImageCount: Int) -> (threadCount: Int, batchSize: Int) {
+        var effectiveThreadCount: Int
+        if totalImageCount < 20 {
+            effectiveThreadCount = 1
+        } else if totalImageCount < 100 {
+            effectiveThreadCount = min(5, max(2, totalImageCount / 20))
+        } else {
+            effectiveThreadCount = 6
+        }
+
+        // For auto mode, batch size for global batch is total images / effectiveThreadCount
+        // For isolated directories, it will be calculated per directory based on its image count
+        let effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImageCount) / Double(max(1, effectiveThreadCount))))))
+
+        return (threadCount: effectiveThreadCount, batchSize: effectiveBatchSize)
+    }
+
     /// Main processing workflow entry point
     func processImages(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
         // Validate width threshold
@@ -268,6 +286,26 @@ class ImageProcessor: ObservableObject {
             var allScanResults: [DirectoryScanResult] = []
             var globalBatchImages: [URL] = []
 
+            // Determine effective parameters based on auto mode or manual mode
+            var effectiveThreadCount = parameters.threadCount
+            var effectiveBatchSize = validateBatchSize(parameters.batchSize)
+
+            if parameters.threadCount == 0 { // Auto mode
+                DispatchQueue.main.async {
+                    self.logMessages.append(NSLocalizedString("AutoModeEnabled", comment: ""))
+                }
+                let allImageFiles = subdirs.flatMap { self.getImageFiles($0) }
+                let totalImages = allImageFiles.count
+
+                let autoParams = calculateAutoParameters(totalImageCount: totalImages)
+                effectiveThreadCount = autoParams.threadCount
+                effectiveBatchSize = autoParams.batchSize
+
+                DispatchQueue.main.async {
+                    self.logMessages.append(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, effectiveBatchSize))
+                }
+            }
+
             // Step 1: Classify subdirectories
             for subdir in subdirs {
                 let imageFiles = getImageFiles(subdir)
@@ -324,7 +362,7 @@ class ImageProcessor: ObservableObject {
             }
 
             // Step 2: Configure concurrent processing
-            processingQueue.maxConcurrentOperationCount = parameters.threadCount
+            processingQueue.maxConcurrentOperationCount = effectiveThreadCount
             processingQueue.underlyingQueue = processingDispatchQueue
 
             var allOps: [BatchProcessOperation] = []
@@ -336,7 +374,7 @@ class ImageProcessor: ObservableObject {
                     self.logMessages.append(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
                 }
 
-                let newBatchSize = Int(ceil(Double(globalBatchImages.count) / Double(parameters.threadCount)))
+                let newBatchSize = Int(ceil(Double(globalBatchImages.count) / Double(effectiveThreadCount)))
                 // Ensure newBatchSize respects the maximum limit (1000)
                 let effectiveGlobalBatchSize = min(newBatchSize, 1000)
                 let globalBatches = splitIntoBatches(globalBatchImages, batchSize: effectiveGlobalBatchSize)
@@ -412,7 +450,14 @@ class ImageProcessor: ObservableObject {
                     self.logMessages.append(String(format: NSLocalizedString("StartProcessingSubdir", comment: ""), subName))
                 }
 
-                let batchSize = validateBatchSize(parameters.batchSize) // Use original batchSize for isolated directories
+                let batchSize: Int
+                if parameters.threadCount == 0 { // Auto mode for isolated directories
+                    let isolatedDirImageCount = scanResult.imageFiles.count
+                    let autoParamsForIsolated = calculateAutoParameters(totalImageCount: isolatedDirImageCount)
+                    batchSize = autoParamsForIsolated.batchSize
+                } else {
+                    batchSize = validateBatchSize(parameters.batchSize) // Use original batchSize for isolated directories
+                }
                 for batch in splitIntoBatches(scanResult.imageFiles, batchSize: batchSize) {
                     let op = BatchProcessOperation(
                         images: batch,

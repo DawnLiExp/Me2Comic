@@ -125,3 +125,8 @@
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "每批影像數無效。請輸入 1 至 1000 的整數。已套用預設值（40）。";
+
+/* Auto-allocated parameters */
+"Auto" = "自動";
+"AutoModeEnabled" = "已啟用自動模式";
+"AutoAllocatedParameters" = "自動分配參數：線程數 %ld，批處理大小 %ld";

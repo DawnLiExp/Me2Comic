@@ -125,3 +125,8 @@
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 1000. Default (40) will be used.";
+
+/* Auto-allocated parameters */
+"Auto" = "Auto";
+"AutoModeEnabled" = "Auto Mode Enabled";
+"AutoAllocatedParameters" = "Auto-allocated parameters: threads %ld, batch size %ld";
