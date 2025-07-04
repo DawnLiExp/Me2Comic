@@ -161,17 +161,32 @@ class ImageProcessor: ObservableObject {
     /// Calculates auto-allocated thread count and batch size based on total image count.
     private func calculateAutoParameters(totalImageCount: Int) -> (threadCount: Int, batchSize: Int) {
         var effectiveThreadCount: Int
-        if totalImageCount < 20 {
+        let maxThreadCount = 6
+
+        // Smoothly adjust thread count based on total image count
+        if totalImageCount < 10 {
             effectiveThreadCount = 1
-        } else if totalImageCount < 100 {
-            effectiveThreadCount = min(5, max(2, totalImageCount / 20))
+        } else if totalImageCount <= 50 {
+            // For 10-50 images, thread count smoothly increases from 1 to 3
+            effectiveThreadCount = 1 + Int(ceil(Double(totalImageCount - 10) / 20.0))
+            effectiveThreadCount = min(3, effectiveThreadCount) // Cap at 3 threads
+        } else if totalImageCount <= 300 {
+            // For 50-300 images, thread count smoothly increases from 3 to maxThreadCount
+            effectiveThreadCount = 3 + Int(ceil(Double(totalImageCount - 50) / 50.0))
+            effectiveThreadCount = min(maxThreadCount, effectiveThreadCount) // Respect max thread limit
         } else {
-            effectiveThreadCount = 6
+            // Large workload - use maximum available threads
+            effectiveThreadCount = maxThreadCount
         }
 
-        // For auto mode, batch size for global batch is total images / effectiveThreadCount
-        // For isolated directories, it will be calculated per directory based on its image count
-        let effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImageCount) / Double(max(1, effectiveThreadCount))))))
+        // Final thread count validation (1...maxThreadCount)
+        effectiveThreadCount = max(1, min(maxThreadCount, effectiveThreadCount))
+
+        // Calculate batch size:
+        // - Evenly distribute images across threads
+        // - Minimum 1 image per batch
+        // - Maximum 1000 images per batch (safety limit)
+        let effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImageCount) / Double(effectiveThreadCount)))))
 
         return (threadCount: effectiveThreadCount, batchSize: effectiveBatchSize)
     }
@@ -453,8 +468,15 @@ class ImageProcessor: ObservableObject {
                 let batchSize: Int
                 if parameters.threadCount == 0 { // Auto mode for isolated directories
                     let isolatedDirImageCount = scanResult.imageFiles.count
-                    let autoParamsForIsolated = calculateAutoParameters(totalImageCount: isolatedDirImageCount)
-                    batchSize = autoParamsForIsolated.batchSize
+                    // For Isolated directories, if the number of images is small, use a smaller fixed batch size to avoid orphan processes, e.g., 30-40.
+                    // If the number of images is large, dynamically calculate based on total images and thread count to ensure even batches.
+                    if isolatedDirImageCount <= 100 { // Assume less than or equal to 100 images is a small quantity
+                        batchSize = min(isolatedDirImageCount, 40) // Ensure not to exceed total images and not more than 40
+                    } else {
+                        // For a large number of images, ensure batches are evenly distributed to avoid small remaining batches
+                        let calculatedBatchSize = Int(ceil(Double(isolatedDirImageCount) / Double(effectiveThreadCount)))
+                        batchSize = max(1, min(1000, calculatedBatchSize))
+                    }
                 } else {
                     batchSize = validateBatchSize(parameters.batchSize) // Use original batchSize for isolated directories
                 }
