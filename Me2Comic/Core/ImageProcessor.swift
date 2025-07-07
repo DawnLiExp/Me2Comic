@@ -1,4 +1,3 @@
-
 //
 //  ImageProcessor.swift
 //  Me2Comic
@@ -101,11 +100,9 @@ class ImageProcessor: ObservableObject {
             return files.filter { imageExtensions.contains($0.pathExtension.lowercased()) }
         } catch {
             // Log error if directory contents cannot be read.
-            #if DEBUG
-                DispatchQueue.main.async {
-                    self.logMessages.append(String(format: NSLocalizedString("ErrorReadingDirectory", comment: ""), error.localizedDescription))
-                }
-            #endif
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(String(format: NSLocalizedString("ErrorReadingDirectory", comment: ""), error.localizedDescription))
+            }
             return []
         }
     }
@@ -139,8 +136,8 @@ class ImageProcessor: ObservableObject {
     /// Validates and sanitizes batch size input
     private func validateBatchSize(_ batchSizeStr: String) -> Int {
         guard let batchSize = Int(batchSizeStr), batchSize >= 1, batchSize <= 1000 else {
-            DispatchQueue.main.async {
-                self.logMessages.append(NSLocalizedString("InvalidBatchSize", comment: ""))
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(NSLocalizedString("InvalidBatchSize", comment: ""))
             }
             return 40
         }
@@ -205,18 +202,24 @@ class ImageProcessor: ObservableObject {
     func processImages(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
         // Validate width threshold
         guard let threshold = Int(parameters.widthThreshold), threshold > 0 else {
-            logMessages.append(NSLocalizedString("InvalidWidthThreshold", comment: ""))
-            isProcessing = false
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(NSLocalizedString("InvalidWidthThreshold", comment: ""))
+                self?.isProcessing = false
+            }
             return
         }
         guard let resize = Int(parameters.resizeHeight), resize > 0 else {
-            logMessages.append(NSLocalizedString("InvalidResizeHeight", comment: ""))
-            isProcessing = false
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(NSLocalizedString("InvalidResizeHeight", comment: ""))
+                self?.isProcessing = false
+            }
             return
         }
         guard let qual = Int(parameters.quality), qual >= 1, qual <= 100 else {
-            logMessages.append(NSLocalizedString("InvalidOutputQuality", comment: ""))
-            isProcessing = false
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(NSLocalizedString("InvalidOutputQuality", comment: ""))
+                self?.isProcessing = false
+            }
             return
         }
         guard let radius = Float(parameters.unsharpRadius), radius >= 0,
@@ -224,18 +227,24 @@ class ImageProcessor: ObservableObject {
               let amount = Float(parameters.unsharpAmount), amount >= 0,
               let unsharpThreshold = Float(parameters.unsharpThreshold), unsharpThreshold >= 0
         else {
-            logMessages.append(NSLocalizedString("InvalidUnsharpParameters", comment: ""))
-            isProcessing = false
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(NSLocalizedString("InvalidUnsharpParameters", comment: ""))
+                self?.isProcessing = false
+            }
             return
         }
 
-        isProcessing = true
+        DispatchQueue.main.async { [weak self] in
+            self?.isProcessing = true
+        }
         resetProcessingState()
         logStartParameters(threshold, resize, qual, parameters.threadCount, radius, sigma, amount, unsharpThreshold, parameters.useGrayColorspace)
 
         // Verify GraphicsMagick installation
         guard verifyGraphicsMagick() else {
-            isProcessing = false
+            DispatchQueue.main.async { [weak self] in
+                self?.isProcessing = false
+            }
             return
         }
 
@@ -243,14 +252,18 @@ class ImageProcessor: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
         } catch {
-            logMessages.append(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""), error.localizedDescription))
-            isProcessing = false
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""), error.localizedDescription))
+                self?.isProcessing = false
+            }
             return
         }
 
         // Start background processing
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.processDirectories(inputDir: inputDir, outputDir: outputDir, parameters: parameters)
+            self?.processDirectories(inputDir: inputDir, outputDir: outputDir, parameters: parameters,
+                                     validatedThreshold: threshold, validatedResize: resize, validatedQuality: qual,
+                                     validatedRadius: radius, validatedSigma: sigma, validatedAmount: amount, validatedUnsharpThreshold: unsharpThreshold)
         }
     }
 
@@ -269,28 +282,37 @@ class ImageProcessor: ObservableObject {
                                     _ radius: Float, _ sigma: Float, _ amount: Float, _ unsharpThreshold: Float,
                                     _ useGrayColorspace: Bool)
     {
-        if amount > 0 {
-            logMessages.append(String(format: NSLocalizedString("StartProcessingWithUnsharp", comment: ""),
-                                      threshold, resize, qual, threadCount, radius, sigma, amount, unsharpThreshold,
-                                      NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
-        } else {
-            logMessages.append(String(format: NSLocalizedString("StartProcessingNoUnsharp", comment: ""),
-                                      threshold, resize, qual, threadCount,
-                                      NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
+        DispatchQueue.main.async { [weak self] in
+            if amount > 0 {
+                self?.logMessages.append(String(format: NSLocalizedString("StartProcessingWithUnsharp", comment: ""),
+                                                threshold, resize, qual, threadCount, radius, sigma, amount, unsharpThreshold,
+                                                NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
+            } else {
+                self?.logMessages.append(String(format: NSLocalizedString("StartProcessingNoUnsharp", comment: ""),
+                                                threshold, resize, qual, threadCount,
+                                                NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
+            }
         }
     }
 
     /// Verifies GraphicsMagick installation
     private func verifyGraphicsMagick() -> Bool {
-        guard let path = GraphicsMagickHelper.detectGMPathSafely(logHandler: { self.logMessages.append($0) }) else {
+        guard let path = GraphicsMagickHelper.detectGMPathSafely(logHandler: { [weak self] message in
+            DispatchQueue.main.async { self?.logMessages.append(message) }
+        }) else {
             return false
         }
         gmPath = path
-        return GraphicsMagickHelper.verifyGraphicsMagick(gmPath: gmPath, logHandler: { self.logMessages.append($0) })
+        return GraphicsMagickHelper.verifyGraphicsMagick(gmPath: gmPath, logHandler: { [weak self] message in
+            DispatchQueue.main.async { self?.logMessages.append(message) }
+        })
     }
 
     /// Processes all subdirectories in input directory
-    private func processDirectories(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
+    private func processDirectories(inputDir: URL, outputDir: URL, parameters: ProcessingParameters,
+                                    validatedThreshold: Int, validatedResize: Int, validatedQuality: Int,
+                                    validatedRadius: Float, validatedSigma: Float, validatedAmount: Float, validatedUnsharpThreshold: Float)
+    {
         let fileManager = FileManager.default
         do {
             // Discover subdirectories
@@ -300,9 +322,9 @@ class ImageProcessor: ObservableObject {
                 }
 
             guard !subdirs.isEmpty else {
-                DispatchQueue.main.async {
-                    self.logMessages.append(NSLocalizedString("NoSubdirectories", comment: ""))
-                    self.isProcessing = false
+                DispatchQueue.main.async { [weak self] in
+                    self?.logMessages.append(NSLocalizedString("NoSubdirectories", comment: ""))
+                    self?.isProcessing = false
                 }
                 return
             }
@@ -316,8 +338,8 @@ class ImageProcessor: ObservableObject {
             var effectiveBatchSize = validateBatchSize(parameters.batchSize)
 
             if parameters.threadCount == 0 { // Auto mode
-                DispatchQueue.main.async {
-                    self.logMessages.append(NSLocalizedString("AutoModeEnabled", comment: ""))
+                DispatchQueue.main.async { [weak self] in
+                    self?.logMessages.append(NSLocalizedString("AutoModeEnabled", comment: ""))
                 }
                 let allImageFiles = subdirs.flatMap { self.getImageFiles($0) }
                 let totalImages = allImageFiles.count
@@ -326,8 +348,8 @@ class ImageProcessor: ObservableObject {
                 effectiveThreadCount = autoParams.threadCount
                 effectiveBatchSize = autoParams.batchSize
 
-                DispatchQueue.main.async {
-                    self.logMessages.append(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, effectiveBatchSize))
+                DispatchQueue.main.async { [weak self] in
+                    self?.logMessages.append(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, effectiveBatchSize))
                 }
             }
 
@@ -335,8 +357,8 @@ class ImageProcessor: ObservableObject {
             for subdir in subdirs {
                 let imageFiles = getImageFiles(subdir)
                 guard !imageFiles.isEmpty else {
-                    DispatchQueue.main.async {
-                        self.logMessages.append(String(format: NSLocalizedString("NoImagesInDir", comment: ""), subdir.lastPathComponent))
+                    DispatchQueue.main.async { [weak self] in
+                        self?.logMessages.append(String(format: NSLocalizedString("NoImagesInDir", comment: ""), subdir.lastPathComponent))
                     }
                     continue
                 }
@@ -351,16 +373,8 @@ class ImageProcessor: ObservableObject {
                 }
 
                 var isGlobalBatchCandidate = true
-                // Ensure threshold is an Int before comparison
-                guard let threshold = Int(parameters.widthThreshold) else {
-                    isGlobalBatchCandidate = false
-                    #if DEBUG
-                        print("ImageProcessor: Invalid widthThreshold during classification.")
-                    #endif
-                    // If threshold is invalid, treat as isolated
-                    allScanResults.append(DirectoryScanResult(directoryURL: subdir, imageFiles: imageFiles, category: .isolated))
-                    continue
-                }
+                // Use the already validated threshold
+                let threshold = validatedThreshold
 
                 for imageURL in sampleImages {
                     if let dims = sampleDimensions[imageURL.path] {
@@ -395,8 +409,8 @@ class ImageProcessor: ObservableObject {
             // Step 3: Process Global Batch category images
             if !globalBatchImages.isEmpty {
                 // Calculate new batchSize based on total global images and thread count
-                DispatchQueue.main.async {
-                    self.logMessages.append(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+                DispatchQueue.main.async { [weak self] in
+                    self?.logMessages.append(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
                 }
 
                 let idealNumBatchesForGlobal = Int(ceil(Double(globalBatchImages.count) / Double(effectiveBatchSize))) // Use effectiveBatchSize as a base ideal batch size
@@ -413,13 +427,13 @@ class ImageProcessor: ObservableObject {
                     let op = BatchProcessOperation(
                         images: batch,
                         outputDir: outputDir,
-                        widthThreshold: Int(parameters.widthThreshold)!,
-                        resizeHeight: Int(parameters.resizeHeight)!,
-                        quality: Int(parameters.quality)!,
-                        unsharpRadius: Float(parameters.unsharpRadius)!,
-                        unsharpSigma: Float(parameters.unsharpSigma)!,
-                        unsharpAmount: Float(parameters.unsharpAmount)!,
-                        unsharpThreshold: Float(parameters.unsharpThreshold)!,
+                        widthThreshold: validatedThreshold,
+                        resizeHeight: validatedResize,
+                        quality: validatedQuality,
+                        unsharpRadius: validatedRadius,
+                        unsharpSigma: validatedSigma,
+                        unsharpAmount: validatedAmount,
+                        unsharpThreshold: validatedUnsharpThreshold,
                         useGrayColorspace: parameters.useGrayColorspace,
                         gmPath: gmPath
                     )
@@ -464,14 +478,14 @@ class ImageProcessor: ObservableObject {
                         try fileManager.createDirectory(at: outputSubdir, withIntermediateDirectories: true)
                     }
                 } catch {
-                    DispatchQueue.main.async {
-                        self.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputSubdir", comment: ""), subName, error.localizedDescription))
+                    DispatchQueue.main.async { [weak self] in
+                        self?.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputSubdir", comment: ""), subName, error.localizedDescription))
                     }
                     continue
                 }
 
-                DispatchQueue.main.async {
-                    self.logMessages.append(String(format: NSLocalizedString("StartProcessingSubdir", comment: ""), subName))
+                DispatchQueue.main.async { [weak self] in
+                    self?.logMessages.append(String(format: NSLocalizedString("StartProcessingSubdir", comment: ""), subName))
                 }
 
                 let batchSize: Int
@@ -490,13 +504,13 @@ class ImageProcessor: ObservableObject {
                     let op = BatchProcessOperation(
                         images: batch,
                         outputDir: outputSubdir,
-                        widthThreshold: Int(parameters.widthThreshold)!,
-                        resizeHeight: Int(parameters.resizeHeight)!,
-                        quality: Int(parameters.quality)!,
-                        unsharpRadius: Float(parameters.unsharpRadius)!,
-                        unsharpSigma: Float(parameters.unsharpSigma)!,
-                        unsharpAmount: Float(parameters.unsharpAmount)!,
-                        unsharpThreshold: Float(parameters.unsharpThreshold)!,
+                        widthThreshold: validatedThreshold,
+                        resizeHeight: validatedResize,
+                        quality: validatedQuality,
+                        unsharpRadius: validatedRadius,
+                        unsharpSigma: validatedSigma,
+                        unsharpAmount: validatedAmount,
+                        unsharpThreshold: validatedUnsharpThreshold,
                         useGrayColorspace: parameters.useGrayColorspace,
                         gmPath: gmPath
                     )
@@ -563,9 +577,9 @@ class ImageProcessor: ObservableObject {
             }
 
         } catch {
-            DispatchQueue.main.async {
-                self.logMessages.append(String(format: NSLocalizedString("ProcessingFailed", comment: ""), error.localizedDescription))
-                self.isProcessing = false
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(String(format: NSLocalizedString("ProcessingFailed", comment: ""), error.localizedDescription))
+                self?.isProcessing = false
             }
         }
     }
