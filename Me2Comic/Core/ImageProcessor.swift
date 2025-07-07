@@ -93,17 +93,22 @@ class ImageProcessor: ObservableObject {
 
     /// Scans directory for supported image files
     private func getImageFiles(_ directory: URL) -> [URL] {
-        let fileManager = FileManager.default
-        let imageExtensions = ["jpg", "jpeg", "png"]
-        do {
-            let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-            return files.filter { imageExtensions.contains($0.pathExtension.lowercased()) }
-        } catch {
-            // Log error if directory contents cannot be read.
+        guard let enumerator = FileManager.default.enumerator(at: directory,
+                                                              includingPropertiesForKeys: [.isRegularFileKey],
+                                                              options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])
+        else {
             DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(String(format: NSLocalizedString("ErrorReadingDirectory", comment: ""), error.localizedDescription))
+                self?.logMessages.append(String(format: NSLocalizedString("ErrorReadingDirectory", comment: ""), directory.lastPathComponent) + ": " + NSLocalizedString("FailedToCreateEnumerator", comment: ""))
             }
             return []
+        }
+
+        let imageExtensions = Set(["jpg", "jpeg", "png"])
+        return enumerator.compactMap { element in
+            guard let url = element as? URL,
+                  (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false,
+                  imageExtensions.contains(url.pathExtension.lowercased()) else { return nil }
+            return url
         }
     }
 
