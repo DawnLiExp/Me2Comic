@@ -9,12 +9,20 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import os.lock
+import os.log
 
 enum ImageIOHelper {
-    // Thread-safe lock wrapper for os_unfair_lock
+    /// Shared logger instance for ImageIO operations
+    private static let logger = OSLog(subsystem: "com.me2comic.app", category: "ImageIOHelper")
+
+    /// Thread-safe lock wrapper for os_unfair_lock
     private final class UnfairLock {
         private var _lock = os_unfair_lock()
 
+        /// Executes a closure while holding the lock.
+        /// - Parameter body: The closure to execute.
+        /// - Returns: The result of the closure.
+        /// - Throws: Rethrows any error thrown by the closure.
         func withLock<R>(_ body: () throws -> R) rethrows -> R {
             os_unfair_lock_lock(&_lock)
             defer { os_unfair_lock_unlock(&_lock) }
@@ -27,39 +35,31 @@ enum ImageIOHelper {
     /// - Returns: A tuple containing the image's width and height, or nil if dimensions cannot be retrieved.
     static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
         guard FileManager.default.fileExists(atPath: imagePath) else {
-            #if DEBUG
-            print("ImageIOHelper: File does not exist at path: \(imagePath)")
-            #endif
+            os_log("File does not exist at path: %{public}s", log: logger, type: .error, imagePath)
             return nil
         }
 
         let imageURL = URL(fileURLWithPath: imagePath)
-
-        // Retain the URL strongly to ensure it's not deallocated while ImageIO is using it.
         let retainedURL = imageURL as CFURL
 
         guard let imageSource = CGImageSourceCreateWithURL(retainedURL, nil) else {
-            #if DEBUG
-            print("ImageIOHelper: Could not create image source for URL: \(imageURL.lastPathComponent)")
-            #endif
+            os_log("Could not create image source for URL: %{public}s", log: logger, type: .error, imageURL.lastPathComponent)
             return nil
         }
+        // Core Foundation objects are automatically memory managed in modern Swift, no manual CFRelease needed.
 
         // Prevent caching image data for performance when only metadata is needed.
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, options) as NSDictionary? else {
-            #if DEBUG
-            print("ImageIOHelper: Could not copy image properties for \(imageURL.lastPathComponent)")
-            #endif
+            os_log("Could not copy image properties for %{public}s", log: logger, type: .error, imageURL.lastPathComponent)
             return nil
         }
+        // Core Foundation objects are automatically memory managed in modern Swift, no manual CFRelease needed.
 
-        guard let pixelWidth = imageProperties[kCGImagePropertyPixelWidth] as? Int,
-              let pixelHeight = imageProperties[kCGImagePropertyPixelHeight] as? Int
+        guard let pixelWidth = imageProperties[kCGImagePropertyPixelWidth as String] as? Int,
+              let pixelHeight = imageProperties[kCGImagePropertyPixelHeight as String] as? Int
         else {
-            #if DEBUG
-            print("ImageIOHelper: Could not retrieve pixel dimensions for \(imageURL.lastPathComponent)")
-            #endif
+            os_log("Could not retrieve pixel dimensions for %{public}s", log: logger, type: .error, imageURL.lastPathComponent)
             return nil
         }
 
@@ -77,8 +77,21 @@ enum ImageIOHelper {
         var result: [String: (width: Int, height: Int)] = [:]
         let lock = UnfairLock()
 
-        // Calculate optimal task distribution based on CPU cores
-        let taskCount = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount)
+        // Calculate task distribution:
+        // - Serial for small batches (<20 images)
+        // - Parallel up to CPU core count
+        let taskCount: Int
+        if imagePaths.count < 20 {
+            taskCount = 1
+        } else {
+            // Utilize all available active processor cores
+            taskCount = min(
+                imagePaths.count,
+                ProcessInfo.processInfo.activeProcessorCount
+            )
+        }
+
+        // Distribute images as evenly as possible among tasks.
         let imagesPerTask = (imagePaths.count + taskCount - 1) / taskCount
 
         DispatchQueue.concurrentPerform(iterations: taskCount) { taskIndex in
@@ -89,7 +102,7 @@ enum ImageIOHelper {
             let start = taskIndex * imagesPerTask
             let end = min(start + imagesPerTask, imagePaths.count)
 
-            // Add this check to prevent invalid ranges
+            // Prevent invalid ranges (e.g., when imagesPerTask is 0 or start >= end).
             guard start < end else { return }
 
             // Process assigned image chunk
