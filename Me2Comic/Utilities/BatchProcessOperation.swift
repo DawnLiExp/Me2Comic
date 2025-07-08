@@ -208,12 +208,13 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     processedCount += 1
                 } else {
                     // Split processing
-                    let cropWidth = width / 2
-                    // Right half.
+                    let cropWidth = (width + 1) / 2
+                    let rightCropWidth = width - cropWidth
+                    // Right half
                     batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
                         inputPath: imageFile.path,
                         outputPath: "\(outputBasePath)-1.jpg",
-                        cropParams: "\(cropWidth)x\(height)+\(cropWidth)+0",
+                        cropParams: "\(rightCropWidth)x\(height)+\(cropWidth)+0",
                         resizeHeight: resizeHeight,
                         quality: quality,
                         unsharpRadius: unsharpRadius,
@@ -222,7 +223,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                         unsharpThreshold: unsharpThreshold,
                         useGrayColorspace: useGrayColorspace
                     ) + "\n")
-                    // Left half.
+                    // Left half
                     batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
                         inputPath: imageFile.path,
                         outputPath: "\(outputBasePath)-2.jpg",
