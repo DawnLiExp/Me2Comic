@@ -135,6 +135,29 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             try? fileManager.removeItem(at: batchFilePath)
         }
 
+        // Pre-create all necessary output directories to improve efficiency
+        let uniqueOutputDirs = Set(batchImages.map { imageFile in
+            let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
+            if self.outputDir.lastPathComponent == originalSubdirName {
+                return self.outputDir
+            } else {
+                return self.outputDir.appendingPathComponent(originalSubdirName)
+            }
+        })
+
+        for dir in uniqueOutputDirs {
+            do {
+                if !fileManager.fileExists(atPath: dir.path) {
+                    try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+                }
+            } catch {
+                #if DEBUG
+                print("BatchProcessOperation: Could not pre-create output directory \(dir.lastPathComponent): \(error.localizedDescription)")
+                #endif
+                // If a directory cannot be created, it will be handled when processing individual files
+            }
+        }
+
         var batchCommands = ""
 
         // Build batch commands
@@ -158,11 +181,11 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
                 }
 
-                // Ensure the final output directory exists
+                // The directory should already exist from pre-creation step, but handle potential errors just in case
+                // (e.g., if pre-creation failed for some reason, or if a new directory path is somehow generated)
+                // No need to check fileExists again, just attempt to create if it doesn't exist (harmless if it does)
                 do {
-                    if !fileManager.fileExists(atPath: finalOutputDirForImage.path) {
-                        try fileManager.createDirectory(at: finalOutputDirForImage, withIntermediateDirectories: true)
-                    }
+                    try fileManager.createDirectory(at: finalOutputDirForImage, withIntermediateDirectories: true)
                 } catch {
                     #if DEBUG
                     print("BatchProcessOperation: Could not create output directory for \(filename): \(error.localizedDescription)")
@@ -347,7 +370,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     }
 
                     let bytesWritten = write(fileHandle.fileDescriptor,
-                                             ptr.baseAddress,
+                                             ptr.baseAddress! + offset,
                                              chunkLength)
                     if bytesWritten == -1 {
                         if errno == EPIPE {
@@ -360,6 +383,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                                           code: Int(errno),
                                           userInfo: nil)
                         }
+                    } else if bytesWritten < chunkLength {
+                        // Handle partial write: adjust offset and bytesRemaining
+                        offset += bytesWritten
+                        bytesRemaining -= bytesWritten
+                        // Continue loop to write remaining part of the chunk
+                        continue
                     }
                     offset += bytesWritten
                     bytesRemaining -= bytesWritten
