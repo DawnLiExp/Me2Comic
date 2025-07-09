@@ -85,7 +85,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         var processedCount = 0
         var failedFiles: [String] = []
 
-        // Defer block to ensure onCompleted is called, but only if not cancelled at the end
+        // Ensure onCompleted is called if not cancelled
         defer {
             if !isCancelled {
                 onCompleted?(processedCount, failedFiles)
@@ -109,7 +109,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             }
         )
 
-        // If cancelled during ImageIO dimension fetching, return early.
+        // Return early if cancelled during ImageIO dimension fetching
         guard !isCancelled else {
             #if DEBUG
             print("BatchProcessOperation: Operation cancelled during ImageIO dimension fetching.")
@@ -135,7 +135,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             try? fileManager.removeItem(at: batchFilePath)
         }
 
-        // Pre-create all necessary output directories to improve efficiency
+        // Pre-create all necessary output directories for efficiency
         let uniqueOutputDirs = Set(batchImages.map { imageFile in
             let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
             if self.outputDir.lastPathComponent == originalSubdirName {
@@ -154,7 +154,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 #if DEBUG
                 print("BatchProcessOperation: Could not pre-create output directory \(dir.lastPathComponent): \(error.localizedDescription)")
                 #endif
-                // If a directory cannot be created, it will be handled when processing individual files
+                // If a directory cannot be created, it will be handled during individual file processing.
             }
         }
 
@@ -181,9 +181,8 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
                 }
 
-                // The directory should already exist from pre-creation step, but handle potential errors just in case
-                // (e.g., if pre-creation failed for some reason, or if a new directory path is somehow generated)
-                // No need to check fileExists again, just attempt to create if it doesn't exist (harmless if it does)
+                // The directory should already exist from pre-creation step, but handle potential errors.
+                // Attempt to create if it doesn't exist (harmless if it does).
                 do {
                     try fileManager.createDirectory(at: finalOutputDirForImage, withIntermediateDirectories: true)
                 } catch {
@@ -265,7 +264,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         }
 
         guard !batchCommands.isEmpty, !isCancelled else {
-            // If cancelled after building commands but before writing/running GM
+            // Return if cancelled after command building but before GM execution
             return
         }
 
@@ -287,7 +286,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             processLock.unlock()
 
             guard !isCancelled else {
-                // If cancelled after process setup but before run
+                // Return if cancelled after process setup but before run
                 processLock.lock()
                 internalProcess = nil
                 processLock.unlock()
@@ -298,7 +297,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             try batchTask.run()
 
             guard !isCancelled else {
-                // If cancelled immediately after run()
+                // Return if cancelled immediately after run()
                 processLock.lock()
                 internalProcess?.terminate()
                 // Ensure pipe write end is closed as fallback
@@ -319,7 +318,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             processLock.unlock()
 
             if batchTask.terminationStatus != 0 {
-                // Only append failed files if not cancelled, otherwise assume cancellation handled it
+                // Append failed files if not cancelled
                 if !isCancelled {
                     failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
                     processedCount = 0
@@ -336,7 +335,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 print("BatchProcessOperation: Error during process execution: \(error.localizedDescription)")
                 #endif
             }
-            // Only append failed files if not cancelled
+            // Append failed files if not cancelled
             if !isCancelled {
                 failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
                 processedCount = 0
@@ -353,7 +352,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     private func safeWrite(data: Data, to fileHandle: FileHandle) throws {
         let chunkSize = 4096
         var bytesRemaining = data.count
-        var offset = 0
+        var currentOffset = 0
 
         while bytesRemaining > 0 {
             guard !isCancelled else {
@@ -361,46 +360,65 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             }
 
             let chunkLength = min(chunkSize, bytesRemaining)
-            let chunk = data.subdata(in: offset ..< (offset + chunkLength))
+            // Create a new Data instance for the chunk to ensure safe memory access
+            let chunk = data.subdata(in: currentOffset ..< (currentOffset + chunkLength))
 
-            do {
-                try chunk.withUnsafeBytes { ptr in
-                    guard !isCancelled else {
-                        return
-                    }
+            var bytesWrittenForChunk = 0
+            var writeAttempts = 0
+            let maxWriteAttempts = 5 // Limit retries to prevent infinite loops
 
-                    let bytesWritten = write(fileHandle.fileDescriptor,
-                                             ptr.baseAddress! + offset,
-                                             chunkLength)
-                    if bytesWritten == -1 {
-                        if errno == EPIPE {
-                            #if DEBUG
-                            print("BatchProcessOperation: safeWrite encountered EPIPE (pipe closed), stopping write.")
-                            #endif
-                            throw POSIXError(.EPIPE)
-                        } else {
-                            throw NSError(domain: NSPOSIXErrorDomain,
-                                          code: Int(errno),
-                                          userInfo: nil)
+            while bytesWrittenForChunk < chunkLength, writeAttempts < maxWriteAttempts {
+                writeAttempts += 1
+                do {
+                    try chunk.withUnsafeBytes { ptr in
+                        guard !isCancelled else {
+                            return
                         }
-                    } else if bytesWritten < chunkLength {
-                        // Handle partial write: adjust offset and bytesRemaining
-                        offset += bytesWritten
-                        bytesRemaining -= bytesWritten
-                        // Continue loop to write remaining part of the chunk
-                        continue
+
+                        // Use ptr.baseAddress directly as `chunk` is a subdata, and `advanced(by:)` for offset within the chunk.
+                        let result = write(fileHandle.fileDescriptor,
+                                           ptr.baseAddress!.advanced(by: bytesWrittenForChunk),
+                                           chunkLength - bytesWrittenForChunk)
+
+                        if result == -1 {
+                            let currentErrno = errno
+                            if currentErrno == EPIPE {
+                                #if DEBUG
+                                print("BatchProcessOperation: safeWrite encountered EPIPE (pipe closed), stopping write.")
+                                #endif
+                                throw POSIXError(.EPIPE)
+                            } else if currentErrno == EINTR {
+                                #if DEBUG
+                                print("BatchProcessOperation: safeWrite encountered EINTR, retrying write.")
+                                #endif
+                                // EINTR: Interrupted system call. Retry the write operation.
+                                // Do not increment bytesWrittenForChunk as no bytes were successfully written.
+                            } else {
+                                throw NSError(domain: NSPOSIXErrorDomain,
+                                              code: Int(currentErrno),
+                                              userInfo: nil)
+                            }
+                        } else {
+                            bytesWrittenForChunk += result
+                        }
                     }
-                    offset += bytesWritten
-                    bytesRemaining -= bytesWritten
+                } catch let error as POSIXError where error.code == .EPIPE {
+                    #if DEBUG
+                    print("BatchProcessOperation: safeWrite caught EPIPE, stopping write.")
+                    #endif
+                    return
+                } catch {
+                    throw error
                 }
-            } catch let error as POSIXError where error.code == .EPIPE {
-                #if DEBUG
-                print("BatchProcessOperation: safeWrite caught EPIPE, stopping write.")
-                #endif
-                return
-            } catch {
-                throw error
             }
+
+            if bytesWrittenForChunk == 0, chunkLength > 0, writeAttempts >= maxWriteAttempts {
+                // If no bytes were written after max attempts, indicate a write failure.
+                throw NSError(domain: "BatchProcessOperationErrorDomain", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to write data to pipe after multiple retries."])
+            }
+
+            currentOffset += bytesWrittenForChunk
+            bytesRemaining -= bytesWrittenForChunk
         }
     }
 
@@ -412,7 +430,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         processLock.lock()
         if let process = internalProcess, process.isRunning {
             process.terminate()
-            //  Immediately close pipe's write end
+            // Immediately close pipe's write end
             (process.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
         }
         internalProcess = nil
@@ -420,10 +438,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     }
 
     deinit {
-        // This defer in main() handles it, but keeping this for robustness if main() exits abnormally
-        // if shouldIgnoreSIGPIPE { // No longer needed with sigaction
-        //     signal(SIGPIPE, SIG_DFL)
-        // }
+        // This defer in main() handles it, but keeping this for robustness if main() exits abnormally.
         #if DEBUG
         print("BatchProcessOperation deinitialized.")
         #endif
