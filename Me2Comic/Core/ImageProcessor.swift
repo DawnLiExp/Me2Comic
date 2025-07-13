@@ -6,6 +6,7 @@
 //
 
 import Combine
+import CoreFoundation // For CFAbsoluteTimeGetCurrent()
 import Foundation
 import UserNotifications
 
@@ -171,9 +172,22 @@ class ImageProcessor: ObservableObject {
     ///   - outputDir: The output directory for processed images.
     ///   - parameters: The processing parameters.
     func processImages(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
+        #if DEBUG
+            let totalStartTime = CFAbsoluteTimeGetCurrent()
+            print("ImageProcessor: 开始处理图片，总计时开始...")
+        #endif
+
         let validatedParams: ValidatedProcessingParameters
+        #if DEBUG
+            let paramValidationStartTime = CFAbsoluteTimeGetCurrent()
+            print("ImageProcessor: 开始参数验证...")
+        #endif
         do {
             validatedParams = try ParameterValidator.validate(parameters: parameters)
+            #if DEBUG
+                let paramValidationElapsedTime = CFAbsoluteTimeGetCurrent() - paramValidationStartTime
+                print(String(format: "ImageProcessor: 参数验证完成，耗时 %.4f 秒", paramValidationElapsedTime))
+            #endif
         } catch {
             DispatchQueue.main.async { [weak self] in
                 if let validationError = error as? ParameterValidationError {
@@ -193,16 +207,32 @@ class ImageProcessor: ObservableObject {
         logStartParameters(validatedParams.widthThreshold, validatedParams.resizeHeight, validatedParams.quality, parameters.threadCount, validatedParams.unsharpRadius, validatedParams.unsharpSigma, validatedParams.unsharpAmount, validatedParams.unsharpThreshold, parameters.useGrayColorspace)
 
         /// Verify GraphicsMagick installation
+        #if DEBUG
+            let gmVerificationStartTime = CFAbsoluteTimeGetCurrent()
+            print("ImageProcessor: 开始GraphicsMagick路径检测与验证...")
+        #endif
         guard verifyGraphicsMagick() else {
             DispatchQueue.main.async { [weak self] in
                 self?.isProcessing = false
             }
             return
         }
+        #if DEBUG
+            let gmVerificationElapsedTime = CFAbsoluteTimeGetCurrent() - gmVerificationStartTime
+            print(String(format: "ImageProcessor: GraphicsMagick路径检测与验证完成，耗时 %.4f 秒", gmVerificationElapsedTime))
+        #endif
 
         /// Prepare output directory
+        #if DEBUG
+            let outputDirCreationStartTime = CFAbsoluteTimeGetCurrent()
+            print("ImageProcessor: 开始准备输出目录...")
+        #endif
         do {
             try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+            #if DEBUG
+                let outputDirCreationElapsedTime = CFAbsoluteTimeGetCurrent() - outputDirCreationStartTime
+                print(String(format: "ImageProcessor: 输出目录准备完成，耗时 %.4f 秒", outputDirCreationElapsedTime))
+            #endif
         } catch {
             DispatchQueue.main.async { [weak self] in
                 self?.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""), error.localizedDescription))
@@ -213,7 +243,17 @@ class ImageProcessor: ObservableObject {
 
         /// Start background processing
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            #if DEBUG
+                let processDirectoriesStartTime = CFAbsoluteTimeGetCurrent()
+                print("ImageProcessor: 开始后台目录处理...")
+            #endif
             self?.processDirectories(inputDir: inputDir, outputDir: outputDir, parameters: parameters, validatedParams: validatedParams)
+            #if DEBUG
+                let processDirectoriesElapsedTime = CFAbsoluteTimeGetCurrent() - processDirectoriesStartTime
+                print(String(format: "ImageProcessor: 后台目录处理完成，耗时 %.4f 秒", processDirectoriesElapsedTime))
+                let totalElapsedTime = CFAbsoluteTimeGetCurrent() - totalStartTime
+                print(String(format: "ImageProcessor: 所有预处理阶段完成，总耗时 %.4f 秒", totalElapsedTime))
+            #endif
         }
     }
 
@@ -274,7 +314,15 @@ class ImageProcessor: ObservableObject {
             return self?.isProcessing ?? false
         })
 
+        #if DEBUG
+            let analyzeStartTime = CFAbsoluteTimeGetCurrent()
+            print("ImageProcessor: 开始目录扫描与分类...")
+        #endif
         let allScanResults = analyzer.analyze(inputDir: inputDir, widthThreshold: validatedParams.widthThreshold)
+        #if DEBUG
+            let analyzeElapsedTime = CFAbsoluteTimeGetCurrent() - analyzeStartTime
+            print(String(format: "ImageProcessor: 目录扫描与分类完成，耗时 %.4f 秒", analyzeElapsedTime))
+        #endif
 
         guard !allScanResults.isEmpty else {
             DispatchQueue.main.async { [weak self] in
@@ -313,6 +361,11 @@ class ImageProcessor: ObservableObject {
         processingQueue.underlyingQueue = processingDispatchQueue
 
         var allOps: [BatchProcessOperation] = []
+
+        #if DEBUG
+            let batchQueueSetupStartTime = CFAbsoluteTimeGetCurrent()
+            print("ImageProcessor: 开始建立批处理队列...")
+        #endif
 
         // Step 3: Process Global Batch category images
         if !globalBatchImages.isEmpty {
@@ -435,6 +488,11 @@ class ImageProcessor: ObservableObject {
             print("ImageProcessor: Adding \(allOps.count) operations to processingQueue.")
         #endif
         processingQueue.addOperations(allOps, waitUntilFinished: false)
+
+        #if DEBUG
+            let batchQueueSetupElapsedTime = CFAbsoluteTimeGetCurrent() - batchQueueSetupStartTime
+            print(String(format: "ImageProcessor: 批处理队列建立完成，耗时 %.4f 秒", batchQueueSetupElapsedTime))
+        #endif
 
         // Final completion handler
         processingQueue.addBarrierBlock { [weak self] in

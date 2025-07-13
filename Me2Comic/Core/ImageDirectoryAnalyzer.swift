@@ -5,6 +5,7 @@
 //  Created by me2 on 2025/7/9.
 //
 
+import CoreFoundation // For CFAbsoluteTimeGetCurrent()
 import Foundation
 
 /// Defines categories for directory processing
@@ -87,13 +88,19 @@ class ImageDirectoryAnalyzer {
                 let sampleImages = Array(imageFiles.prefix(5))
                 let sampleImagePaths = sampleImages.map { $0.path }
 
-                // Use GraphicsMagickHelper to get dimensions for sample images
-                // Note: GraphicsMagickHelper needs to be accessible from this module.
-                // Assuming GraphicsMagickHelper.swift will be in a shared module or imported.
-                let sampleDimensions = GraphicsMagickHelper.getBatchImageDimensions(imagePaths: sampleImagePaths) {
-                    // Pass the isProcessingCheck closure to GraphicsMagickHelper
+                // Use ImageIOHelper to get dimensions for sample images
+                #if DEBUG
+                    let sampleDimensionsStartTime = CFAbsoluteTimeGetCurrent()
+                    print("ImageDirectoryAnalyzer: 开始获取样本图片尺寸（ImageIO）...")
+                #endif
+                let sampleDimensions = ImageIOHelper.getBatchImageDimensions(imagePaths: sampleImagePaths) {
+                    // Pass the isProcessingCheck closure to ImageIOHelper
                     self.isProcessingCheck()
                 }
+                #if DEBUG
+                    let sampleDimensionsElapsedTime = CFAbsoluteTimeGetCurrent() - sampleDimensionsStartTime
+                    print(String(format: "ImageDirectoryAnalyzer: 获取样本图片尺寸（ImageIO）完成，耗时 %.4f 秒", sampleDimensionsElapsedTime))
+                #endif
 
                 var isGlobalBatchCandidate = true
 

@@ -5,6 +5,7 @@
 //  Created by Me2 on 2025/6/19.
 //
 
+import CoreFoundation // For CFAbsoluteTimeGetCurrent()
 import Darwin
 import Foundation
 
@@ -100,15 +101,25 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         let supportedExtensions = ["jpg", "jpeg", "png"]
         let validImages = batchImages.filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
 
-        // Pass a closure to ImageIOHelper to check for cancellation.
-        let batchDimensions = GraphicsMagickHelper.getBatchImageDimensions(
+        #if DEBUG
+        let batchDimensionsFetchStartTime = CFAbsoluteTimeGetCurrent()
+        print("BatchProcessOperation: 开始批量获取图片尺寸（ImageIO）...")
+        let batchDimensions = ImageIOHelper.getBatchImageDimensions(
             imagePaths: validImages.map { $0.path },
             shouldContinue: { [weak self] in
-                // Check if the operation itself has been cancelled
                 self?.isCancelled == false
             }
         )
-
+        let batchDimensionsFetchElapsedTime = CFAbsoluteTimeGetCurrent() - batchDimensionsFetchStartTime
+        print(String(format: "BatchProcessOperation: 批量获取图片尺寸（ImageIO）完成，耗时 %.4f 秒", batchDimensionsFetchElapsedTime))
+        #else
+        let batchDimensions = ImageIOHelper.getBatchImageDimensions(
+            imagePaths: validImages.map { $0.path },
+            shouldContinue: { [weak self] in
+                self?.isCancelled == false
+            }
+        )
+        #endif
         // Return early if cancelled during ImageIO dimension fetching
         guard !isCancelled else {
             #if DEBUG
@@ -202,7 +213,15 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 if let batchDim = batchDimensions[imageFile.path] {
                     dimensions = batchDim
                 } else {
-                    dimensions = GraphicsMagickHelper.getImageDimensions(imagePath: imageFile.path)
+                    #if DEBUG
+                    let individualDimensionsFetchStartTime = CFAbsoluteTimeGetCurrent()
+                    print("BatchProcessOperation: 开始单独获取图片尺寸（ImageIO）: \(filename)...")
+                    #endif
+                    dimensions = ImageIOHelper.getImageDimensions(imagePath: imageFile.path)
+                    #if DEBUG
+                    let individualDimensionsFetchElapsedTime = CFAbsoluteTimeGetCurrent() - individualDimensionsFetchStartTime
+                    print(String(format: "BatchProcessOperation: 单独获取图片尺寸（ImageIO）完成，耗时 %.4f 秒: \(filename)", individualDimensionsFetchElapsedTime))
+                    #endif
                 }
 
                 guard let dimensions = dimensions else {
@@ -437,10 +456,15 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         processLock.unlock()
     }
 
+    private static var deinitCount = 0
     deinit {
-        // This defer in main() handles it, but keeping this for robustness if main() exits abnormally.
         #if DEBUG
+        // This defer in main() handles it, but keeping this for robustness if main() exits abnormally.
         print("BatchProcessOperation deinitialized.")
+        Self.deinitCount += 1
+        if Self.deinitCount % 50 == 0 {
+            print("BatchProcessOperation deinitialized. Total: \(Self.deinitCount)")
+        }
         #endif
     }
 }

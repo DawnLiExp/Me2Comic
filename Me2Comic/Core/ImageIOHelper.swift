@@ -34,6 +34,9 @@ enum ImageIOHelper {
     /// - Parameter imagePath: The full path to the image file.
     /// - Returns: A tuple containing the image's width and height, or nil if dimensions cannot be retrieved.
     static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
+        #if DEBUG
+            print("ImageIOHelper: 尝试通过ImageIO获取图片尺寸: \(imagePath)")
+        #endif
         guard FileManager.default.fileExists(atPath: imagePath) else {
             os_log("File does not exist at path: %{public}s", log: logger, type: .error, imagePath)
             return nil
@@ -72,6 +75,9 @@ enum ImageIOHelper {
     /// - Parameter shouldContinue: A closure that returns `true` if processing should continue, `false` otherwise.
     /// - Returns: A dictionary mapping image paths to their dimensions (width and height).
     static func getBatchImageDimensions(imagePaths: [String], shouldContinue: () -> Bool) -> [String: (width: Int, height: Int)] {
+        #if DEBUG
+            print("ImageIOHelper: 尝试通过ImageIO批量获取图片尺寸，共 \(imagePaths.count) 张图片...")
+        #endif
         guard !imagePaths.isEmpty else { return [:] }
 
         var result: [String: (width: Int, height: Int)] = [:]
