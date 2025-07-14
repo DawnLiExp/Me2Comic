@@ -27,17 +27,44 @@ struct Me2ComicApp: App {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var mainWindow: NSWindow?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
 
         if let window = NSApp.windows.first {
+            mainWindow = window
             // 启用全局拖拽
             window.isMovableByWindowBackground = true
             // 保持标题栏透明
             window.titlebarAppearsTransparent = true
             // 内容扩展到标题栏区域
             window.styleMask.insert(.fullSizeContentView)
+            window.delegate = self
         }
+        // 注册全局键盘快捷键
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "w"
+            {
+                NSApp.terminate(nil)
+                return nil
+            }
+            return event
+        }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+}
+
+extension AppDelegate: NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if sender == mainWindow {
+            NSApp.terminate(nil)
+        }
+        return true
     }
 }
 
