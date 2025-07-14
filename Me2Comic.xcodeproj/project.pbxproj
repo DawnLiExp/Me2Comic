@@ -17,6 +17,8 @@
 		FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */; };
 		FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */; };
 		FCF8E79E2DC9F8F60044291C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = FCF8E7A02DC9F8F60044291C /* Localizable.strings */; };
+		FCFCBCE92E24D92C00312F32 /* ImageDirectoryAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCFCBCE72E24D92C00312F32 /* ImageDirectoryAnalyzer.swift */; };
+		FCFCBCEA2E24D92C00312F32 /* ParameterValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCFCBCE82E24D92C00312F32 /* ParameterValidator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +37,8 @@
 		FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsMagickHelper.swift; sourceTree = "<group>"; };
 		FCF8E79F2DC9F8F60044291C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		FCF8E7A12DC9F8F80044291C /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		FCFCBCE72E24D92C00312F32 /* ImageDirectoryAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDirectoryAnalyzer.swift; sourceTree = "<group>"; };
+		FCFCBCE82E24D92C00312F32 /* ParameterValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParameterValidator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,6 +118,8 @@
 		FCF6FDC32DF08BA500572AC1 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				FCFCBCE72E24D92C00312F32 /* ImageDirectoryAnalyzer.swift */,
+				FCFCBCE82E24D92C00312F32 /* ParameterValidator.swift */,
 				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
 				FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */,
 			);
@@ -212,6 +218,8 @@
 				FC0976862DC72DF900C307FD /* UIComponents.swift in Sources */,
 				FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */,
 				FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */,
+				FCFCBCE92E24D92C00312F32 /* ImageDirectoryAnalyzer.swift in Sources */,
+				FCFCBCEA2E24D92C00312F32 /* ParameterValidator.swift in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */
