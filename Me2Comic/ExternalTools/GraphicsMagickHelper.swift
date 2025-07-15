@@ -142,19 +142,4 @@ class GraphicsMagickHelper {
 
         return command
     }
-
-    /// Retrieves image dimensions using `ImageIOHelper`.
-    /// - Parameter imagePath: The path to the image.
-    /// - Returns: A tuple containing the width and height if successful, otherwise `nil`.
-    static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
-        return ImageIOHelper.getImageDimensions(imagePath: imagePath)
-    }
-
-    /// Retrieves dimensions for multiple images in a batch using `ImageIOHelper`.
-    /// - Parameter imagePaths: An array of image file paths.
-    /// - Returns: A dictionary mapping image paths to their dimensions.
-    static func getBatchImageDimensions(imagePaths: [String], shouldContinue: () -> Bool) -> [String: (width: Int, height: Int)] {
-        // Pass the shouldContinue closure directly to ImageIOHelper
-        return ImageIOHelper.getBatchImageDimensions(imagePaths: imagePaths, shouldContinue: shouldContinue)
-    }
 }

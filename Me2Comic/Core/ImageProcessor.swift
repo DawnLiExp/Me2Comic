@@ -455,10 +455,18 @@ class ImageProcessor: ObservableObject {
                 if self.processingQueue.operationCount == 0 && processedCount == 0 {
                     self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
                 } else {
-                    // Log processing results - only log for isolated directories as global batch doesn't have a single subdir log.
-                    // For global batch, the overall summary will cover it.
-                    for scanResult in allScanResults where scanResult.category == .isolated {
-                        self.logMessages.append(String(format: NSLocalizedString("ProcessedSubdir", comment: ""), scanResult.directoryURL.lastPathComponent))
+                    // Log processing results per directory category.
+                    for scanResult in allScanResults {
+                        let logMessage: String
+                        switch scanResult.category {
+                        case .isolated:
+                            logMessage = String(format: NSLocalizedString("ProcessedSubdir", comment: ""), scanResult.directoryURL.lastPathComponent)
+                        case .globalBatch:
+                            // Global batch results are aggregated and logged upon operation completion.
+                            // Per-directory logging for global batch is omitted here to prevent redundancy.
+                            continue
+                        }
+                        self.logMessages.append(logMessage)
                     }
 
                     // Error reporting

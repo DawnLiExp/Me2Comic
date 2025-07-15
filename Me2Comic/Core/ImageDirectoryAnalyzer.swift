@@ -88,7 +88,7 @@ class ImageDirectoryAnalyzer {
                 let sampleImagePaths = sampleImages.map { $0.path }
 
                 // Use ImageIOHelper to get dimensions for sample images.
-                let sampleDimensions = GraphicsMagickHelper.getBatchImageDimensions(imagePaths: sampleImagePaths) {
+                let sampleDimensions = ImageIOHelper.getBatchImageDimensions(imagePaths: sampleImagePaths) {
                     // Pass the isProcessingCheck closure to ImageIOHelper for cancellation support
                     self.isProcessingCheck()
                 }

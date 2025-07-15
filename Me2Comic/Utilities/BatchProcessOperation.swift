@@ -101,7 +101,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         let validImages = batchImages.filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
 
         // Pass a closure to ImageIOHelper to check for cancellation.
-        let batchDimensions = GraphicsMagickHelper.getBatchImageDimensions(
+        let batchDimensions = ImageIOHelper.getBatchImageDimensions(
             imagePaths: validImages.map { $0.path },
             shouldContinue: { [weak self] in
                 // Check if the operation itself has been cancelled
@@ -197,15 +197,11 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     .appendingPathComponent(filenameWithoutExt)
                     .path
 
-                // Get dimensions (from batch or individually)
-                var dimensions: (width: Int, height: Int)?
-                if let batchDim = batchDimensions[imageFile.path] {
-                    dimensions = batchDim
-                } else {
-                    dimensions = GraphicsMagickHelper.getImageDimensions(imagePath: imageFile.path)
-                }
-
-                guard let dimensions = dimensions else {
+                // Get dimensions from batch
+                guard let dimensions = batchDimensions[imageFile.path] else {
+                    #if DEBUG
+                    print("BatchProcessOperation: Could not get dimensions for \(filename) from batchDimensions.")
+                    #endif
                     failedFiles.append(filename)
                     return
                 }
