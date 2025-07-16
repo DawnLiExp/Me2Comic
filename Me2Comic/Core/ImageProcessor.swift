@@ -165,6 +165,24 @@ class ImageProcessor: ObservableObject {
         return value + (multiple - remainder)
     }
 
+    /// Creates a directory, resolves symlinks, and logs errors on failure.
+    /// - Returns: true if directory exists or was created successfully.
+    private func createDirectoryAndLogErrors(directoryURL: URL, fileManager: FileManager) -> Bool {
+        do {
+            // Resolve symlinks to get the canonical path
+            let canonicalDir = directoryURL.resolvingSymlinksInPath()
+            try fileManager.createDirectory(at: canonicalDir, withIntermediateDirectories: true)
+            return true
+        } catch {
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""),
+                                                error.localizedDescription))
+                self?.isProcessing = false
+            }
+            return false
+        }
+    }
+
     /// Main processing workflow entry point.
     /// - Parameters:
     ///   - inputDir: The input directory containing images.
@@ -200,14 +218,8 @@ class ImageProcessor: ObservableObject {
             return
         }
 
-        /// Prepare output directory
-        do {
-            try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
-        } catch {
-            DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""), error.localizedDescription))
-                self?.isProcessing = false
-            }
+        /// Prepare main output directory
+        guard createDirectoryAndLogErrors(directoryURL: outputDir, fileManager: FileManager.default) else {
             return
         }
 
@@ -308,6 +320,22 @@ class ImageProcessor: ObservableObject {
             }
         }
 
+        // Step 1: Collect all unique output directories and pre-create them
+        var uniqueOutputDirs = Set<URL>()
+        for scanResult in allScanResults {
+            let subName = scanResult.directoryURL.lastPathComponent
+            uniqueOutputDirs.insert(outputDir.appendingPathComponent(subName))
+        }
+
+        // Include main output directory for empty cases requiring creation
+        uniqueOutputDirs.insert(outputDir)
+
+        for dir in uniqueOutputDirs {
+            guard createDirectoryAndLogErrors(directoryURL: dir, fileManager: fileManager) else {
+                return
+            }
+        }
+
         // Step 2: Configure concurrent processing
         processingQueue.maxConcurrentOperationCount = effectiveThreadCount
         processingQueue.underlyingQueue = processingDispatchQueue
@@ -378,18 +406,6 @@ class ImageProcessor: ObservableObject {
         for scanResult in allScanResults where scanResult.category == .isolated {
             let subName = scanResult.directoryURL.lastPathComponent
             let outputSubdir = outputDir.appendingPathComponent(subName)
-
-            // Create output subdirectory if it does not exist
-            do {
-                if !fileManager.fileExists(atPath: outputSubdir.path) {
-                    try fileManager.createDirectory(at: outputSubdir, withIntermediateDirectories: true)
-                }
-            } catch {
-                DispatchQueue.main.async { [weak self] in
-                    self?.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputSubdir", comment: ""), subName, error.localizedDescription))
-                }
-                continue
-            }
 
             DispatchQueue.main.async { [weak self] in
                 self?.logMessages.append(String(format: NSLocalizedString("StartProcessingSubdir", comment: ""), subName))

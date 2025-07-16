@@ -35,8 +35,10 @@ class ImageDirectoryAnalyzer {
                                                               includingPropertiesForKeys: [.isRegularFileKey],
                                                               options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])
         else {
-            DispatchQueue.main.async { [weak self] in
-                self?.logHandler(String(format: NSLocalizedString("ErrorReadingDirectory", comment: ""), directory.lastPathComponent) + ": " + NSLocalizedString("FailedToCreateEnumerator", comment: ""))
+            DispatchQueue.main.async { [self] in
+                logHandler(String(format: NSLocalizedString("ErrorReadingDirectory", comment: ""), directory.lastPathComponent)
+                    + ": "
+                    + NSLocalizedString("FailedToCreateEnumerator", comment: ""))
             }
             return []
         }
@@ -66,8 +68,8 @@ class ImageDirectoryAnalyzer {
                 }
 
             guard !subdirs.isEmpty else {
-                DispatchQueue.main.async { [weak self] in
-                    self?.logHandler(NSLocalizedString("NoSubdirectories", comment: ""))
+                DispatchQueue.main.async { [self] in
+                    logHandler(NSLocalizedString("NoSubdirectories", comment: ""))
                 }
                 return []
             }
@@ -78,8 +80,8 @@ class ImageDirectoryAnalyzer {
 
                 let imageFiles = getImageFiles(subdir)
                 guard !imageFiles.isEmpty else {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.logHandler(String(format: NSLocalizedString("NoImagesInDir", comment: ""), subdir.lastPathComponent))
+                    DispatchQueue.main.async { [self] in
+                        logHandler(String(format: NSLocalizedString("NoImagesInDir", comment: ""), subdir.lastPathComponent))
                     }
                     continue
                 }
@@ -115,8 +117,10 @@ class ImageDirectoryAnalyzer {
                 allScanResults.append(DirectoryScanResult(directoryURL: subdir, imageFiles: imageFiles, category: category))
             }
         } catch {
-            DispatchQueue.main.async { [weak self] in
-                self?.logHandler(String(format: NSLocalizedString("ErrorScanningDirectory", comment: ""), inputDir.lastPathComponent, error.localizedDescription))
+            DispatchQueue.main.async { [self] in
+                logHandler(String(format: NSLocalizedString("ErrorScanningDirectory", comment: ""),
+                                  inputDir.lastPathComponent,
+                                  error.localizedDescription))
             }
             return []
         }

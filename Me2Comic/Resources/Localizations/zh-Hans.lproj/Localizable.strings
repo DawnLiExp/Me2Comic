@@ -65,7 +65,8 @@
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "错误：未选择输入或输出目录";
 "ErrorReadingDirectory" = "读取目录错误: %@";
-"FailedToCreateEnumerator" = "无法扫描文件夹内容";
+"FailedToCreateEnumerator" = "无法创建目录遍历器";
+"ErrorScanningDirectory" = "目录扫描失败：%@";
 "NotificationPermissionFailed" = "错误：请求通知权限失败：%@";
 "NotificationPermissionNotGranted" = "警告：通知权限未授予，通知可能无法显示";
 

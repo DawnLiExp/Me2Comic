@@ -65,7 +65,8 @@
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "Error: Input or output directory not selected";
 "ErrorReadingDirectory" = "Error reading directory: %@";
-"FailedToCreateEnumerator" = "Unable to scan folder contents";
+"FailedToCreateEnumerator" = "Failed to create directory enumerator";
+"ErrorScanningDirectory" = "Directory scan failed: %@";
 "NotificationPermissionFailed" = "Error: Failed to request notification permission: %@";
 "NotificationPermissionNotGranted" = "Warning: Notification permission not granted, notifications may not display";
 

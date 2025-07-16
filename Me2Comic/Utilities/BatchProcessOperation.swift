@@ -135,29 +135,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             try? fileManager.removeItem(at: batchFilePath)
         }
 
-        // Pre-create all necessary output directories for efficiency
-        let uniqueOutputDirs = Set(batchImages.map { imageFile in
-            let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
-            if self.outputDir.lastPathComponent == originalSubdirName {
-                return self.outputDir
-            } else {
-                return self.outputDir.appendingPathComponent(originalSubdirName)
-            }
-        })
-
-        for dir in uniqueOutputDirs {
-            do {
-                if !fileManager.fileExists(atPath: dir.path) {
-                    try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
-                }
-            } catch {
-                #if DEBUG
-                print("BatchProcessOperation: Could not pre-create output directory \(dir.lastPathComponent): \(error.localizedDescription)")
-                #endif
-                // If a directory cannot be created, it will be handled during individual file processing.
-            }
-        }
-
         var batchCommands = ""
 
         // Build batch commands
@@ -179,18 +156,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 } else {
                     // Append subdirectory for GlobalBatch case
                     finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
-                }
-
-                // The directory should already exist from pre-creation step, but handle potential errors.
-                // Attempt to create if it doesn't exist (harmless if it does).
-                do {
-                    try fileManager.createDirectory(at: finalOutputDirForImage, withIntermediateDirectories: true)
-                } catch {
-                    #if DEBUG
-                    print("BatchProcessOperation: Could not create output directory for \(filename): \(error.localizedDescription)")
-                    #endif
-                    failedFiles.append(filename)
-                    return
                 }
 
                 let outputBasePath = finalOutputDirForImage
