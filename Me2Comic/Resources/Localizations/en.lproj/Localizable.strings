@@ -126,7 +126,7 @@
 "NoImagesInDir" = "No images found in directory: %@";
 
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 1000. Default (40) will be used.";
+"InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 1000.";
 
 /* Auto-allocated parameters */
 "Auto" = "Auto";

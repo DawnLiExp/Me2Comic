@@ -180,16 +180,46 @@ struct ImageProcessorView: View {
             return
         }
 
+        // Validate and convert parameters
+        guard let widthThresholdValue = Int(widthThreshold), widthThresholdValue > 0 else {
+            processor.logMessages.append(NSLocalizedString("InvalidWidthThreshold", comment: ""))
+            return
+        }
+
+        guard let resizeHeightValue = Int(resizeHeight), resizeHeightValue > 0 else {
+            processor.logMessages.append(NSLocalizedString("InvalidResizeHeight", comment: ""))
+            return
+        }
+
+        guard let qualityValue = Int(quality), qualityValue >= 1, qualityValue <= 100 else {
+            processor.logMessages.append(NSLocalizedString("InvalidOutputQuality", comment: ""))
+            return
+        }
+
+        guard let unsharpRadiusValue = Float(unsharpRadius), unsharpRadiusValue >= 0,
+              let unsharpSigmaValue = Float(unsharpSigma), unsharpSigmaValue >= 0,
+              let unsharpAmountValue = Float(unsharpAmount), unsharpAmountValue >= 0,
+              let unsharpThresholdValue = Float(unsharpThreshold), unsharpThresholdValue >= 0
+        else {
+            processor.logMessages.append(NSLocalizedString("InvalidUnsharpParameters", comment: ""))
+            return
+        }
+
+        guard let batchSizeValue = Int(batchSize), batchSizeValue >= 1, batchSizeValue <= 1000 else {
+            processor.logMessages.append(NSLocalizedString("InvalidBatchSize", comment: ""))
+            return
+        }
+
         let parameters = ProcessingParameters(
-            widthThreshold: widthThreshold,
-            resizeHeight: resizeHeight,
-            quality: quality,
+            widthThreshold: widthThresholdValue,
+            resizeHeight: resizeHeightValue,
+            quality: qualityValue,
             threadCount: threadCount,
-            unsharpRadius: unsharpRadius,
-            unsharpSigma: unsharpSigma,
-            unsharpAmount: unsharpAmount,
-            unsharpThreshold: unsharpThreshold,
-            batchSize: batchSize,
+            unsharpRadius: unsharpRadiusValue,
+            unsharpSigma: unsharpSigmaValue,
+            unsharpAmount: unsharpAmountValue,
+            unsharpThreshold: unsharpThresholdValue,
+            batchSize: batchSizeValue,
             useGrayColorspace: useGrayColorspace
         )
         processor.processImages(inputDir: inputDir, outputDir: outputDir, parameters: parameters)

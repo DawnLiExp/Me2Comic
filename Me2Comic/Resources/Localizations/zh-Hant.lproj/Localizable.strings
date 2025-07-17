@@ -126,7 +126,7 @@
 "NoImagesInDir" = "目錄中未找到圖片：%@";
 
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "每批影像數無效。請輸入 1 至 1000 的整數。已套用預設值（40）。";
+"InvalidBatchSize" = "每批影像數無效。請輸入 1 至 1000 的整數。";
 
 /* Auto-allocated parameters */
 "Auto" = "自動";

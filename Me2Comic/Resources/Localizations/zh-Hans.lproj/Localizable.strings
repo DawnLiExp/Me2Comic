@@ -126,7 +126,7 @@
 "NoImagesInDir" = "目录中未找到图片：%@";
 
 /* Invalid Batch Size error message */
-"InvalidBatchSize" = "每批图像数无效。请输入 1-1000 之间的整数。已自动使用默认值（40）。";
+"InvalidBatchSize" = "每批图像数无效。请输入 1-1000 之间的整数。";
 
 /* Auto-allocated parameters */
 "Auto" = "自动";

@@ -13,15 +13,15 @@ import UserNotifications
 
 /// Container for image processing configuration
 struct ProcessingParameters {
-    let widthThreshold: String /// Width threshold for splitting images
-    let resizeHeight: String /// Target height for resizing
-    let quality: String /// Output quality (1-100)
+    let widthThreshold: Int /// Width threshold for splitting images
+    let resizeHeight: Int /// Target height for resizing
+    let quality: Int /// Output quality (1-100)
     let threadCount: Int /// Concurrent threads (1-6)
-    let unsharpRadius: String /// Unsharp mask parameters
-    let unsharpSigma: String
-    let unsharpAmount: String
-    let unsharpThreshold: String
-    let batchSize: String /// Images per batch (1-1000)
+    let unsharpRadius: Float /// Unsharp mask parameters
+    let unsharpSigma: Float
+    let unsharpAmount: Float
+    let unsharpThreshold: Float
+    let batchSize: Int /// Images per batch (1-1000)
     let useGrayColorspace: Bool /// Grayscale conversion flag
 }
 
@@ -189,26 +189,11 @@ class ImageProcessor: ObservableObject {
     ///   - outputDir: The output directory for processed images.
     ///   - parameters: The processing parameters.
     func processImages(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
-        let validatedParams: ValidatedProcessingParameters
-        do {
-            validatedParams = try ParameterValidator.validate(parameters: parameters)
-        } catch {
-            DispatchQueue.main.async { [weak self] in
-                if let validationError = error as? ParameterValidationError {
-                    self?.logMessages.append(validationError.localizedDescription)
-                } else {
-                    self?.logMessages.append(String(format: NSLocalizedString("ParameterValidationError", comment: ""), error.localizedDescription))
-                }
-                self?.isProcessing = false
-            }
-            return
-        }
-
         DispatchQueue.main.async { [weak self] in
             self?.isProcessing = true
         }
         resetProcessingState()
-        logStartParameters(validatedParams.widthThreshold, validatedParams.resizeHeight, validatedParams.quality, parameters.threadCount, validatedParams.unsharpRadius, validatedParams.unsharpSigma, validatedParams.unsharpAmount, validatedParams.unsharpThreshold, parameters.useGrayColorspace)
+        logStartParameters(parameters.widthThreshold, parameters.resizeHeight, parameters.quality, parameters.threadCount, parameters.unsharpRadius, parameters.unsharpSigma, parameters.unsharpAmount, parameters.unsharpThreshold, parameters.useGrayColorspace)
 
         /// Verify GraphicsMagick installation
         guard verifyGraphicsMagick() else {
@@ -225,7 +210,7 @@ class ImageProcessor: ObservableObject {
 
         /// Start background processing
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.processDirectories(inputDir: inputDir, outputDir: outputDir, parameters: parameters, validatedParams: validatedParams)
+            self?.processDirectories(inputDir: inputDir, outputDir: outputDir, parameters: parameters)
         }
     }
 
@@ -275,8 +260,7 @@ class ImageProcessor: ObservableObject {
     ///   - inputDir: The input directory URL.
     ///   - outputDir: The output directory URL.
     ///   - parameters: The raw processing parameters.
-    ///   - validatedParams: The validated and converted processing parameters.
-    private func processDirectories(inputDir: URL, outputDir: URL, parameters: ProcessingParameters, validatedParams: ValidatedProcessingParameters) {
+    private func processDirectories(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
         let fileManager = FileManager.default
 
         // Initialize ImageDirectoryAnalyzer
@@ -286,7 +270,7 @@ class ImageProcessor: ObservableObject {
             return self?.isProcessing ?? false
         })
 
-        let allScanResults = analyzer.analyze(inputDir: inputDir, widthThreshold: validatedParams.widthThreshold)
+        let allScanResults = analyzer.analyze(inputDir: inputDir, widthThreshold: parameters.widthThreshold)
 
         guard !allScanResults.isEmpty else {
             DispatchQueue.main.async { [weak self] in
@@ -304,7 +288,7 @@ class ImageProcessor: ObservableObject {
 
         // Determine effective parameters based on auto mode or manual mode
         var effectiveThreadCount = parameters.threadCount
-        let effectiveBatchSize = validatedParams.batchSize
+        let effectiveBatchSize = parameters.batchSize
 
         if parameters.threadCount == 0 { // Auto mode
             DispatchQueue.main.async { [weak self] in
@@ -362,13 +346,13 @@ class ImageProcessor: ObservableObject {
                 let op = BatchProcessOperation(
                     images: batch,
                     outputDir: outputDir,
-                    widthThreshold: validatedParams.widthThreshold,
-                    resizeHeight: validatedParams.resizeHeight,
-                    quality: validatedParams.quality,
-                    unsharpRadius: validatedParams.unsharpRadius,
-                    unsharpSigma: validatedParams.unsharpSigma,
-                    unsharpAmount: validatedParams.unsharpAmount,
-                    unsharpThreshold: validatedParams.unsharpThreshold,
+                    widthThreshold: parameters.widthThreshold,
+                    resizeHeight: parameters.resizeHeight,
+                    quality: parameters.quality,
+                    unsharpRadius: parameters.unsharpRadius,
+                    unsharpSigma: parameters.unsharpSigma,
+                    unsharpAmount: parameters.unsharpAmount,
+                    unsharpThreshold: parameters.unsharpThreshold,
                     useGrayColorspace: parameters.useGrayColorspace,
                     gmPath: gmPath
                 )
@@ -421,19 +405,19 @@ class ImageProcessor: ObservableObject {
                 let adjustedNumBatchesForIsolated = roundUpToNearestMultiple(value: idealNumBatchesForIsolated, multiple: effectiveThreadCount)
                 batchSize = max(1, min(1000, Int(ceil(Double(isolatedDirImageCount) / Double(adjustedNumBatchesForIsolated)))))
             } else {
-                batchSize = validatedParams.batchSize // Use original batchSize for isolated directories, fallback to default.
+                batchSize = parameters.batchSize // Use original batchSize for isolated directories, fallback to default.
             }
             for batch in splitIntoBatches(scanResult.imageFiles, batchSize: batchSize) {
                 let op = BatchProcessOperation(
                     images: batch,
                     outputDir: outputSubdir,
-                    widthThreshold: validatedParams.widthThreshold,
-                    resizeHeight: validatedParams.resizeHeight,
-                    quality: validatedParams.quality,
-                    unsharpRadius: validatedParams.unsharpRadius,
-                    unsharpSigma: validatedParams.unsharpSigma,
-                    unsharpAmount: validatedParams.unsharpAmount,
-                    unsharpThreshold: validatedParams.unsharpThreshold,
+                    widthThreshold: parameters.widthThreshold,
+                    resizeHeight: parameters.resizeHeight,
+                    quality: parameters.quality,
+                    unsharpRadius: parameters.unsharpRadius,
+                    unsharpSigma: parameters.unsharpSigma,
+                    unsharpAmount: parameters.unsharpAmount,
+                    unsharpThreshold: parameters.unsharpThreshold,
                     useGrayColorspace: parameters.useGrayColorspace,
                     gmPath: gmPath
                 )
