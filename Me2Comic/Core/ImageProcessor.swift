@@ -1,3 +1,4 @@
+
 //
 //  ImageProcessor.swift
 //  Me2Comic
@@ -23,6 +24,49 @@ struct ProcessingParameters {
     let unsharpThreshold: Float
     let batchSize: Int /// Images per batch (1-1000)
     let useGrayColorspace: Bool /// Grayscale conversion flag
+}
+
+// MARK: - Auto Calculation Protocol and Implementation
+
+/// Protocol for calculating auto-allocated parameters.
+protocol AutoCalculatable {
+    func calculateAutoParameters(totalImageCount: Int) -> (threadCount: Int, batchSize: Int)
+}
+
+/// Calculates auto-allocated thread count and batch size based on total image count.
+struct AutoCalculator: AutoCalculatable {
+    /// Calculates auto-allocated thread count and batch size based on total image count.
+    /// - Parameter totalImageCount: The total number of images to process.
+    /// - Returns: A tuple containing the calculated thread count and batch size.
+    func calculateAutoParameters(totalImageCount: Int) -> (threadCount: Int, batchSize: Int) {
+        var effectiveThreadCount: Int
+        let maxThreadCount = 6
+
+        // Dynamically adjusts thread count based on total image count
+        if totalImageCount < 10 {
+            effectiveThreadCount = 1
+        } else if totalImageCount <= 50 {
+            // For 10-50 images, thread count smoothly increases from 1 to 3
+            effectiveThreadCount = 1 + Int(ceil(Double(totalImageCount - 10) / 20.0))
+            effectiveThreadCount = min(3, effectiveThreadCount) // Cap at 3 threads
+        } else if totalImageCount <= 300 {
+            // For 50-300 images, thread count smoothly increases from 3 to maxThreadCount
+            effectiveThreadCount = 3 + Int(ceil(Double(totalImageCount - 50) / 50.0))
+            effectiveThreadCount = min(maxThreadCount, effectiveThreadCount) // Respect max thread limit
+        } else {
+            // Large workload - use maximum available threads
+            effectiveThreadCount = maxThreadCount
+        }
+
+        // Final thread count validation (1...maxThreadCount)
+        effectiveThreadCount = max(1, min(maxThreadCount, effectiveThreadCount))
+
+        // For GlobalBatch, batch size is total images divided by effectiveThreadCount, with a cap of 1000.
+        // For isolated directories, batch size will be calculated per directory based on its image count.
+        let effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImageCount) / Double(effectiveThreadCount)))))
+
+        return (threadCount: effectiveThreadCount, batchSize: effectiveBatchSize)
+    }
 }
 
 /// Manages the image processing workflow, including parameter validation, file scanning, and batch processing.
@@ -61,6 +105,12 @@ class ImageProcessor: ObservableObject {
                 logMessages.removeFirst(logMessages.count - 100)
             }
         }
+    }
+
+    /// Internal enum to explicitly define processing strategies.
+    private enum Strategy {
+        case globalBatch
+        case isolated
     }
 
     /// Stops all active processing tasks.
@@ -118,39 +168,6 @@ class ImageProcessor: ObservableObject {
             let remaining = seconds % 60
             return String(format: NSLocalizedString("ProcessingTimeMinutesSeconds", comment: ""), minutes, remaining)
         }
-    }
-
-    /// Calculates auto-allocated thread count and batch size based on total image count.
-    /// - Parameter totalImageCount: The total number of images to process.
-    /// - Returns: A tuple containing the calculated thread count and batch size.
-    private func calculateAutoParameters(totalImageCount: Int) -> (threadCount: Int, batchSize: Int) {
-        var effectiveThreadCount: Int
-        let maxThreadCount = 6
-
-        // Dynamically adjusts thread count based on total image count
-        if totalImageCount < 10 {
-            effectiveThreadCount = 1
-        } else if totalImageCount <= 50 {
-            // For 10-50 images, thread count smoothly increases from 1 to 3
-            effectiveThreadCount = 1 + Int(ceil(Double(totalImageCount - 10) / 20.0))
-            effectiveThreadCount = min(3, effectiveThreadCount) // Cap at 3 threads
-        } else if totalImageCount <= 300 {
-            // For 50-300 images, thread count smoothly increases from 3 to maxThreadCount
-            effectiveThreadCount = 3 + Int(ceil(Double(totalImageCount - 50) / 50.0))
-            effectiveThreadCount = min(maxThreadCount, effectiveThreadCount) // Respect max thread limit
-        } else {
-            // Large workload - use maximum available threads
-            effectiveThreadCount = maxThreadCount
-        }
-
-        // Final thread count validation (1...maxThreadCount)
-        effectiveThreadCount = max(1, min(maxThreadCount, effectiveThreadCount))
-
-        // For GlobalBatch, batch size is total images divided by effectiveThreadCount, with a cap of 1000.
-        // For isolated directories, batch size will be calculated per directory based on its image count.
-        let effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImageCount) / Double(effectiveThreadCount)))))
-
-        return (threadCount: effectiveThreadCount, batchSize: effectiveBatchSize)
     }
 
     /// Rounds up a value to the nearest multiple of another value.
@@ -280,9 +297,14 @@ class ImageProcessor: ObservableObject {
         }
 
         var globalBatchImages: [URL] = []
+        var isolatedScanResults: [DirectoryScanResult] = []
+
         for scanResult in allScanResults {
-            if scanResult.category == .globalBatch {
+            switch scanResult.category {
+            case .globalBatch:
                 globalBatchImages.append(contentsOf: scanResult.imageFiles)
+            case .isolated:
+                isolatedScanResults.append(scanResult)
             }
         }
 
@@ -296,7 +318,8 @@ class ImageProcessor: ObservableObject {
             }
             let totalImages = allScanResults.flatMap { $0.imageFiles }.count
 
-            let autoParams = calculateAutoParameters(totalImageCount: totalImages)
+            let autoCalculator: AutoCalculatable = AutoCalculator()
+            let autoParams = autoCalculator.calculateAutoParameters(totalImageCount: totalImages)
             effectiveThreadCount = autoParams.threadCount
 
             DispatchQueue.main.async { [weak self] in
@@ -387,7 +410,7 @@ class ImageProcessor: ObservableObject {
         }
 
         // Step 4: Process Isolated category images
-        for scanResult in allScanResults where scanResult.category == .isolated {
+        for scanResult in isolatedScanResults {
             let subName = scanResult.directoryURL.lastPathComponent
             let outputSubdir = outputDir.appendingPathComponent(subName)
 
