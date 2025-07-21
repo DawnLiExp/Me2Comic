@@ -96,13 +96,9 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             return
         }
 
-        // Filter for supported image extensions
-        let supportedExtensions = ["jpg", "jpeg", "png"]
-        let validImages = batchImages.filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
-
         // Pass a closure to ImageIOHelper to check for cancellation.
         let batchDimensions = ImageIOHelper.getBatchImageDimensions(
-            imagePaths: validImages.map { $0.path },
+            imagePaths: batchImages.map { $0.path },
             shouldContinue: { [weak self] in
                 // Check if the operation itself has been cancelled
                 self?.isCancelled == false
@@ -119,9 +115,9 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
         if batchDimensions.isEmpty {
             // If no dimensions could be retrieved (e.g., all files invalid or cancelled early)
-            // Report all valid images as failed if not cancelled, otherwise just return.
+            // Report all original batch images as failed if not cancelled, otherwise just return.
             if !isCancelled {
-                onCompleted?(0, validImages.map { $0.lastPathComponent })
+                onCompleted?(0, batchImages.map { $0.lastPathComponent })
             }
             return
         }
