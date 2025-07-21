@@ -1,5 +1,5 @@
 //
-//  BatchProcessOperation.swift
+//  v2.1-BatchProcessOperation.swift
 //  Me2Comic
 //
 //  Created by Me2 on 2025/6/19.
@@ -11,8 +11,7 @@ import Foundation
 class BatchProcessOperation: Operation, @unchecked Sendable {
     // MARK: - Input Parameters
 
-    private let batchImages: [URL]
-    private let outputDir: URL
+    private let batchTasks: [ImageProcessingTask]
     private let widthThreshold: Int
     private let resizeHeight: Int
     private let quality: Int
@@ -35,8 +34,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     // MARK: - Initialization
 
     init(
-        images: [URL],
-        outputDir: URL,
+        tasks: [ImageProcessingTask],
         widthThreshold: Int,
         resizeHeight: Int,
         quality: Int,
@@ -47,8 +45,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         useGrayColorspace: Bool,
         gmPath: String
     ) {
-        self.batchImages = images
-        self.outputDir = outputDir
+        self.batchTasks = tasks
         self.widthThreshold = widthThreshold
         self.resizeHeight = resizeHeight
         self.quality = quality
@@ -92,39 +89,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             }
         }
 
-        guard !batchImages.isEmpty else {
+        guard !batchTasks.isEmpty else {
             return
         }
 
-        // Filter for supported image extensions
-        let supportedExtensions = ["jpg", "jpeg", "png"]
-        let validImages = batchImages.filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
-
-        // Pass a closure to ImageIOHelper to check for cancellation.
-        let batchDimensions = ImageIOHelper.getBatchImageDimensions(
-            imagePaths: validImages.map { $0.path },
-            shouldContinue: { [weak self] in
-                // Check if the operation itself has been cancelled
-                self?.isCancelled == false
-            }
-        )
-
-        // Return early if cancelled during ImageIO dimension fetching
-        guard !isCancelled else {
-            #if DEBUG
-            print("BatchProcessOperation: Operation cancelled during ImageIO dimension fetching.")
-            #endif
-            return
-        }
-
-        if batchDimensions.isEmpty {
-            // If no dimensions could be retrieved (e.g., all files invalid or cancelled early)
-            // Report all valid images as failed if not cancelled, otherwise just return.
-            if !isCancelled {
-                onCompleted?(0, validImages.map { $0.lastPathComponent })
-            }
-            return
-        }
+        // Dimensions are now pre-fetched in ImageProcessor and passed via ImageProcessingTask
+        // No need to call ImageIOHelper.getBatchImageDimensions here.
 
         // Prepare temporary batch file
         let fileManager = FileManager.default
@@ -138,45 +108,25 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         var batchCommands = ""
 
         // Build batch commands
-        for imageFile in batchImages {
+        for task in batchTasks {
             autoreleasepool {
-                guard !isCancelled else { return } // Check cancellation before processing each image
+                guard !isCancelled else { return } // Check cancellation before processing each task
 
-                let filename = imageFile.lastPathComponent
-                let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
+                let imageURL = task.imageURL
 
-                // Determine the original subdirectory name for the image
-                let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
-
-                // Decide final output directory: avoid duplicate subdir when outputDir already ends with it
-                let finalOutputDirForImage: URL
-                if self.outputDir.lastPathComponent == originalSubdirName {
-                    // Already in the correct subdirectory (Isolated case)
-                    finalOutputDirForImage = self.outputDir
-                } else {
-                    // Append subdirectory for GlobalBatch case
-                    finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
-                }
+                // Use pre-calculated final output directory
+                let finalOutputDirForImage = task.finalOutputDir
 
                 let outputBasePath = finalOutputDirForImage
-                    .appendingPathComponent(filenameWithoutExt)
+                    .appendingPathComponent(task.outputBaseName)
                     .path
 
-                // Get dimensions from batch
-                guard let dimensions = batchDimensions[imageFile.path] else {
-                    #if DEBUG
-                    print("BatchProcessOperation: Could not get dimensions for \(filename) from batchDimensions.")
-                    #endif
-                    failedFiles.append(filename)
-                    return
-                }
+                let (width, height) = task.dimensions
+                let requiresCropping = task.requiresCropping
 
-                let (width, height) = dimensions
-
-                if width < widthThreshold {
-                    // Single image processing
+                if !requiresCropping { // Single image processing
                     let command = GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
+                        inputPath: imageURL.path,
                         outputPath: "\(outputBasePath).jpg",
                         cropParams: nil,
                         resizeHeight: resizeHeight,
@@ -189,13 +139,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     )
                     batchCommands.append(command + "\n")
                     processedCount += 1
-                } else {
-                    // Split processing
+                } else { // Split processing (requiresCropping is true)
                     let cropWidth = (width + 1) / 2
                     let rightCropWidth = width - cropWidth
                     // Right half
                     batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
+                        inputPath: imageURL.path,
                         outputPath: "\(outputBasePath)-1.jpg",
                         cropParams: "\(rightCropWidth)x\(height)+\(cropWidth)+0",
                         resizeHeight: resizeHeight,
@@ -208,7 +157,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     ) + "\n")
                     // Left half
                     batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
+                        inputPath: imageURL.path,
                         outputPath: "\(outputBasePath)-2.jpg",
                         cropParams: "\(cropWidth)x\(height)+0+0",
                         resizeHeight: resizeHeight,
@@ -281,7 +230,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             if batchTask.terminationStatus != 0 {
                 // Append failed files if not cancelled
                 if !isCancelled {
-                    failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
+                    failedFiles.append(contentsOf: batchTasks.map { $0.imageURL.lastPathComponent })
                     processedCount = 0
                 }
             }
@@ -298,7 +247,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             }
             // Append failed files if not cancelled
             if !isCancelled {
-                failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
+                failedFiles.append(contentsOf: batchTasks.map { $0.imageURL.lastPathComponent })
                 processedCount = 0
             }
             processLock.lock()
@@ -391,7 +340,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         processLock.lock()
         if let process = internalProcess, process.isRunning {
             process.terminate()
-            // Immediately close pipe's write end
+            // Immediately close pipe\'s write end
             (process.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
         }
         internalProcess = nil

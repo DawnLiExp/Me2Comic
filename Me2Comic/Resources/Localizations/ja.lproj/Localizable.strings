@@ -97,8 +97,6 @@
 /* Log messages for asynchronous image processing */
 "StartProcessingGlobalBatch" = "単ページ画像をまとめて処理しています...";
 "CompletedGlobalBatchWithCount" = "単ページ画像の処理が完了しました（合計 %d 枚）";
-"StartProcessingSubdir" = "見開き画像ディレクトリを処理中：%@";
-"ProcessedSubdir" = "見開き画像ディレクトリの処理が完了しました：%@";
 
 /* Log messages for stopping processing */
 "ProcessingStopped" = "処理停止完了";
@@ -124,6 +122,7 @@
 "ProcessingFailed" = "処理に失敗しました:%@";
 "NoSubdirectories" = "入力ディレクトリにサブディレクトリが見つかりません";
 "NoImagesInDir" = "ディレクトリに画像が見つかりません:%@";
+"NoImagesToProcess" = "処理する画像が見つかりません";
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "バッチサイズが無効です。1〜1000の整数を入力してください。";

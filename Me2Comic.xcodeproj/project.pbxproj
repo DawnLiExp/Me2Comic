@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		FC0976862DC72DF900C307FD /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0976852DC72DF900C307FD /* UIComponents.swift */; };
 		FC38F2E92E03F31C00FBB3B2 /* BatchProcessOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchProcessOperation.swift */; };
+		FC7310CD2E2B64BF00EBC322 /* ImageProcessingTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7310CC2E2B64BD00EBC322 /* ImageProcessingTask.swift */; };
 		FC9092EC2DFEC37700867319 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9092EB2DFEC37700867319 /* ImageIO.framework */; };
 		FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */; };
 		FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB9B0C72DBDFD4500110511 /* Me2ComicApp.swift */; };
@@ -23,6 +24,7 @@
 /* Begin PBXFileReference section */
 		FC0976852DC72DF900C307FD /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIComponents.swift; sourceTree = "<group>"; };
 		FC38F2E82E03F31A00FBB3B2 /* BatchProcessOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchProcessOperation.swift; sourceTree = "<group>"; };
+		FC7310CC2E2B64BD00EBC322 /* ImageProcessingTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessingTask.swift; sourceTree = "<group>"; };
 		FC8BA09D2DCB7E1B007582B9 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		FC9092EB2DFEC37700867319 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
 		FC96492D2DCA646B00DAB31A /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 		FCF6FDC32DF08BA500572AC1 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				FC7310CC2E2B64BD00EBC322 /* ImageProcessingTask.swift */,
 				FCFCBCE72E24D92C00312F32 /* ImageDirectoryAnalyzer.swift */,
 				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
 				FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */,
@@ -216,6 +219,7 @@
 				FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */,
 				FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */,
 				FCFCBCE92E24D92C00312F32 /* ImageDirectoryAnalyzer.swift in Sources */,
+				FC7310CD2E2B64BF00EBC322 /* ImageProcessingTask.swift in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */
