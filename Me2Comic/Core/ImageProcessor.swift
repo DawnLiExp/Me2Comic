@@ -1,4 +1,3 @@
-
 //
 //  ImageProcessor.swift
 //  Me2Comic
@@ -61,8 +60,7 @@ struct AutoCalculator: AutoCalculatable {
         // Final thread count validation (1...maxThreadCount)
         effectiveThreadCount = max(1, min(maxThreadCount, effectiveThreadCount))
 
-        // For GlobalBatch, batch size is total images divided by effectiveThreadCount, with a cap of 1000.
-        // For isolated directories, batch size will be calculated per directory based on its image count.
+        // Unified batch size calculation for all images
         let effectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalImageCount) / Double(effectiveThreadCount)))))
 
         return (threadCount: effectiveThreadCount, batchSize: effectiveBatchSize)
@@ -107,12 +105,6 @@ class ImageProcessor: ObservableObject {
         }
     }
 
-    /// Internal enum to explicitly define processing strategies.
-    private enum Strategy {
-        case globalBatch
-        case isolated
-    }
-
     /// Stops all active processing tasks.
     func stopProcessing() {
         #if DEBUG
@@ -133,18 +125,18 @@ class ImageProcessor: ObservableObject {
         }
     }
 
-    /// Splits image array into processing batches
-    private func splitIntoBatches(_ images: [URL], batchSize: Int) -> [[URL]] {
+    /// Splits image processing tasks into batches
+    private func splitIntoBatches(_ tasks: [ImageProcessingTask], batchSize: Int) -> [[ImageProcessingTask]] {
         guard batchSize > 0 else { return [] }
-        guard !images.isEmpty else { return [] }
-        var result: [[URL]] = []
-        var currentBatch: [URL] = []
+        guard !tasks.isEmpty else { return [] }
+        var result: [[ImageProcessingTask]] = []
+        var currentBatch: [ImageProcessingTask] = []
 
-        result.reserveCapacity(images.count / batchSize + 1)
+        result.reserveCapacity(tasks.count / batchSize + 1)
         currentBatch.reserveCapacity(batchSize)
 
-        for image in images {
-            currentBatch.append(image)
+        for task in tasks {
+            currentBatch.append(task)
             if currentBatch.count >= batchSize {
                 result.append(currentBatch)
                 currentBatch = []
@@ -272,7 +264,7 @@ class ImageProcessor: ObservableObject {
         })
     }
 
-    /// Processes all subdirectories in the input directory.
+    /// Processes all subdirectories in the input directory using unified batch processing.
     /// - Parameters:
     ///   - inputDir: The input directory URL.
     ///   - outputDir: The output directory URL.
@@ -287,8 +279,7 @@ class ImageProcessor: ObservableObject {
             return self?.isProcessing ?? false
         })
 
-        let allScanResults = analyzer.analyze(inputDir: inputDir, widthThreshold: parameters.widthThreshold)
-
+        let allScanResults = analyzer.analyze(inputDir: inputDir)
         guard !allScanResults.isEmpty else {
             DispatchQueue.main.async { [weak self] in
                 self?.isProcessing = false
@@ -296,49 +287,65 @@ class ImageProcessor: ObservableObject {
             return
         }
 
-        var globalBatchImages: [URL] = []
-        var isolatedScanResults: [DirectoryScanResult] = []
+        var allProcessingTasks: [ImageProcessingTask] = []
 
         for scanResult in allScanResults {
-            switch scanResult.category {
-            case .globalBatch:
-                globalBatchImages.append(contentsOf: scanResult.imageFiles)
-            case .isolated:
-                isolatedScanResults.append(scanResult)
+            let originalSubdirName = scanResult.directoryURL.lastPathComponent
+            let finalOutputDirForImage = outputDir.appendingPathComponent(originalSubdirName)
+
+            for imageURL in scanResult.imageFiles {
+                let outputBaseName = imageURL.deletingPathExtension().lastPathComponent
+                // Dimensions will be fetched within BatchProcessOperation for each task
+                let task = ImageProcessingTask(
+                    imageURL: imageURL,
+                    originalSubdirectoryName: originalSubdirName,
+                    finalOutputDir: finalOutputDirForImage,
+                    outputBaseName: outputBaseName
+                )
+                allProcessingTasks.append(task)
             }
+        }
+
+        guard !allProcessingTasks.isEmpty else {
+            DispatchQueue.main.async { [weak self] in
+                self?.logMessages.append(NSLocalizedString("NoImagesToProcess", comment: ""))
+                self?.isProcessing = false
+            }
+            return
         }
 
         // Determine effective parameters based on auto mode or manual mode
         var effectiveThreadCount = parameters.threadCount
-        let effectiveBatchSize = parameters.batchSize
+        var effectiveBatchSize = parameters.batchSize // Will be adjusted for auto mode
 
         if parameters.threadCount == 0 { // Auto mode
             DispatchQueue.main.async { [weak self] in
                 self?.logMessages.append(NSLocalizedString("AutoModeEnabled", comment: ""))
             }
-            let totalImages = allScanResults.flatMap { $0.imageFiles }.count
+            let totalImages = allProcessingTasks.count
 
             let autoCalculator: AutoCalculatable = AutoCalculator()
             let autoParams = autoCalculator.calculateAutoParameters(totalImageCount: totalImages)
             effectiveThreadCount = autoParams.threadCount
+            effectiveBatchSize = autoParams.batchSize // Use auto-calculated batch size
 
             DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, autoParams.batchSize))
+                self?.logMessages.append(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, effectiveBatchSize))
             }
         }
 
-        // Step 1: Collect all unique output directories and pre-create them
-        var uniqueOutputDirs = Set<URL>()
-        for scanResult in allScanResults {
-            let subName = scanResult.directoryURL.lastPathComponent
-            uniqueOutputDirs.insert(outputDir.appendingPathComponent(subName))
+        // Step 1: Pre-create all necessary output directories
+        // Collect all unique final output directories from allProcessingTasks
+        var uniqueFinalOutputDirs = Set<URL>()
+        for task in allProcessingTasks {
+            uniqueFinalOutputDirs.insert(task.finalOutputDir)
         }
+        // Also include the main output directory if it's not already covered
+        uniqueFinalOutputDirs.insert(outputDir)
 
-        // Include main output directory for empty cases requiring creation
-        uniqueOutputDirs.insert(outputDir)
-
-        for dir in uniqueOutputDirs {
+        for dir in uniqueFinalOutputDirs {
             guard createDirectoryAndLogErrors(directoryURL: dir, fileManager: fileManager) else {
+                // If any directory creation fails, stop the entire process
                 return
             }
         }
@@ -349,109 +356,43 @@ class ImageProcessor: ObservableObject {
 
         var allOps: [BatchProcessOperation] = []
 
-        // Step 3: Process Global Batch category images
-        if !globalBatchImages.isEmpty {
-            DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
-            }
+        // Step 3: Split all processing tasks into batches and create operations
+        // The batch size calculation for the unified pool should aim for even distribution
+        // across threads and operations.
+        let totalTasks = allProcessingTasks.count
+        let idealNumBatches = Int(ceil(Double(totalTasks) / Double(effectiveBatchSize)))
+        // Ensure the number of batches is a multiple of effectiveThreadCount for better load balancing
+        let adjustedNumBatches = roundUpToNearestMultiple(value: idealNumBatches, multiple: effectiveThreadCount)
+        // Recalculate effectiveBatchSize based on adjustedNumBatches to ensure even distribution
+        let finalEffectiveBatchSize = max(1, min(1000, Int(ceil(Double(totalTasks) / Double(adjustedNumBatches)))))
 
-            let idealNumBatchesForGlobal = Int(ceil(Double(globalBatchImages.count) / Double(effectiveBatchSize))) // Use effectiveBatchSize as a base ideal batch size
-            let adjustedNumBatchesForGlobal = roundUpToNearestMultiple(value: idealNumBatchesForGlobal, multiple: effectiveThreadCount)
-            let effectiveGlobalBatchSize = max(1, min(1000, Int(ceil(Double(globalBatchImages.count) / Double(adjustedNumBatchesForGlobal)))))
-            let globalBatches = splitIntoBatches(globalBatchImages, batchSize: effectiveGlobalBatchSize)
-            var completedGlobalBatches = 0
-            let totalGlobalBatches = globalBatches.count
-            var globalProcessedCount = 0
-            var globalFailedFiles: [String] = []
-            let globalBatchLock = NSLock()
+        let batchedTasks = splitIntoBatches(allProcessingTasks, batchSize: finalEffectiveBatchSize)
 
-            for batch in globalBatches {
-                let op = BatchProcessOperation(
-                    images: batch,
-                    outputDir: outputDir,
-                    widthThreshold: parameters.widthThreshold,
-                    resizeHeight: parameters.resizeHeight,
-                    quality: parameters.quality,
-                    unsharpRadius: parameters.unsharpRadius,
-                    unsharpSigma: parameters.unsharpSigma,
-                    unsharpAmount: parameters.unsharpAmount,
-                    unsharpThreshold: parameters.unsharpThreshold,
-                    useGrayColorspace: parameters.useGrayColorspace,
-                    gmPath: gmPath
-                )
-
-                op.onCompleted = { [weak self] count, fails in
-                    guard let self = self else { return }
-                    self.handleBatchCompletion(processedCount: count, failedFiles: fails)
-
-                    globalBatchLock.lock()
-                    globalProcessedCount += count
-                    globalFailedFiles.append(contentsOf: fails)
-                    completedGlobalBatches += 1
-                    let isLast = (completedGlobalBatches == totalGlobalBatches)
-                    globalBatchLock.unlock()
-
-                    if isLast {
-                        DispatchQueue.main.async {
-                            let formatted = String(
-                                format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
-                                globalProcessedCount
-                            )
-                            self.logMessages.append(formatted)
-                        }
-                    }
-                }
-
-                allOps.append(op)
-                #if DEBUG
-                    print("ImageProcessor: Added Global BatchProcessOperation for \(batch.count) images.")
-                #endif
-            }
+        DispatchQueue.main.async { [weak self] in
+            self?.logMessages.append(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
         }
 
-        // Step 4: Process Isolated category images
-        for scanResult in isolatedScanResults {
-            let subName = scanResult.directoryURL.lastPathComponent
-            let outputSubdir = outputDir.appendingPathComponent(subName)
+        for batch in batchedTasks {
+            let op = BatchProcessOperation(
+                tasks: batch, // Pass the ImageProcessingTask batch
+                widthThreshold: parameters.widthThreshold,
+                resizeHeight: parameters.resizeHeight,
+                quality: parameters.quality,
+                unsharpRadius: parameters.unsharpRadius,
+                unsharpSigma: parameters.unsharpSigma,
+                unsharpAmount: parameters.unsharpAmount,
+                unsharpThreshold: parameters.unsharpThreshold,
+                useGrayColorspace: parameters.useGrayColorspace,
+                gmPath: gmPath
+            )
 
-            DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(String(format: NSLocalizedString("StartProcessingSubdir", comment: ""), subName))
+            op.onCompleted = { [weak self] processedCount, failedFiles in
+                self?.handleBatchCompletion(processedCount: processedCount, failedFiles: failedFiles)
             }
-
-            let batchSize: Int
-            if parameters.threadCount == 0 { // Auto mode for isolated directories
-                let isolatedDirImageCount = scanResult.imageFiles.count
-                // For Isolated directories, if the number of images is small, use a smaller fixed batch size to avoid orphan processes, e.g., 30-40.
-                // If the number of images is large, dynamically calculate based on total images and thread count to ensure even batches.
-                let baseIdealBatchSize = 40 // A sensible default for isolated directories
-                let idealNumBatchesForIsolated = Int(ceil(Double(isolatedDirImageCount) / Double(baseIdealBatchSize)))
-                let adjustedNumBatchesForIsolated = roundUpToNearestMultiple(value: idealNumBatchesForIsolated, multiple: effectiveThreadCount)
-                batchSize = max(1, min(1000, Int(ceil(Double(isolatedDirImageCount) / Double(adjustedNumBatchesForIsolated)))))
-            } else {
-                batchSize = parameters.batchSize // Use original batchSize for isolated directories, fallback to default.
-            }
-            for batch in splitIntoBatches(scanResult.imageFiles, batchSize: batchSize) {
-                let op = BatchProcessOperation(
-                    images: batch,
-                    outputDir: outputSubdir,
-                    widthThreshold: parameters.widthThreshold,
-                    resizeHeight: parameters.resizeHeight,
-                    quality: parameters.quality,
-                    unsharpRadius: parameters.unsharpRadius,
-                    unsharpSigma: parameters.unsharpSigma,
-                    unsharpAmount: parameters.unsharpAmount,
-                    unsharpThreshold: parameters.unsharpThreshold,
-                    useGrayColorspace: parameters.useGrayColorspace,
-                    gmPath: gmPath
-                )
-                op.onCompleted = { [weak self] count, fails in
-                    self?.handleBatchCompletion(processedCount: count, failedFiles: fails)
-                }
-                allOps.append(op)
-                #if DEBUG
-                    print("ImageProcessor: Added Isolated BatchProcessOperation for \(batch.count) images from \(subName).")
-                #endif
-            }
+            allOps.append(op)
+            #if DEBUG
+                print("ImageProcessor: Added BatchProcessOperation for \(batch.count) tasks.")
+            #endif
         }
 
         #if DEBUG
@@ -478,19 +419,8 @@ class ImageProcessor: ObservableObject {
                 if self.processingQueue.operationCount == 0 && processedCount == 0 {
                     self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
                 } else {
-                    // Log processing results per directory category.
-                    for scanResult in allScanResults {
-                        let logMessage: String
-                        switch scanResult.category {
-                        case .isolated:
-                            logMessage = String(format: NSLocalizedString("ProcessedSubdir", comment: ""), scanResult.directoryURL.lastPathComponent)
-                        case .globalBatch:
-                            // Global batch results are aggregated and logged upon operation completion.
-                            // Per-directory logging for global batch is omitted here to prevent redundancy.
-                            continue
-                        }
-                        self.logMessages.append(logMessage)
-                    }
+                    // Unified logging for all processed images
+                    self.logMessages.append(String(format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""), processedCount))
 
                     // Error reporting
                     if !failedFiles.isEmpty {

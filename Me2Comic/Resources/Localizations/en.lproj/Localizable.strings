@@ -97,8 +97,6 @@
 /* Log messages for asynchronous image processing */
 "StartProcessingGlobalBatch" = "Merging and processing single-page images...";
 "CompletedGlobalBatchWithCount" = "Single-page image queue completed, total %d images processed";
-"StartProcessingSubdir" = "Processing double-page image directory: %@";
-"ProcessedSubdir" = "Completed processing double-page image directory: %@";
 
 /* Log messages for stopping processing */
 "ProcessingStopped" = "Processing stopped";
@@ -124,6 +122,7 @@
 "ProcessingFailed" = "Processing failed: %@";
 "NoSubdirectories" = "No subdirectories found in input directory";
 "NoImagesInDir" = "No images found in directory: %@";
+"NoImagesToProcess" = "No images found to process";
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "Invalid batch size. Please enter an integer between 1 and 1000.";

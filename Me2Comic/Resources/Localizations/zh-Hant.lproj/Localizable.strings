@@ -97,8 +97,6 @@
 /* Log messages for asynchronous image processing */
 "StartProcessingGlobalBatch" = "正在合併處理單頁圖片...";
 "CompletedGlobalBatchWithCount" = "單頁圖片隊列處理完成，共處理 %d 張";
-"StartProcessingSubdir" = "開始處理雙頁圖片目錄：%@";
-"ProcessedSubdir" = "完成處理雙頁圖片目錄：%@";
 
 /* Log messages for stopping processing */
 "ProcessingStopped" = "處理已停止";
@@ -124,6 +122,7 @@
 "ProcessingFailed" = "處理失敗：%@";
 "NoSubdirectories" = "輸入目錄中未找到子目錄";
 "NoImagesInDir" = "目錄中未找到圖片：%@";
+"NoImagesToProcess" = "沒有找到需要處理的圖片";
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "每批影像數無效。請輸入 1 至 1000 的整數。";

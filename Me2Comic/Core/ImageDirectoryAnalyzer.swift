@@ -7,17 +7,10 @@
 
 import Foundation
 
-/// Defines categories for directory processing.
-enum ProcessingCategory {
-    case globalBatch /// For images that do not require cropping; included in global batch.
-    case isolated /// For images requiring cropping or with unclear classification; processed separately.
-}
-
-/// Represents the result of a directory scan.
+/// Represents the result of a directory scan, containing image files within a specific directory.
 struct DirectoryScanResult {
     let directoryURL: URL
     let imageFiles: [URL]
-    let category: ProcessingCategory
 }
 
 class ImageDirectoryAnalyzer {
@@ -29,8 +22,13 @@ class ImageDirectoryAnalyzer {
         self.isProcessingCheck = isProcessingCheck
     }
 
-    /// Scans a directory for supported image files.
+    /// Scans a given directory for supported image files.
+    /// - Parameter directory: The URL of the directory to scan.
+    /// - Returns: An array of URLs pointing to the found image files.
     private func getImageFiles(_ directory: URL) -> [URL] {
+        #if DEBUG
+        let startTime = Date()
+        #endif
         guard let enumerator = FileManager.default.enumerator(at: directory,
                                                               includingPropertiesForKeys: [.isRegularFileKey],
                                                               options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])
@@ -44,20 +42,28 @@ class ImageDirectoryAnalyzer {
         }
 
         let imageExtensions = Set(["jpg", "jpeg", "png"])
-        return enumerator.compactMap { element in
+        let files: [URL] = enumerator.compactMap { element in
             guard let url = element as? URL,
                   (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false,
                   imageExtensions.contains(url.pathExtension.lowercased()) else { return nil }
             return url
         }
+        #if DEBUG
+        let elapsedTime = Date().timeIntervalSince(startTime)
+        print("ImageDirectoryAnalyzer: getImageFiles for \(directory.lastPathComponent) took \(String(format: "%.4f", elapsedTime)) seconds. Found \(files.count) images.")
+        #endif
+        return files
     }
 
-    /// Scans the input directory and classifies subdirectories based on image properties.
-    /// - Parameters:
-    ///   - inputDir: The input directory URL.
-    ///   - widthThreshold: The width threshold for image classification.
-    /// - Returns: An array of `DirectoryScanResult` containing classified directories.
-    func analyze(inputDir: URL, widthThreshold: Int) -> [DirectoryScanResult] {
+    /// Scans the input directory for first-level subdirectories and collects all supported image files within them.
+    /// - Parameter inputDir: The URL of the input directory.
+    /// - Returns: An array of `DirectoryScanResult` containing the scanned subdirectories and their image files.
+    func analyze(inputDir: URL) -> [DirectoryScanResult] {
+        #if DEBUG
+        let overallAnalyzeStartTime = Date()
+        print("ImageDirectoryAnalyzer: Starting analyze for inputDir: \(inputDir.lastPathComponent)")
+        #endif
+
         let fileManager = FileManager.default
         var allScanResults: [DirectoryScanResult] = []
 
@@ -78,6 +84,11 @@ class ImageDirectoryAnalyzer {
                 // Check for cancellation before processing each subdirectory
                 guard isProcessingCheck() else { return [] }
 
+                #if DEBUG
+                let subdirProcessingStartTime = Date()
+                print("ImageDirectoryAnalyzer: Processing subdirectory: \(subdir.lastPathComponent)")
+                #endif
+
                 let imageFiles = getImageFiles(subdir)
                 guard !imageFiles.isEmpty else {
                     DispatchQueue.main.async { [self] in
@@ -86,35 +97,12 @@ class ImageDirectoryAnalyzer {
                     continue
                 }
 
-                let sampleImages = Array(imageFiles.prefix(5))
-                let sampleImagePaths = sampleImages.map { $0.path }
+                allScanResults.append(DirectoryScanResult(directoryURL: subdir, imageFiles: imageFiles))
 
-                // Use ImageIOHelper to get dimensions for sample images.
-                let sampleDimensions = ImageIOHelper.getBatchImageDimensions(imagePaths: sampleImagePaths) {
-                    // Pass the isProcessingCheck closure to ImageIOHelper for cancellation support
-                    self.isProcessingCheck()
-                }
-
-                var isGlobalBatchCandidate = true
-
-                for imageURL in sampleImages {
-                    if let dims = sampleDimensions[imageURL.path] {
-                        if dims.width >= widthThreshold {
-                            isGlobalBatchCandidate = false
-                            break
-                        }
-                    } else {
-                        // If sample image dimensions cannot be retrieved, conservatively treat as isolated.
-                        isGlobalBatchCandidate = false
-                        #if DEBUG
-                            print("ImageDirectoryAnalyzer: Could not get dimensions for sample image \(imageURL.lastPathComponent), treating as isolated.")
-                        #endif
-                        break
-                    }
-                }
-
-                let category: ProcessingCategory = isGlobalBatchCandidate ? .globalBatch : .isolated
-                allScanResults.append(DirectoryScanResult(directoryURL: subdir, imageFiles: imageFiles, category: category))
+                #if DEBUG
+                let subdirProcessingElapsedTime = Date().timeIntervalSince(subdirProcessingStartTime)
+                print("ImageDirectoryAnalyzer: Finished processing subdirectory \(subdir.lastPathComponent) in \(String(format: "%.4f", subdirProcessingElapsedTime)) seconds.")
+                #endif
             }
         } catch {
             DispatchQueue.main.async { [self] in
@@ -124,6 +112,11 @@ class ImageDirectoryAnalyzer {
             }
             return []
         }
+
+        #if DEBUG
+        let overallAnalyzeElapsedTime = Date().timeIntervalSince(overallAnalyzeStartTime)
+        print("ImageDirectoryAnalyzer: Overall analyze process completed in \(String(format: "%.4f", overallAnalyzeElapsedTime)) seconds. Found \(allScanResults.count) subdirectories.")
+        #endif
         return allScanResults
     }
 }

@@ -32,7 +32,7 @@ enum ImageIOHelper {
 
     /// Retrieves image dimensions (width and height) using the ImageIO framework.
     /// - Parameter imagePath: The full path to the image file.
-    /// - Returns: A tuple containing the image's width and height, or nil if dimensions cannot be retrieved.
+    /// - Returns: A tuple containing the image\'s width and height, or nil if dimensions cannot be retrieved.
     static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
         guard FileManager.default.fileExists(atPath: imagePath) else {
             os_log("File does not exist at path: %{public}s", log: logger, type: .error, imagePath)
@@ -72,6 +72,11 @@ enum ImageIOHelper {
     /// - Parameter shouldContinue: A closure that returns `true` if processing should continue, `false` otherwise.
     /// - Returns: A dictionary mapping image paths to their dimensions (width and height).
     static func getBatchImageDimensions(imagePaths: [String], shouldContinue: () -> Bool) -> [String: (width: Int, height: Int)] {
+        #if DEBUG
+        let batchDimensionsStartTime = Date()
+        print("ImageIOHelper: Starting getBatchImageDimensions for \(imagePaths.count) images.")
+        #endif
+
         guard !imagePaths.isEmpty else { return [:] }
 
         var result: [String: (width: Int, height: Int)] = [:]
@@ -122,6 +127,10 @@ enum ImageIOHelper {
             }
         }
 
+        #if DEBUG
+        let batchDimensionsElapsedTime = Date().timeIntervalSince(batchDimensionsStartTime)
+        print("ImageIOHelper: getBatchImageDimensions completed in \(String(format: "%.4f", batchDimensionsElapsedTime)) seconds.")
+        #endif
         return result
     }
 }

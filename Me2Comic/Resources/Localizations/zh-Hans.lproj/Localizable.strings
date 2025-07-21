@@ -97,8 +97,6 @@
 /* Log messages for asynchronous image processing */
 "StartProcessingGlobalBatch" = "正在合并处理单页图片...";
 "CompletedGlobalBatchWithCount" = "单页图片队列处理完成，共处理 %d 张";
-"StartProcessingSubdir" = "开始处理双页图片目录：%@";
-"ProcessedSubdir" = "完成处理双页图片目录：%@";
 
 /* Log messages for stopping processing */
 "ProcessingStopped" = "处理已停止";
@@ -124,6 +122,7 @@
 "ProcessingFailed" = "处理失败：%@";
 "NoSubdirectories" = "输入目录中未找到子目录";
 "NoImagesInDir" = "目录中未找到图片：%@";
+"NoImagesToProcess" = "没有找到需要处理的图片";
 
 /* Invalid Batch Size error message */
 "InvalidBatchSize" = "每批图像数无效。请输入 1-1000 之间的整数。";
