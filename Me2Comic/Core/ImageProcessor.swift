@@ -288,7 +288,7 @@ class ImageProcessor: ObservableObject {
 
         // Determine effective parameters based on auto mode or manual mode
         var effectiveThreadCount = parameters.threadCount
-        let effectiveBatchSize = parameters.batchSize
+        var effectiveBatchSize = parameters.batchSize
 
         if parameters.threadCount == 0 { // Auto mode
             DispatchQueue.main.async { [weak self] in
@@ -298,6 +298,7 @@ class ImageProcessor: ObservableObject {
 
             let autoParams = calculateAutoParameters(totalImageCount: totalImages)
             effectiveThreadCount = autoParams.threadCount
+            effectiveBatchSize = autoParams.batchSize
 
             DispatchQueue.main.async { [weak self] in
                 self?.logMessages.append(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, autoParams.batchSize))
