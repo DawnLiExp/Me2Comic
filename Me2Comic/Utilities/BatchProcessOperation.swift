@@ -11,11 +11,11 @@ import Foundation
 class BatchProcessOperation: Operation, @unchecked Sendable {
     // MARK: - Input Parameters
 
-    private let batchImages: [URL]
+    private let batchImages: [URL] /// An array of `URL`s representing the image files to be processed in this batch.
     private let outputDir: URL
-    private let widthThreshold: Int
-    private let resizeHeight: Int
-    private let quality: Int
+    private let widthThreshold: Int /// Width threshold for splitting images
+    private let resizeHeight: Int /// Target height for resizing
+    private let quality: Int /// Output quality (1-100)
     private let unsharpRadius: Float
     private let unsharpSigma: Float
     private let unsharpAmount: Float
@@ -96,29 +96,119 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             return
         }
 
-        // Pass a closure to ImageIOHelper to check for cancellation.
-        let batchDimensions = ImageIOHelper.getBatchImageDimensions(
-            imagePaths: batchImages.map { $0.path },
-            shouldContinue: { [weak self] in
-                // Check if the operation itself has been cancelled
-                self?.isCancelled == false
-            }
-        )
+        // Use a DispatchGroup to track completion of all dimension fetching and command building tasks
+        let dimensionAndCommandGroup = DispatchGroup()
+        let batchCommandsLock = NSLock() // Protects batchCommands
+        var batchCommands = ""
 
-        // Return early if cancelled during ImageIO dimension fetching
-        guard !isCancelled else {
-            #if DEBUG
-            print("BatchProcessOperation: Operation cancelled during ImageIO dimension fetching.")
-            #endif
-            return
+        // Use a dedicated queue for command building to avoid blocking dimension fetching
+        let commandBuildingQueue = DispatchQueue(label: "me2.comic.me2comic.commandBuildingQueue", qos: .userInitiated)
+
+        for imageFile in batchImages {
+            dimensionAndCommandGroup.enter()
+            // Perform dimension fetching on a background queue (ImageIOHelper already uses concurrentPerform)
+            DispatchQueue.global(qos: .userInitiated).async {
+                guard !self.isCancelled else {
+                    dimensionAndCommandGroup.leave()
+                    return
+                }
+
+                let path = imageFile.path
+                if let dimensions = ImageIOHelper.getImageDimensions(imagePath: path) { // Use single image dimension fetch
+                    commandBuildingQueue.async { // Build command on a serial queue
+                        guard !self.isCancelled else {
+                            dimensionAndCommandGroup.leave()
+                            return
+                        }
+                        autoreleasepool {
+                            let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
+
+                            let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
+
+                            let finalOutputDirForImage: URL
+                            if self.outputDir.lastPathComponent == originalSubdirName {
+                                finalOutputDirForImage = self.outputDir
+                            } else {
+                                finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
+                            }
+
+                            let outputBasePath = finalOutputDirForImage
+                                .appendingPathComponent(filenameWithoutExt)
+                                .path
+
+                            let (width, height) = dimensions
+                            var command: String
+
+                            if width < self.widthThreshold {
+                                // Single image processing
+                                command = GraphicsMagickHelper.buildConvertCommand(
+                                    inputPath: imageFile.path,
+                                    outputPath: "\(outputBasePath).jpg",
+                                    cropParams: nil,
+                                    resizeHeight: self.resizeHeight,
+                                    quality: self.quality,
+                                    unsharpRadius: self.unsharpRadius,
+                                    unsharpSigma: self.unsharpSigma,
+                                    unsharpAmount: self.unsharpAmount,
+                                    unsharpThreshold: self.unsharpThreshold,
+                                    useGrayColorspace: self.useGrayColorspace
+                                )
+                            } else {
+                                // Split processing
+                                let cropWidth = (width + 1) / 2
+                                let rightCropWidth = width - cropWidth
+                                // Right half
+                                let command1 = GraphicsMagickHelper.buildConvertCommand(
+                                    inputPath: imageFile.path,
+                                    outputPath: "\(outputBasePath)-1.jpg",
+                                    cropParams: "\(rightCropWidth)x\(height)+\(cropWidth)+0",
+                                    resizeHeight: self.resizeHeight,
+                                    quality: self.quality,
+                                    unsharpRadius: self.unsharpRadius,
+                                    unsharpSigma: self.unsharpSigma,
+                                    unsharpAmount: self.unsharpAmount,
+                                    unsharpThreshold: self.unsharpThreshold,
+                                    useGrayColorspace: self.useGrayColorspace
+                                )
+                                // Left half
+                                let command2 = GraphicsMagickHelper.buildConvertCommand(
+                                    inputPath: imageFile.path,
+                                    outputPath: "\(outputBasePath)-2.jpg",
+                                    cropParams: "\(cropWidth)x\(height)+0+0",
+                                    resizeHeight: self.resizeHeight,
+                                    quality: self.quality,
+                                    unsharpRadius: self.unsharpRadius,
+                                    unsharpSigma: self.unsharpSigma,
+                                    unsharpAmount: self.unsharpAmount,
+                                    unsharpThreshold: self.unsharpThreshold,
+                                    useGrayColorspace: self.useGrayColorspace
+                                )
+                                command = command1 + "\n" + command2
+                            }
+                            // Acquire lock before modifying shared `batchCommands` and `processedCount`.
+                            batchCommandsLock.lock()
+                            batchCommands.append(command + "\n")
+                            processedCount += 1 // Increment local processedCount
+                            batchCommandsLock.unlock()
+                        }
+                    }
+                } else {
+                    // If dimension fetching failed, add to failed files.
+                    batchCommandsLock.lock()
+                    failedFiles.append(imageFile.lastPathComponent)
+                    batchCommandsLock.unlock()
+                }
+                dimensionAndCommandGroup.leave()
+            }
         }
 
-        if batchDimensions.isEmpty {
-            // If no dimensions could be retrieved (e.g., all files invalid or cancelled early)
-            // Report all original batch images as failed if not cancelled, otherwise just return.
-            if !isCancelled {
-                onCompleted?(0, batchImages.map { $0.lastPathComponent })
-            }
+        // Wait for all dimension fetching and command building to complete
+        dimensionAndCommandGroup.wait()
+
+        guard !batchCommands.isEmpty, !isCancelled else {
+            #if DEBUG
+            print("BatchProcessOperation: No commands built or operation cancelled after command building.")
+            #endif
             return
         }
 
@@ -131,103 +221,9 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             try? fileManager.removeItem(at: batchFilePath)
         }
 
-        var batchCommands = ""
-
-        // Build batch commands
-        for imageFile in batchImages {
-            autoreleasepool {
-                guard !isCancelled else { return } // Check cancellation before processing each image
-
-                let filename = imageFile.lastPathComponent
-                let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
-
-                // Determine the original subdirectory name for the image
-                let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
-
-                // Decide final output directory: avoid duplicate subdir when outputDir already ends with it
-                let finalOutputDirForImage: URL
-                if self.outputDir.lastPathComponent == originalSubdirName {
-                    // Already in the correct subdirectory (Isolated case)
-                    finalOutputDirForImage = self.outputDir
-                } else {
-                    // Append subdirectory for GlobalBatch case
-                    finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
-                }
-
-                let outputBasePath = finalOutputDirForImage
-                    .appendingPathComponent(filenameWithoutExt)
-                    .path
-
-                // Get dimensions from batch
-                guard let dimensions = batchDimensions[imageFile.path] else {
-                    #if DEBUG
-                    print("BatchProcessOperation: Could not get dimensions for \(filename) from batchDimensions.")
-                    #endif
-                    failedFiles.append(filename)
-                    return
-                }
-
-                let (width, height) = dimensions
-
-                if width < widthThreshold {
-                    // Single image processing
-                    let command = GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
-                        outputPath: "\(outputBasePath).jpg",
-                        cropParams: nil,
-                        resizeHeight: resizeHeight,
-                        quality: quality,
-                        unsharpRadius: unsharpRadius,
-                        unsharpSigma: unsharpSigma,
-                        unsharpAmount: unsharpAmount,
-                        unsharpThreshold: unsharpThreshold,
-                        useGrayColorspace: useGrayColorspace
-                    )
-                    batchCommands.append(command + "\n")
-                    processedCount += 1
-                } else {
-                    // Split processing
-                    let cropWidth = (width + 1) / 2
-                    let rightCropWidth = width - cropWidth
-                    // Right half
-                    batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
-                        outputPath: "\(outputBasePath)-1.jpg",
-                        cropParams: "\(rightCropWidth)x\(height)+\(cropWidth)+0",
-                        resizeHeight: resizeHeight,
-                        quality: quality,
-                        unsharpRadius: unsharpRadius,
-                        unsharpSigma: unsharpSigma,
-                        unsharpAmount: unsharpAmount,
-                        unsharpThreshold: unsharpThreshold,
-                        useGrayColorspace: useGrayColorspace
-                    ) + "\n")
-                    // Left half
-                    batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
-                        outputPath: "\(outputBasePath)-2.jpg",
-                        cropParams: "\(cropWidth)x\(height)+0+0",
-                        resizeHeight: resizeHeight,
-                        quality: quality,
-                        unsharpRadius: unsharpRadius,
-                        unsharpSigma: unsharpSigma,
-                        unsharpAmount: unsharpAmount,
-                        unsharpThreshold: unsharpThreshold,
-                        useGrayColorspace: useGrayColorspace
-                    ) + "\n")
-                    processedCount += 1
-                }
-            }
-        }
-
-        guard !batchCommands.isEmpty, !isCancelled else {
-            // Return if cancelled after command building but before GM execution
-            return
-        }
-
         do {
             try batchCommands.write(to: batchFilePath, atomically: true, encoding: .utf8)
-
+            // Configure GraphicsMagick batch process
             let batchTask = Process()
             batchTask.executableURL = URL(fileURLWithPath: gmPath)
             batchTask.arguments = ["batch", "-stop-on-error", "off"]
@@ -243,7 +239,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             processLock.unlock()
 
             guard !isCancelled else {
-                // Return if cancelled after process setup but before run
                 processLock.lock()
                 internalProcess = nil
                 processLock.unlock()
@@ -254,45 +249,42 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             try batchTask.run()
 
             guard !isCancelled else {
-                // Return if cancelled immediately after run()
                 processLock.lock()
                 internalProcess?.terminate()
-                // Ensure pipe write end is closed as fallback
                 (batchTask.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
                 internalProcess = nil
                 processLock.unlock()
                 return
             }
 
-            // Safe write implementation
             try safeWrite(data: Data(contentsOf: batchFilePath), to: pipes.input.fileHandleForWriting)
             pipes.input.fileHandleForWriting.closeFile()
 
             batchTask.waitUntilExit()
-
+            // Process completion handling
             processLock.lock()
             internalProcess = nil
             processLock.unlock()
 
             if batchTask.terminationStatus != 0 {
-                // Append failed files if not cancelled
                 if !isCancelled {
+                    // If GM process failed, all images in this batch are considered failed
                     failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
                     processedCount = 0
                 }
             }
         } catch {
+            // Handle pipe errors gracefully
             if let posixError = error as? POSIXError, posixError.code == .EPIPE {
-                // Broken pipe is expected during cancellation
                 #if DEBUG
-                print("BatchProcessOperation: Broken pipe during write (expected during cancellation)")
+                print("BatchProcessOperation: safeWrite encountered EPIPE (pipe closed), stopping write.")
                 #endif
             } else {
                 #if DEBUG
                 print("BatchProcessOperation: Error during process execution: \(error.localizedDescription)")
                 #endif
             }
-            // Append failed files if not cancelled
+            // If an error occurs, mark all images in the batch as failed.
             if !isCancelled {
                 failedFiles.append(contentsOf: batchImages.map { $0.lastPathComponent })
                 processedCount = 0
@@ -305,7 +297,11 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
     // MARK: - Safe Write Implementation
 
-    /// Writes data to file handle in chunks with cancellation checks
+    //
+    /// Safely writes data to a file handle with chunking and error recovery
+    /// - Parameters:
+    ///   - data: The data to be written
+    ///   - fileHandle: Target file handle for writing
     private func safeWrite(data: Data, to fileHandle: FileHandle) throws {
         let chunkSize = 4096
         var bytesRemaining = data.count
@@ -317,13 +313,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             }
 
             let chunkLength = min(chunkSize, bytesRemaining)
-            // Create a new Data instance for the chunk to ensure safe memory access
             let chunk = data.subdata(in: currentOffset ..< (currentOffset + chunkLength))
 
             var bytesWrittenForChunk = 0
             var writeAttempts = 0
             let maxWriteAttempts = 5 // Limit retries to prevent infinite loops
-
+            // Retry logic for partial writes or interrupted system calls
             while bytesWrittenForChunk < chunkLength, writeAttempts < maxWriteAttempts {
                 writeAttempts += 1
                 do {
@@ -331,7 +326,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                         guard !isCancelled else {
                             return
                         }
-
                         // Use ptr.baseAddress directly as `chunk` is a subdata, and `advanced(by:)` for offset within the chunk.
                         let result = write(fileHandle.fileDescriptor,
                                            ptr.baseAddress!.advanced(by: bytesWrittenForChunk),
@@ -348,8 +342,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                                 #if DEBUG
                                 print("BatchProcessOperation: safeWrite encountered EINTR, retrying write.")
                                 #endif
-                                // EINTR: Interrupted system call. Retry the write operation.
-                                // Do not increment bytesWrittenForChunk as no bytes were successfully written.
                             } else {
                                 throw NSError(domain: NSPOSIXErrorDomain,
                                               code: Int(currentErrno),
@@ -368,9 +360,8 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     throw error
                 }
             }
-
+            // Fail if unable to write complete chunk after retries
             if bytesWrittenForChunk == 0, chunkLength > 0, writeAttempts >= maxWriteAttempts {
-                // If no bytes were written after max attempts, indicate a write failure.
                 throw NSError(domain: "BatchProcessOperationErrorDomain", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to write data to pipe after multiple retries."])
             }
 
@@ -381,6 +372,8 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
     // MARK: - Cancellation Mechanism
 
+    /// Overrides the `cancel()` method from `Operation` to provide custom cancellation logic.
+    /// When cancelled, it attempts to terminate the running GraphicsMagick process and cleans up resources.
     override func cancel() {
         super.cancel()
 
@@ -395,7 +388,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     }
 
     deinit {
-        // This defer in main() handles it, but keeping this for robustness if main() exits abnormally.
         #if DEBUG
         print("BatchProcessOperation deinitialized.")
         #endif
