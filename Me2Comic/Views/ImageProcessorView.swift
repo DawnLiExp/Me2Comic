@@ -112,6 +112,14 @@ struct ImageProcessorView: View {
                 }
                 .disabled(!processor.isProcessing && (inputDirectory == nil || outputDirectory == nil))
 
+                // Progress display when processing
+                if processor.isProcessing && processor.totalImagesToProcess > 0 {
+                    ProgressDisplayView(processor: processor)
+                        .padding(.horizontal, 4)
+                        .padding(.top, -10)
+                        .padding(.bottom, -10)
+                }
+
                 // Log console for displaying messages and progress.
                 DecoratedView(content: LogTextView(processor: processor))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

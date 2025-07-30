@@ -132,3 +132,7 @@
 "Auto" = "自动";
 "AutoModeEnabled" = "已启用自动模式";
 "AutoAllocatedParameters" = "自动分配参数：线程数 %ld，批处理大小 %ld";
+"TotalImagesToProcess" = "共发现 %d 张图片待处理";
+
+/* Progress bar strings */
+"ProcessingProgressText" = "%d%% (%d/%d)";

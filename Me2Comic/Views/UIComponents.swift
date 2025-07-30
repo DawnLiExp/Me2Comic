@@ -112,7 +112,7 @@ struct SettingsPanelView: View {
                 Text(NSLocalizedString("ThreadCount", comment: ""))
                     .foregroundColor(.textPrimary)
                     .frame(width: 150, alignment: .leading)
-                    .padding(.trailing, -14)  
+                    .padding(.trailing, -14)
                 Picker("", selection: $threadCount) {
                     Text(NSLocalizedString("Auto", comment: "")).tag(0)
                     ForEach(1 ... 6, id: \.self) { count in
@@ -440,6 +440,39 @@ struct LeftPanelView: View {
 extension ParameterInputView: Equatable {
     static func == (lhs: ParameterInputView, rhs: ParameterInputView) -> Bool {
         lhs.title == rhs.title && lhs.text == rhs.text && lhs.isProcessing == rhs.isProcessing
+    }
+}
+
+// 进度显示视图
+struct ProgressDisplayView: View {
+    @ObservedObject var processor: ImageProcessor
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // 进度条
+            ProgressView(value: processor.processingProgress)
+                .progressViewStyle(LinearProgressViewStyle(tint: .accent))
+                .frame(height: 4)
+                .background(Color.backgroundSecondary)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+
+            // 进度文本
+            Text(String(format: NSLocalizedString("ProcessingProgressText", comment: ""),
+                        Int(processor.processingProgress * 100),
+                        processor.currentProcessedImages,
+                        processor.totalImagesToProcess))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.textPrimary)
+                .frame(minWidth: 110, alignment: .trailing)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(.backgroundPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(.accent.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 

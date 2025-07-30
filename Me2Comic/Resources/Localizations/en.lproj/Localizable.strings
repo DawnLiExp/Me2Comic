@@ -132,3 +132,7 @@
 "Auto" = "Auto";
 "AutoModeEnabled" = "Auto Mode Enabled";
 "AutoAllocatedParameters" = "Auto-allocated parameters: threads %ld, batch size %ld";
+"TotalImagesToProcess" = "Found %d images to process";
+
+/* Progress bar strings */
+"ProcessingProgressText" = "%d%% (%d/%d)";

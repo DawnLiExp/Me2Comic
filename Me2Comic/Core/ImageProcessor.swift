@@ -63,6 +63,14 @@ class ImageProcessor: ObservableObject {
         }
     }
 
+    // Progress tracking
+    /// Total number of images to process
+    @Published var totalImagesToProcess: Int = 0
+    /// Current number of processed images
+    @Published var currentProcessedImages: Int = 0
+    /// Processing progress (0.0 - 1.0)
+    @Published var processingProgress: Double = 0.0
+
     /// Stops all active processing tasks.
     func stopProcessing() {
         #if DEBUG
@@ -72,6 +80,9 @@ class ImageProcessor: ObservableObject {
         DispatchQueue.main.async {
             self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
             self.isProcessing = false
+            // Reset progress
+            self.currentProcessedImages = 0
+            self.processingProgress = 0.0
         }
     }
 
@@ -80,6 +91,17 @@ class ImageProcessor: ObservableObject {
         resultsQueue.async {
             self.totalImagesProcessed += processedCount
             self.allFailedFiles.append(contentsOf: failedFiles)
+
+            // Update progress
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.currentProcessedImages += processedCount
+                if self.totalImagesToProcess > 0 {
+                    self.processingProgress = Double(self.currentProcessedImages) / Double(self.totalImagesToProcess)
+                } else {
+                    self.processingProgress = 0.0
+                }
+            }
         }
     }
 
@@ -222,6 +244,13 @@ class ImageProcessor: ObservableObject {
             allFailedFiles.removeAll()
         }
         processingStartTime = Date()
+
+        // Reset progress tracking
+        DispatchQueue.main.async { [weak self] in
+            self?.totalImagesToProcess = 0
+            self?.currentProcessedImages = 0
+            self?.processingProgress = 0.0
+        }
     }
 
     /// Logs initial processing parameters
@@ -277,6 +306,13 @@ class ImageProcessor: ObservableObject {
                 self?.isProcessing = false
             }
             return
+        }
+
+        // Calculate total images to process
+        let totalImages = allScanResults.flatMap { $0.imageFiles }.count
+        DispatchQueue.main.async { [weak self] in
+            self?.totalImagesToProcess = totalImages
+            self?.logMessages.append(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), totalImages))
         }
 
         var globalBatchImages: [URL] = []
