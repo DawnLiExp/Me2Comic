@@ -29,7 +29,7 @@ struct ImageProcessorView: View {
     @State private var batchSize: String = "40"
 
     @ObservedObject private var processor = ImageProcessor()
-
+    @State private var showProgressAfterCompletion: Bool = false
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             LeftPanelView() // Left panel of the UI.
@@ -113,13 +113,13 @@ struct ImageProcessorView: View {
                 .disabled(!processor.isProcessing && (inputDirectory == nil || outputDirectory == nil))
 
                 // Progress display when processing
-                if processor.isProcessing && processor.totalImagesToProcess > 0 {
+
+                if (processor.isProcessing || showProgressAfterCompletion) && processor.totalImagesToProcess > 0 {
                     ProgressDisplayView(processor: processor)
                         .padding(.horizontal, 4)
                         .padding(.top, -10)
                         .padding(.bottom, -10)
                 }
-
                 // Log console for displaying messages and progress.
                 DecoratedView(content: LogTextView(processor: processor))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -130,6 +130,21 @@ struct ImageProcessorView: View {
         }
         .frame(minWidth: 994, minHeight: 735) // Sets minimum window size.
         .background(.panelBackground)
+        // 1. Enable delayed hiding when processingProgress reaches 1.0
+        .onChange(of: processor.processingProgress) { newValue in
+            if newValue >= 1.0 {
+                showProgressAfterCompletion = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    showProgressAfterCompletion = false
+                }
+            }
+        }
+        // 2. Reset the completion display flag when processing restarts
+        .onChange(of: processor.isProcessing) { isProcessing in
+            if isProcessing {
+                showProgressAfterCompletion = false
+            }
+        }
         .onAppear {
             // Request notification authorization when the view appears.
             let center = UNUserNotificationCenter.current()
