@@ -16,6 +16,7 @@
 		FCB9B0CC2DBDFD4700110511 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCB9B0CB2DBDFD4700110511 /* Assets.xcassets */; };
 		FCD13BC62E431DC8003A8023 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD13BC52E431DC6003A8023 /* Extensions.swift */; };
 		FCD13BC82E431E0F003A8023 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD13BC72E431E0D003A8023 /* AboutView.swift */; };
+		FCDCAEA62E4389EF00216C1D /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */; };
 		FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */; };
 		FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */; };
 		FCF8E79E2DC9F8F60044291C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = FCF8E7A02DC9F8F60044291C /* Localizable.strings */; };
@@ -36,6 +37,7 @@
 		FCB9B0D02DBDFD4700110511 /* Me2Comic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Me2Comic.entitlements; sourceTree = "<group>"; };
 		FCD13BC52E431DC6003A8023 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		FCD13BC72E431E0D003A8023 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessor.swift; sourceTree = "<group>"; };
 		FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsMagickHelper.swift; sourceTree = "<group>"; };
 		FCF8E79F2DC9F8F60044291C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -56,6 +58,7 @@
 		FC19ED782DF464CC007A2F24 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */,
 				FCD13BC52E431DC6003A8023 /* Extensions.swift */,
 				FC38F2E82E03F31A00FBB3B2 /* BatchProcessOperation.swift */,
 			);
@@ -218,6 +221,7 @@
 				FCD13BC62E431DC8003A8023 /* Extensions.swift in Sources */,
 				FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */,
 				FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */,
+				FCDCAEA62E4389EF00216C1D /* NotificationManager.swift in Sources */,
 				FCD13BC82E431E0F003A8023 /* AboutView.swift in Sources */,
 				FCB9B0CA2DBDFD4500110511 /* ImageProcessorView.swift in Sources */,
 				FC0976862DC72DF900C307FD /* UIComponents.swift in Sources */,

@@ -7,7 +7,6 @@
 
 import Combine
 import Foundation
-import UserNotifications
 
 // MARK: - Processing Parameters
 
@@ -27,7 +26,7 @@ struct ProcessingParameters {
 
 /// Manages the image processing workflow, including parameter validation, file scanning, and batch processing.
 class ImageProcessor: ObservableObject {
-    /// Path to GraphicsMagick executable
+    private let notificationManager = NotificationManager()
     private var gmPath: String = ""
 
     /// Operation queue for batch processing
@@ -527,23 +526,17 @@ class ImageProcessor: ObservableObject {
                     self.logMessages.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
                     self.logMessages.append(duration)
                     self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
-                    self.sendCompletionNotification(totalProcessed: processedCount, failedCount: failedFiles.count)
+                    self.notificationManager.sendNotification(
+                        title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
+                        subtitle: failedFiles.count > 0 ?
+                            String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""), processedCount, failedFiles.count) :
+                            String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount),
+                        body: duration
+                    )
                 }
 
                 self.isProcessing = false
             }
         }
-    }
-
-    /// Sends system notification when processing completes
-    private func sendCompletionNotification(totalProcessed: Int, failedCount: Int) {
-        let center = UNUserNotificationCenter.current()
-        let content = UNMutableNotificationContent()
-        content.title = NSLocalizedString("ProcessingCompleteTitle", comment: "")
-        content.body = failedCount > 0 ?
-            String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""), totalProcessed, failedCount) :
-            String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), totalProcessed)
-        content.sound = .default
-        center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 }

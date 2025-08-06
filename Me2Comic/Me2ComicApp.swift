@@ -29,10 +29,12 @@ struct Me2ComicApp: App {
 /// Handles application lifecycle and window management
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindow: NSWindow?
+    private let notificationManager = NotificationManager()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
 
+        notificationManager.requestNotificationAuthorization()
         // Main window setup
         if let window = NSApp.windows.first {
             mainWindow = window
