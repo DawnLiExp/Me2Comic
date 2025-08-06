@@ -2,7 +2,7 @@
   Localizable.strings
   Me2Comic
 
-  Created by me2 on 2025/5/6.
+  Created by Me2 on 2025/5/6.
   
 */
 
@@ -15,7 +15,7 @@
 "Input Directory" = "入力ディレクトリ:%@";
 "Output Directory" = "出力ディレクトリ:%@";
 "Input Directory Placeholder" = "（処理対象フォルダは同じ階層に配置されている必要があります）";
-// "Output Directory Placeholder" = "（元のディレクトリ名に対応した出力先が自動で生成されます）";
+"Output Directory Placeholder" = "（元のディレクトリ名に対応した出力先が自動で生成されます）";
 
 /* Parameter input titles */
 "WidthUnder" = "幅閾値（px）:";

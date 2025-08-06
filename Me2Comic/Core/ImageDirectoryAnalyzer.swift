@@ -2,7 +2,7 @@
 //  ImageDirectoryAnalyzer.swift
 //  Me2Comic
 //
-//  Created by me2 on 2025/7/9.
+//  Created by Me2 on 2025/7/9.
 //
 
 import Foundation

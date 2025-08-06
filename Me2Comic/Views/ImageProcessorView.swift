@@ -57,8 +57,8 @@ struct ImageProcessorView: View {
                 // Output Directory Selection Button.
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Output Directory", comment: ""),
-                                  //  outputDirectory?.path ?? NSLocalizedString("Output Directory Placeholder", comment: "")),
-                                  outputDirectory?.path ?? ""),
+                                  outputDirectory?.path ?? NSLocalizedString("Output Directory Placeholder", comment: "")),
+                    //    outputDirectory?.path ?? ""),
                     action: { selectOutputDirectory() },
                     isProcessing: processor.isProcessing,
                     openAction: { // Action to open the output directory in Finder.
