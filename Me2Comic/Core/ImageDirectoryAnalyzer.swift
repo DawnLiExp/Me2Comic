@@ -43,7 +43,7 @@ class ImageDirectoryAnalyzer {
             return []
         }
 
-        let imageExtensions = Set(["jpg", "jpeg", "png"])
+        let imageExtensions = Set(["jpg", "jpeg", "png", "webp", "bmp"])
         return enumerator.compactMap { element in
             guard let url = element as? URL,
                   (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false,
