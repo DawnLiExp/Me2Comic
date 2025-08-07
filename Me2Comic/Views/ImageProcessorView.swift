@@ -198,15 +198,10 @@ struct ImageProcessorView: View {
 
     /// Initiates the image processing operation using the selected directories and parameters.
     private func processImages() {
-        guard let inputDir = inputDirectory, let outputDir = outputDirectory else {
-            processor.logMessages.append(NSLocalizedString("NoInputOrOutputDir", comment: ""))
-            return
-        }
-
         do {
             let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
-                inputDirectory: inputDir,
-                outputDirectory: outputDir,
+                inputDirectory: inputDirectory,
+                outputDirectory: outputDirectory,
                 widthThreshold: widthThreshold,
                 resizeHeight: resizeHeight,
                 quality: quality,
@@ -218,13 +213,9 @@ struct ImageProcessorView: View {
                 batchSize: batchSize,
                 useGrayColorspace: useGrayColorspace
             )
-            processor.processImages(inputDir: inputDir, outputDir: outputDir, parameters: parameters)
+            processor.processImages(inputDir: inputDirectory!, outputDir: outputDirectory!, parameters: parameters)
         } catch {
-            if let paramError = error as? ProcessingParameterError {
-                processor.logMessages.append(paramError.localizedDescription)
-            } else {
-                processor.logMessages.append(String(format: NSLocalizedString("ParameterValidationError", comment: ""), error.localizedDescription))
-            }
+            processor.logMessages.append(error.localizedDescription)
         }
     }
 }
