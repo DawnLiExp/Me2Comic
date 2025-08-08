@@ -61,6 +61,9 @@
 "SelectedOutputDir" = "Selected output directory: %@";
 "Open" = "Open";
 "LoadedLastOutputDir" = "Loaded last used output directory: %@";
+"InputOutputDirectoryNotSelected" = "Input or output directory not selected.";
+"InputDirectoryDoesNotExist" = "Input directory does not exist: %@";
+"InputDirectoryNotReadable" = "Input directory is not readable: %@";
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "Error: Input or output directory not selected";

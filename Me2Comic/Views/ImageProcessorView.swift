@@ -198,6 +198,24 @@ struct ImageProcessorView: View {
 
     /// Initiates the image processing operation using the selected directories and parameters.
     private func processImages() {
+        guard let inputDir = inputDirectory, let _ = outputDirectory else {
+            processor.logMessages.append(NSLocalizedString("InputOutputDirectoryNotSelected", comment: ""))
+            return
+        }
+
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+
+        // Check if input directory exists and is readable
+        if !fileManager.fileExists(atPath: inputDir.path, isDirectory: &isDirectory) || !isDirectory.boolValue {
+            processor.logMessages.append(String(format: NSLocalizedString("InputDirectoryDoesNotExist", comment: ""), inputDir.path))
+            return
+        }
+        if !fileManager.isReadableFile(atPath: inputDir.path) {
+            processor.logMessages.append(String(format: NSLocalizedString("InputDirectoryNotReadable", comment: ""), inputDir.path))
+            return
+        }
+
         do {
             let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
                 inputDirectory: inputDirectory,

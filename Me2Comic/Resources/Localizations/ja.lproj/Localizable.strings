@@ -61,6 +61,9 @@
 "SelectedOutputDir" = "出力ディレクトリ選択済:%@";
 "Open" = "開く";
 "LoadedLastOutputDir" = "最後に使用した出力ディレクトリを読み込みました: %@";
+"InputOutputDirectoryNotSelected" = "入力または出力ディレクトリが選択されていません。";
+"InputDirectoryDoesNotExist" = "入力ディレクトリが存在しません: %@";
+"InputDirectoryNotReadable" = "入力ディレクトリが読み取りできません: %@";
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "エラー:入力/出力ディレクトリ未指定";
