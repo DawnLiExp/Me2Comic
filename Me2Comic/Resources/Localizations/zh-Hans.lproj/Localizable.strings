@@ -61,9 +61,6 @@
 "SelectedOutputDir" = "已选择输出目录：%@";
 "Open" = "打开";
 "LoadedLastOutputDir" = "已加载上次使用的输出目录: %@";
-"InputOutputDirectoryNotSelected" = "未选择输入或输出目录。";
-"InputDirectoryDoesNotExist" = "输入目录不存在: %@";
-"InputDirectoryNotReadable" = "输入目录不可读: %@";
 
 /* Log messages for processImages */
 "NoInputOrOutputDir" = "错误：未选择输入或输出目录";

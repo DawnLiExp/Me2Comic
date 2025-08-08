@@ -12,6 +12,18 @@ import UserNotifications
 /// UserDefault key for storing the last used output directory.
 private let lastUsedOutputDirKey = "lastUsedOutputDirectory"
 
+/// UserDefault keys for storing processing parameters.
+private let widthThresholdKey = "widthThreshold"
+private let resizeHeightKey = "resizeHeight"
+private let qualityKey = "quality"
+private let threadCountKey = "threadCount"
+private let unsharpRadiusKey = "unsharpRadius"
+private let unsharpSigmaKey = "unsharpSigma"
+private let unsharpAmountKey = "unsharpAmount"
+private let unsharpThresholdKey = "unsharpThreshold"
+private let batchSizeKey = "batchSize"
+private let useGrayColorspaceKey = "useGrayColorspace"
+
 /// `ImageProcessorView` defines the main user interface for the image processing application.
 /// It manages user inputs, displays processing logs, and orchestrates image processing operations.
 struct ImageProcessorView: View {
@@ -165,6 +177,18 @@ struct ImageProcessorView: View {
                 outputDirectory = URL(fileURLWithPath: savedPath)
                 processor.logMessages.append(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
             }
+
+            // Load saved parameters
+            widthThreshold = UserDefaults.standard.string(forKey: widthThresholdKey) ?? widthThreshold
+            resizeHeight = UserDefaults.standard.string(forKey: resizeHeightKey) ?? resizeHeight
+            quality = UserDefaults.standard.string(forKey: qualityKey) ?? quality
+            threadCount = UserDefaults.standard.integer(forKey: threadCountKey)
+            unsharpRadius = UserDefaults.standard.string(forKey: unsharpRadiusKey) ?? unsharpRadius
+            unsharpSigma = UserDefaults.standard.string(forKey: unsharpSigmaKey) ?? unsharpSigma
+            unsharpAmount = UserDefaults.standard.string(forKey: unsharpAmountKey) ?? unsharpAmount
+            unsharpThreshold = UserDefaults.standard.string(forKey: unsharpThresholdKey) ?? unsharpThreshold
+            batchSize = UserDefaults.standard.string(forKey: batchSizeKey) ?? batchSize
+            useGrayColorspace = UserDefaults.standard.bool(forKey: useGrayColorspaceKey)
         }
     }
 
@@ -198,28 +222,27 @@ struct ImageProcessorView: View {
 
     /// Initiates the image processing operation using the selected directories and parameters.
     private func processImages() {
-        guard let inputDir = inputDirectory, let _ = outputDirectory else {
-            processor.logMessages.append(NSLocalizedString("InputOutputDirectoryNotSelected", comment: ""))
+        guard let inputDir = inputDirectory, let outputDir = outputDirectory else {
+            processor.logMessages.append(NSLocalizedString("NoInputOrOutputDir", comment: ""))
             return
         }
 
-        let fileManager = FileManager.default
-        var isDirectory: ObjCBool = false
-
-        // Check if input directory exists and is readable
-        if !fileManager.fileExists(atPath: inputDir.path, isDirectory: &isDirectory) || !isDirectory.boolValue {
-            processor.logMessages.append(String(format: NSLocalizedString("InputDirectoryDoesNotExist", comment: ""), inputDir.path))
-            return
-        }
-        if !fileManager.isReadableFile(atPath: inputDir.path) {
-            processor.logMessages.append(String(format: NSLocalizedString("InputDirectoryNotReadable", comment: ""), inputDir.path))
-            return
-        }
+        // Save current parameters before processing
+        UserDefaults.standard.set(widthThreshold, forKey: widthThresholdKey)
+        UserDefaults.standard.set(resizeHeight, forKey: resizeHeightKey)
+        UserDefaults.standard.set(quality, forKey: qualityKey)
+        UserDefaults.standard.set(threadCount, forKey: threadCountKey)
+        UserDefaults.standard.set(unsharpRadius, forKey: unsharpRadiusKey)
+        UserDefaults.standard.set(unsharpSigma, forKey: unsharpSigmaKey)
+        UserDefaults.standard.set(unsharpAmount, forKey: unsharpAmountKey)
+        UserDefaults.standard.set(unsharpThreshold, forKey: unsharpThresholdKey)
+        UserDefaults.standard.set(batchSize, forKey: batchSizeKey)
+        UserDefaults.standard.set(useGrayColorspace, forKey: useGrayColorspaceKey)
 
         do {
             let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
-                inputDirectory: inputDirectory,
-                outputDirectory: outputDirectory,
+                inputDirectory: inputDir,
+                outputDirectory: outputDir,
                 widthThreshold: widthThreshold,
                 resizeHeight: resizeHeight,
                 quality: quality,
@@ -231,7 +254,7 @@ struct ImageProcessorView: View {
                 batchSize: batchSize,
                 useGrayColorspace: useGrayColorspace
             )
-            processor.processImages(inputDir: inputDirectory!, outputDir: outputDirectory!, parameters: parameters)
+            processor.processImages(inputDir: inputDir, outputDir: outputDir, parameters: parameters)
         } catch {
             processor.logMessages.append(error.localizedDescription)
         }
