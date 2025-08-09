@@ -224,6 +224,11 @@ class ImageProcessor: ObservableObject {
             return
         }
 
+        /// Prepare main output directory
+        guard createDirectoryAndLogErrors(directoryURL: outputDir, fileManager: FileManager.default) else {
+            return
+        }
+
         /// Start background processing
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.processDirectories(inputDir: inputDir, outputDir: outputDir, parameters: parameters)
