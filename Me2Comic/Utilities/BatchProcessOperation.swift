@@ -152,6 +152,10 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             let pipeFileHandle = pipes.input.fileHandleForWriting
             defer { try? pipeFileHandle.close() }
 
+            // Thread-safe tracking for generated output paths to prevent collisions.
+            var generatedPaths = Set<String>()
+            let pathLock = NSLock()
+
             for imageFile in batchImages {
                 autoreleasepool {
                     guard !isCancelled else { return } // Check cancellation before processing each image
@@ -191,9 +195,10 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
                     if width < widthThreshold {
                         // Single image processing
+                        let singleOutputPath = resolveOutputPath(basePath: outputBasePath, suffix: ".jpg", generatedPaths: &generatedPaths, lock: pathLock)
                         let command = GraphicsMagickHelper.buildConvertCommand(
                             inputPath: imageFile.path,
-                            outputPath: "\(outputBasePath).jpg",
+                            outputPath: singleOutputPath,
                             cropParams: nil,
                             resizeHeight: resizeHeight,
                             quality: quality,
@@ -208,10 +213,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                         // Split processing
                         let cropWidth = (width + 1) / 2
                         let rightCropWidth = width - cropWidth
+
+                        let rightOutputPath = resolveOutputPath(basePath: outputBasePath, suffix: "-1.jpg", generatedPaths: &generatedPaths, lock: pathLock)
                         // Right half
                         commandsForImage.append(GraphicsMagickHelper.buildConvertCommand(
                             inputPath: imageFile.path,
-                            outputPath: "\(outputBasePath)-1.jpg",
+                            outputPath: rightOutputPath,
                             cropParams: "\(rightCropWidth)x\(height)+\(cropWidth)+0",
                             resizeHeight: resizeHeight,
                             quality: quality,
@@ -221,10 +228,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                             unsharpThreshold: unsharpThreshold,
                             useGrayColorspace: useGrayColorspace
                         ))
+
+                        let leftOutputPath = resolveOutputPath(basePath: outputBasePath, suffix: "-2.jpg", generatedPaths: &generatedPaths, lock: pathLock)
                         // Left half
                         commandsForImage.append(GraphicsMagickHelper.buildConvertCommand(
                             inputPath: imageFile.path,
-                            outputPath: "\(outputBasePath)-2.jpg",
+                            outputPath: leftOutputPath,
                             cropParams: "\(cropWidth)x\(height)+0+0",
                             resizeHeight: resizeHeight,
                             quality: quality,
@@ -292,6 +301,34 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             internalProcess = nil
             processLock.unlock()
         }
+    }
+
+    // MARK: - Path Collision Resolution
+
+    /// Generates a unique output path by appending a suffix if a collision is detected.
+    private func resolveOutputPath(basePath: String, suffix: String, generatedPaths: inout Set<String>, lock: NSLock) -> String {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var finalPath = basePath + suffix
+        var attempt = 0
+        let maxAttempts = 26 // a-z
+
+        while generatedPaths.contains(finalPath.lowercased()) {
+            attempt += 1
+            if attempt > maxAttempts {
+                // Fallback to a timestamp if letter suffixes are exhausted
+                let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+                finalPath = "\(basePath)-\(timestamp)\(suffix)"
+                break
+            }
+            // Append -a, -b, ...
+            let letter = String(UnicodeScalar(UInt8(ascii: "a") + UInt8(attempt - 1)))
+            finalPath = "\(basePath)-\(letter)\(suffix)"
+        }
+
+        generatedPaths.insert(finalPath.lowercased())
+        return finalPath
     }
 
     // MARK: - Safe Write Implementation
