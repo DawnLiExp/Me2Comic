@@ -64,17 +64,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     // MARK: - Core Execution Method
 
     override func main() {
-        // Configure to ignore SIGPIPE signals to prevent crashes on broken pipes
-        var oldSigpipeHandler = sigaction()
-        var newSigpipeHandler = sigaction()
-        newSigpipeHandler.__sigaction_u.__sa_handler = SIG_IGN
-        _ = sigaction(SIGPIPE, &newSigpipeHandler, &oldSigpipeHandler)
-
-        defer {
-            // Restore original SIGPIPE handler when main() exits
-            _ = sigaction(SIGPIPE, &oldSigpipeHandler, nil)
-        }
-
         guard !isCancelled else {
             #if DEBUG
             print("BatchProcessOperation: Operation cancelled before starting.")
