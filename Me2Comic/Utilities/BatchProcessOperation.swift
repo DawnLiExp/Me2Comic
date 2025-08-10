@@ -111,135 +111,30 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             return
         }
 
-        // Prepare temporary batch file
-        let fileManager = FileManager.default
-        let batchFilePath = fileManager.temporaryDirectory
-            .appendingPathComponent("me2comic_batch_\(UUID().uuidString).txt")
+        let batchTask = Process()
+        batchTask.executableURL = URL(fileURLWithPath: gmPath)
+        batchTask.arguments = ["batch", "-stop-on-error", "off"]
 
-        defer {
-            try? fileManager.removeItem(at: batchFilePath)
-        }
+        let pipes = (input: Pipe(), output: Pipe(), error: Pipe())
+        batchTask.standardInput = pipes.input
+        batchTask.standardOutput = pipes.output
+        batchTask.standardError = pipes.error
 
-        var batchCommands = ""
+        // Store process reference
+        processLock.lock()
+        internalProcess = batchTask
+        processLock.unlock()
 
-        // Build batch commands
-        for imageFile in batchImages {
-            autoreleasepool {
-                guard !isCancelled else { return } // Check cancellation before processing each image
-
-                let filename = imageFile.lastPathComponent
-                let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
-
-                // Determine the original subdirectory name for the image
-                let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
-
-                // Decide final output directory: avoid duplicate subdir when outputDir already ends with it
-                let finalOutputDirForImage: URL
-                if self.outputDir.lastPathComponent == originalSubdirName {
-                    // Already in the correct subdirectory (Isolated case)
-                    finalOutputDirForImage = self.outputDir
-                } else {
-                    // Append subdirectory for GlobalBatch case
-                    finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
-                }
-
-                let outputBasePath = finalOutputDirForImage
-                    .appendingPathComponent(filenameWithoutExt)
-                    .path
-
-                // Get dimensions from batch
-                guard let dimensions = batchDimensions[imageFile.path] else {
-                    #if DEBUG
-                    print("BatchProcessOperation: Could not get dimensions for \(filename) from batchDimensions.")
-                    #endif
-                    failedFiles.append(filename)
-                    return
-                }
-
-                let (width, height) = dimensions
-
-                if width < widthThreshold {
-                    // Single image processing
-                    let command = GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
-                        outputPath: "\(outputBasePath).jpg",
-                        cropParams: nil,
-                        resizeHeight: resizeHeight,
-                        quality: quality,
-                        unsharpRadius: unsharpRadius,
-                        unsharpSigma: unsharpSigma,
-                        unsharpAmount: unsharpAmount,
-                        unsharpThreshold: unsharpThreshold,
-                        useGrayColorspace: useGrayColorspace
-                    )
-                    batchCommands.append(command + "\n")
-                    processedCount += 1
-                } else {
-                    // Split processing
-                    let cropWidth = (width + 1) / 2
-                    let rightCropWidth = width - cropWidth
-                    // Right half
-                    batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
-                        outputPath: "\(outputBasePath)-1.jpg",
-                        cropParams: "\(rightCropWidth)x\(height)+\(cropWidth)+0",
-                        resizeHeight: resizeHeight,
-                        quality: quality,
-                        unsharpRadius: unsharpRadius,
-                        unsharpSigma: unsharpSigma,
-                        unsharpAmount: unsharpAmount,
-                        unsharpThreshold: unsharpThreshold,
-                        useGrayColorspace: useGrayColorspace
-                    ) + "\n")
-                    // Left half
-                    batchCommands.append(GraphicsMagickHelper.buildConvertCommand(
-                        inputPath: imageFile.path,
-                        outputPath: "\(outputBasePath)-2.jpg",
-                        cropParams: "\(cropWidth)x\(height)+0+0",
-                        resizeHeight: resizeHeight,
-                        quality: quality,
-                        unsharpRadius: unsharpRadius,
-                        unsharpSigma: unsharpSigma,
-                        unsharpAmount: unsharpAmount,
-                        unsharpThreshold: unsharpThreshold,
-                        useGrayColorspace: useGrayColorspace
-                    ) + "\n")
-                    processedCount += 1
-                }
-            }
-        }
-
-        guard !batchCommands.isEmpty, !isCancelled else {
-            // Return if cancelled after command building but before GM execution
+        guard !isCancelled else {
+            // Return if cancelled after process setup but before run
+            processLock.lock()
+            internalProcess = nil
+            processLock.unlock()
+            pipes.input.fileHandleForWriting.closeFile()
             return
         }
 
         do {
-            try batchCommands.write(to: batchFilePath, atomically: true, encoding: .utf8)
-
-            let batchTask = Process()
-            batchTask.executableURL = URL(fileURLWithPath: gmPath)
-            batchTask.arguments = ["batch", "-stop-on-error", "off"]
-
-            let pipes = (input: Pipe(), output: Pipe(), error: Pipe())
-            batchTask.standardInput = pipes.input
-            batchTask.standardOutput = pipes.output
-            batchTask.standardError = pipes.error
-
-            // Store process reference
-            processLock.lock()
-            internalProcess = batchTask
-            processLock.unlock()
-
-            guard !isCancelled else {
-                // Return if cancelled after process setup but before run
-                processLock.lock()
-                internalProcess = nil
-                processLock.unlock()
-                pipes.input.fileHandleForWriting.closeFile()
-                return
-            }
-
             try batchTask.run()
 
             guard !isCancelled else {
@@ -253,9 +148,116 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 return
             }
 
-            // Safe write implementation
-            try safeWrite(data: Data(contentsOf: batchFilePath), to: pipes.input.fileHandleForWriting)
-            pipes.input.fileHandleForWriting.closeFile()
+            // Stream commands directly to the pipe
+            let pipeFileHandle = pipes.input.fileHandleForWriting
+            defer { try? pipeFileHandle.close() }
+
+            for imageFile in batchImages {
+                autoreleasepool {
+                    guard !isCancelled else { return } // Check cancellation before processing each image
+
+                    let filename = imageFile.lastPathComponent
+                    let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
+
+                    // Determine the original subdirectory name for the image
+                    let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
+
+                    // Decide final output directory: avoid duplicate subdir when outputDir already ends with it
+                    let finalOutputDirForImage: URL
+                    if self.outputDir.lastPathComponent == originalSubdirName {
+                        // Already in the correct subdirectory (Isolated case)
+                        finalOutputDirForImage = self.outputDir
+                    } else {
+                        // Append subdirectory for GlobalBatch case
+                        finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
+                    }
+
+                    let outputBasePath = finalOutputDirForImage
+                        .appendingPathComponent(filenameWithoutExt)
+                        .path
+
+                    // Get dimensions from batch
+                    guard let dimensions = batchDimensions[imageFile.path] else {
+                        #if DEBUG
+                        print("BatchProcessOperation: Could not get dimensions for \(filename) from batchDimensions.")
+                        #endif
+                        failedFiles.append(filename)
+                        return
+                    }
+
+                    let (width, height) = dimensions
+
+                    var commandsForImage: [String] = []
+
+                    if width < widthThreshold {
+                        // Single image processing
+                        let command = GraphicsMagickHelper.buildConvertCommand(
+                            inputPath: imageFile.path,
+                            outputPath: "\(outputBasePath).jpg",
+                            cropParams: nil,
+                            resizeHeight: resizeHeight,
+                            quality: quality,
+                            unsharpRadius: unsharpRadius,
+                            unsharpSigma: unsharpSigma,
+                            unsharpAmount: unsharpAmount,
+                            unsharpThreshold: unsharpThreshold,
+                            useGrayColorspace: useGrayColorspace
+                        )
+                        commandsForImage.append(command)
+                    } else {
+                        // Split processing
+                        let cropWidth = (width + 1) / 2
+                        let rightCropWidth = width - cropWidth
+                        // Right half
+                        commandsForImage.append(GraphicsMagickHelper.buildConvertCommand(
+                            inputPath: imageFile.path,
+                            outputPath: "\(outputBasePath)-1.jpg",
+                            cropParams: "\(rightCropWidth)x\(height)+\(cropWidth)+0",
+                            resizeHeight: resizeHeight,
+                            quality: quality,
+                            unsharpRadius: unsharpRadius,
+                            unsharpSigma: unsharpSigma,
+                            unsharpAmount: unsharpAmount,
+                            unsharpThreshold: unsharpThreshold,
+                            useGrayColorspace: useGrayColorspace
+                        ))
+                        // Left half
+                        commandsForImage.append(GraphicsMagickHelper.buildConvertCommand(
+                            inputPath: imageFile.path,
+                            outputPath: "\(outputBasePath)-2.jpg",
+                            cropParams: "\(cropWidth)x\(height)+0+0",
+                            resizeHeight: resizeHeight,
+                            quality: quality,
+                            unsharpRadius: unsharpRadius,
+                            unsharpSigma: unsharpSigma,
+                            unsharpAmount: unsharpAmount,
+                            unsharpThreshold: unsharpThreshold,
+                            useGrayColorspace: useGrayColorspace
+                        ))
+                    }
+
+                    // Write commands for the current image to the pipe
+                    for command in commandsForImage {
+                        if let data = (command + "\n").data(using: .utf8) {
+                            do {
+                                try safeWrite(data: data, to: pipeFileHandle)
+                            } catch {
+                                // Handle error during write, e.g., pipe closed due to cancellation
+                                #if DEBUG
+                                print("BatchProcessOperation: Error writing command to pipe: \(error.localizedDescription)")
+                                #endif
+                                // If an error occurs during writing, it's likely the pipe is broken or the process terminated.
+                                // We should stop trying to write and let the main catch block handle the overall process termination.
+                                return // Exit autoreleasepool and outer loop
+                            }
+                        }
+                    }
+                    processedCount += 1
+                }
+            }
+
+            // Close the write end of the pipe to signal EOF to the child process
+            pipeFileHandle.closeFile()
 
             batchTask.waitUntilExit()
 
@@ -272,9 +274,9 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
             }
         } catch {
             if let posixError = error as? POSIXError, posixError.code == .EPIPE {
-                // Broken pipe is expected during cancellation
+                // Broken pipe is expected during cancellation or if the child process exits early
                 #if DEBUG
-                print("BatchProcessOperation: Broken pipe during write (expected during cancellation)")
+                print("BatchProcessOperation: Broken pipe during write (expected during cancellation or early exit): \(posixError.localizedDescription)")
                 #endif
             } else {
                 #if DEBUG
@@ -302,11 +304,13 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
         while bytesRemaining > 0 {
             guard !isCancelled else {
+                #if DEBUG
+                print("BatchProcessOperation: safeWrite cancelled.")
+                #endif
                 return
             }
 
             let chunkLength = min(chunkSize, bytesRemaining)
-            // Create a new Data instance for the chunk to ensure safe memory access
             let chunk = data.subdata(in: currentOffset ..< (currentOffset + chunkLength))
 
             var bytesWrittenForChunk = 0
@@ -318,10 +322,12 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 do {
                     try chunk.withUnsafeBytes { ptr in
                         guard !isCancelled else {
+                            #if DEBUG
+                            print("BatchProcessOperation: safeWrite inner loop cancelled.")
+                            #endif
                             return
                         }
 
-                        // Use ptr.baseAddress directly as `chunk` is a subdata, and `advanced(by:)` for offset within the chunk.
                         let result = write(fileHandle.fileDescriptor,
                                            ptr.baseAddress!.advanced(by: bytesWrittenForChunk),
                                            chunkLength - bytesWrittenForChunk)
@@ -376,7 +382,7 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
         processLock.lock()
         if let process = internalProcess, process.isRunning {
             process.terminate()
-            // Immediately close pipe's write end
+            // Immediately close pipe's write end to unblock safeWrite and terminate the child process
             (process.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
         }
         internalProcess = nil
@@ -384,7 +390,6 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
     }
 
     deinit {
-        // This defer in main() handles it, but keeping this for robustness if main() exits abnormally.
         #if DEBUG
         print("BatchProcessOperation deinitialized.")
         #endif
