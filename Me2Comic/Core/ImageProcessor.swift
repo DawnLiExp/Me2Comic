@@ -34,7 +34,7 @@ class ImageProcessor: ObservableObject {
 
     /// Concurrent dispatch queue for processing operations
     private let processingDispatchQueue = DispatchQueue(
-        label: "me2.comic.processing",
+        label: "me2.comic.me2comic.processing",
         qos: .userInitiated,
         attributes: .concurrent
     )
@@ -69,6 +69,17 @@ class ImageProcessor: ObservableObject {
     @Published var currentProcessedImages: Int = 0
     /// Processing progress (0.0 - 1.0)
     @Published var processingProgress: Double = 0.0
+
+    /// Thread-safe helper to read isProcessing.
+    private func isProcessingThreadSafe() -> Bool {
+        if Thread.isMainThread {
+            return isProcessing
+        } else {
+            return DispatchQueue.main.sync { [weak self] in
+                return self?.isProcessing ?? false
+            }
+        }
+    }
 
     /// Stops all active processing tasks.
     func stopProcessing() {
@@ -295,7 +306,7 @@ class ImageProcessor: ObservableObject {
         let analyzer = ImageDirectoryAnalyzer(logHandler: { [weak self] message in
             DispatchQueue.main.async { self?.logMessages.append(message) }
         }, isProcessingCheck: { [weak self] in
-            return self?.isProcessing ?? false
+            return self?.isProcessingThreadSafe() ?? false
         })
 
         let allScanResults = analyzer.analyze(inputDir: inputDir, widthThreshold: parameters.widthThreshold)
