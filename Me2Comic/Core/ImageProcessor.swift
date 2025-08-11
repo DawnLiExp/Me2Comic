@@ -497,60 +497,59 @@ class ImageProcessor: ObservableObject {
         processingQueue.addBarrierBlock { [weak self] in
             guard let self = self else { return }
 
-            // Thread-safe state access
-            var processedCount = 0
-            var failedFiles: [String] = []
-            self.resultsQueue.sync {
-                processedCount = self.totalImagesProcessed
-                failedFiles = self.allFailedFiles
-            }
-
+            // Calculate total processing time
             let elapsed = Int(Date().timeIntervalSince(self.processingStartTime ?? Date()))
             let duration = self.formatProcessingTime(elapsed)
 
-            DispatchQueue.main.async {
-                if self.processingQueue.operationCount == 0 && processedCount == 0 {
-                    self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
-                } else {
-                    // Log processing results per directory category.
-                    for scanResult in allScanResults {
-                        let logMessage: String
-                        switch scanResult.category {
-                        case .isolated:
-                            logMessage = String(format: NSLocalizedString("ProcessedSubdir", comment: ""), scanResult.directoryURL.lastPathComponent)
-                        case .globalBatch:
-                            // Global batch results are aggregated and logged upon operation completion.
-                            // Per-directory logging for global batch is omitted here to prevent redundancy.
-                            continue
+            // Asynchronously access results to avoid deadlocks
+            self.resultsQueue.async { [weak self, capturedScanResults = allScanResults] in
+                guard let self = self else { return }
+
+                // Retrieve final processing metrics
+                let processedCount = self.totalImagesProcessed
+                let failedFiles = self.allFailedFiles
+
+                // Update UI on main thread
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+
+                    if processedCount == 0 {
+                        self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
+                    } else {
+                        // Log per-directory processing results
+                        for scanResult in capturedScanResults where scanResult.category == .isolated {
+                            let logMessage = String(format: NSLocalizedString("ProcessedSubdir", comment: ""),
+                                                    scanResult.directoryURL.lastPathComponent)
+                            self.appendLog(logMessage)
                         }
-                        self.appendLog(logMessage)
+
+                        // Log failed files summary
+                        if !failedFiles.isEmpty {
+                            self.appendLog(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
+                            for file in failedFiles.prefix(10) {
+                                self.appendLog("- \(file)")
+                            }
+                            if failedFiles.count > 10 {
+                                self.appendLog(String(format: ". %d more", failedFiles.count - 10))
+                            }
+                        }
+
+                        // Log processing summary
+                        self.appendLog(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
+                        self.appendLog(duration)
+                        self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
+                        self.notificationManager.sendNotification(
+                            title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
+                            subtitle: failedFiles.count > 0 ?
+                                String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""),
+                                       processedCount, failedFiles.count) :
+                                String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount),
+                            body: duration
+                        )
                     }
 
-                    // Error reporting
-                    if !failedFiles.isEmpty {
-                        self.appendLog(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
-                        for file in failedFiles.prefix(10) {
-                            self.appendLog("- \(file)")
-                        }
-                        if failedFiles.count > 10 {
-                            self.appendLog(String(format: ". %d more", failedFiles.count - 10))
-                        }
-                    }
-
-                    // Log processing summary
-                    self.appendLog(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), processedCount))
-                    self.appendLog(duration)
-                    self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
-                    self.notificationManager.sendNotification(
-                        title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
-                        subtitle: failedFiles.count > 0 ?
-                            String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""), processedCount, failedFiles.count) :
-                            String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount),
-                        body: duration
-                    )
+                    self.isProcessing = false
                 }
-
-                self.isProcessing = false
             }
         }
     }
