@@ -358,17 +358,27 @@ class ImageProcessor: ObservableObject {
         }
 
         // Step 1: Collect all unique output directories and pre-create them
-        var uniqueOutputDirs = Set<URL>()
+        var uniqueOutputPaths = Set<String>()
         for scanResult in allScanResults {
             let subName = scanResult.directoryURL.lastPathComponent
-            uniqueOutputDirs.insert(outputDir.appendingPathComponent(subName))
+            let dirURL = outputDir
+                .appendingPathComponent(subName)
+                .resolvingSymlinksInPath()
+                .standardizedFileURL
+            uniqueOutputPaths.insert(dirURL.path)
         }
 
         // Include main output directory for empty cases requiring creation
-        uniqueOutputDirs.insert(outputDir)
+        uniqueOutputPaths.insert(
+            outputDir
+                .resolvingSymlinksInPath()
+                .standardizedFileURL
+                .path
+        )
 
-        for dir in uniqueOutputDirs {
-            guard createDirectoryAndLogErrors(directoryURL: dir, fileManager: fileManager) else {
+        for path in uniqueOutputPaths {
+            let dirURL = URL(fileURLWithPath: path)
+            guard createDirectoryAndLogErrors(directoryURL: dirURL, fileManager: fileManager) else {
                 return
             }
         }
