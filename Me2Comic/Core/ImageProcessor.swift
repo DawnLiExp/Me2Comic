@@ -62,6 +62,18 @@ class ImageProcessor: ObservableObject {
         }
     }
 
+    /// Serial queue for log operations; `.utility` QoS prevents blocking higher-priority work.
+    private let logQueue = DispatchQueue(label: "me2.comic.me2comic.log", qos: .utility)
+
+    private func appendLog(_ message: String) {
+        logQueue.async { [weak self] in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.logMessages.append(message)
+            }
+        }
+    }
+
     // Progress tracking
     /// Total number of images to process
     @Published var totalImagesToProcess: Int = 0
@@ -87,8 +99,8 @@ class ImageProcessor: ObservableObject {
             print("ImageProcessor: stopProcessing called. Cancelling all operations.")
         #endif
         processingQueue.cancelAllOperations()
+        appendLog(NSLocalizedString("ProcessingStopped", comment: ""))
         DispatchQueue.main.async {
-            self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
             self.isProcessing = false
             // Reset progress
             self.currentProcessedImages = 0
@@ -206,9 +218,9 @@ class ImageProcessor: ObservableObject {
             try fileManager.createDirectory(at: canonicalDir, withIntermediateDirectories: true)
             return true
         } catch {
+            appendLog(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""),
+                             error.localizedDescription))
             DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""),
-                                                error.localizedDescription))
                 self?.isProcessing = false
             }
             return false
@@ -268,29 +280,27 @@ class ImageProcessor: ObservableObject {
                                     _ radius: Float, _ sigma: Float, _ amount: Float, _ unsharpThreshold: Float,
                                     _ useGrayColorspace: Bool)
     {
-        DispatchQueue.main.async { [weak self] in
-            if amount > 0 {
-                self?.logMessages.append(String(format: NSLocalizedString("StartProcessingWithUnsharp", comment: ""),
-                                                threshold, resize, qual, threadCount, radius, sigma, amount, unsharpThreshold,
-                                                NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
-            } else {
-                self?.logMessages.append(String(format: NSLocalizedString("StartProcessingNoUnsharp", comment: ""),
-                                                threshold, resize, qual, threadCount,
-                                                NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
-            }
+        if amount > 0 {
+            appendLog(String(format: NSLocalizedString("StartProcessingWithUnsharp", comment: ""),
+                             threshold, resize, qual, threadCount, radius, sigma, amount, unsharpThreshold,
+                             NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
+        } else {
+            appendLog(String(format: NSLocalizedString("StartProcessingNoUnsharp", comment: ""),
+                             threshold, resize, qual, threadCount,
+                             NSLocalizedString(useGrayColorspace ? "GrayEnabled" : "GrayDisabled", comment: "")))
         }
     }
 
     /// Verifies GraphicsMagick installation
     private func verifyGraphicsMagick() -> Bool {
         guard let path = GraphicsMagickHelper.detectGMPathSafely(logHandler: { [weak self] message in
-            DispatchQueue.main.async { self?.logMessages.append(message) }
+            self?.appendLog(message)
         }) else {
             return false
         }
         gmPath = path
         return GraphicsMagickHelper.verifyGraphicsMagick(gmPath: gmPath, logHandler: { [weak self] message in
-            DispatchQueue.main.async { self?.logMessages.append(message) }
+            self?.appendLog(message)
         })
     }
 
@@ -304,7 +314,7 @@ class ImageProcessor: ObservableObject {
 
         // Initialize ImageDirectoryAnalyzer
         let analyzer = ImageDirectoryAnalyzer(logHandler: { [weak self] message in
-            DispatchQueue.main.async { self?.logMessages.append(message) }
+            self?.appendLog(message)
         }, isProcessingCheck: { [weak self] in
             return self?.isProcessingThreadSafe() ?? false
         })
@@ -322,8 +332,8 @@ class ImageProcessor: ObservableObject {
         let totalImages = allScanResults.flatMap { $0.imageFiles }.count
         DispatchQueue.main.async { [weak self] in
             self?.totalImagesToProcess = totalImages
-            self?.logMessages.append(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), totalImages))
         }
+        appendLog(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), totalImages))
 
         var globalBatchImages: [URL] = []
         for scanResult in allScanResults {
@@ -337,18 +347,14 @@ class ImageProcessor: ObservableObject {
         var effectiveBatchSize = parameters.batchSize
 
         if parameters.threadCount == 0 { // Auto mode
-            DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(NSLocalizedString("AutoModeEnabled", comment: ""))
-            }
+            appendLog(NSLocalizedString("AutoModeEnabled", comment: ""))
             let totalImages = allScanResults.flatMap { $0.imageFiles }.count
 
             let autoParams = calculateAutoParameters(totalImageCount: totalImages)
             effectiveThreadCount = autoParams.threadCount
             effectiveBatchSize = autoParams.batchSize
 
-            DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, autoParams.batchSize))
-            }
+            appendLog(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, autoParams.batchSize))
         }
 
         // Step 1: Collect all unique output directories and pre-create them
@@ -380,9 +386,7 @@ class ImageProcessor: ObservableObject {
             let subName = scanResult.directoryURL.lastPathComponent
             let outputSubdir = outputDir.appendingPathComponent(subName)
 
-            DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(String(format: NSLocalizedString("StartProcessingSubdir", comment: ""), subName))
-            }
+            self.appendLog(String(format: NSLocalizedString("StartProcessingSubdir", comment: ""), subName))
 
             let batchSize: Int
             if parameters.threadCount == 0 { // Auto mode for isolated directories
@@ -506,7 +510,7 @@ class ImageProcessor: ObservableObject {
 
             DispatchQueue.main.async {
                 if self.processingQueue.operationCount == 0 && processedCount == 0 {
-                    self.logMessages.append(NSLocalizedString("ProcessingStopped", comment: ""))
+                    self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
                 } else {
                     // Log processing results per directory category.
                     for scanResult in allScanResults {
@@ -519,24 +523,24 @@ class ImageProcessor: ObservableObject {
                             // Per-directory logging for global batch is omitted here to prevent redundancy.
                             continue
                         }
-                        self.logMessages.append(logMessage)
+                        self.appendLog(logMessage)
                     }
 
                     // Error reporting
                     if !failedFiles.isEmpty {
-                        self.logMessages.append(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
+                        self.appendLog(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
                         for file in failedFiles.prefix(10) {
-                            self.logMessages.append("- \(file)")
+                            self.appendLog("- \(file)")
                         }
                         if failedFiles.count > 10 {
-                            self.logMessages.append(String(format: ". %d more", failedFiles.count - 10))
+                            self.appendLog(String(format: ". %d more", failedFiles.count - 10))
                         }
                     }
 
                     // Log processing summary
-                    self.logMessages.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
-                    self.logMessages.append(duration)
-                    self.logMessages.append(NSLocalizedString("ProcessingComplete", comment: ""))
+                    self.appendLog(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), processedCount))
+                    self.appendLog(duration)
+                    self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
                     self.notificationManager.sendNotification(
                         title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
                         subtitle: failedFiles.count > 0 ?
