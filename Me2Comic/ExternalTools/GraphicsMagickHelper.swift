@@ -95,12 +95,14 @@ class GraphicsMagickHelper {
     }
 
     /// Escapes a given file path for safe use within shell commands.
+    /// This implementation uses single quotes for robust shell escaping.
     /// - Parameter path: The file path to escape.
-    /// - Returns: The escaped file path, enclosed in double quotes.
+    /// - Returns: The escaped file path, enclosed in single quotes.
     static func escapePathForShell(_ path: String) -> String {
-        var escapedPath = path.replacingOccurrences(of: "\\", with: "\\\\")
-        escapedPath = escapedPath.replacingOccurrences(of: "\"", with: "\\\"")
-        return "\"\(escapedPath)\""
+        // Use single-quote wrapping and escape single quotes inside the path safely:
+        // 'a'b'c' -> 'a'\''b'\''c'
+        let escaped = path.replacingOccurrences(of: "'", with: "'\\''")
+        return "'\(escaped)'"
     }
 
     /// Constructs a GraphicsMagick `convert` command string based on the provided parameters.
