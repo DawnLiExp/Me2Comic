@@ -348,7 +348,6 @@ class ImageProcessor: ObservableObject {
 
         if parameters.threadCount == 0 { // Auto mode
             appendLog(NSLocalizedString("AutoModeEnabled", comment: ""))
-            let totalImages = allScanResults.flatMap { $0.imageFiles }.count
 
             let autoParams = calculateAutoParameters(totalImageCount: totalImages)
             effectiveThreadCount = autoParams.threadCount
