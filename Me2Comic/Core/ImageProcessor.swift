@@ -356,7 +356,7 @@ class ImageProcessor: ObservableObject {
             appendLog(String(format: NSLocalizedString("AutoAllocatedParameters", comment: ""), effectiveThreadCount, autoParams.batchSize))
         }
 
-        // Step 1: Collect all unique output directories and pre-create them
+        // Step 1: Collect all unique output directories and pre-create them (excluding the main outputDir which is already created)
         var uniqueOutputPaths = Set<String>()
         for scanResult in allScanResults {
             let subName = scanResult.directoryURL.lastPathComponent
@@ -366,14 +366,6 @@ class ImageProcessor: ObservableObject {
                 .standardizedFileURL
             uniqueOutputPaths.insert(dirURL.path)
         }
-
-        // Include main output directory for empty cases requiring creation
-        uniqueOutputPaths.insert(
-            outputDir
-                .resolvingSymlinksInPath()
-                .standardizedFileURL
-                .path
-        )
 
         for path in uniqueOutputPaths {
             let dirURL = URL(fileURLWithPath: path)
