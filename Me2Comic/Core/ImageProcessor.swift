@@ -24,6 +24,25 @@ struct ProcessingParameters {
     let useGrayColorspace: Bool /// Grayscale conversion flag
 }
 
+/// Actor responsible for ordered log delivery and main-thread update.
+actor LogActor {
+    /// Weak reference to owner for MainActor updates.
+    private weak var owner: ImageProcessor?
+
+    init(owner: ImageProcessor) {
+        self.owner = owner
+    }
+
+    /// Appends a log message, updating UI on MainActor.
+    func append(_ message: String) async {
+        /// Updates @Published logMessages on the MainActor.
+        await MainActor.run { [weak owner] in
+            guard let owner = owner else { return }
+            owner.logMessages.append(message)
+        }
+    }
+}
+
 /// Manages the image processing workflow, including parameter validation, file scanning, and batch processing.
 class ImageProcessor: ObservableObject {
     private let notificationManager = NotificationManager()
@@ -52,6 +71,11 @@ class ImageProcessor: ObservableObject {
     // UI state
     /// Indicates if processing is currently active
     @Published var isProcessing: Bool = false
+
+    /// Backing storage for `isProcessing` to enable thread-safe reads.
+    private var isProcessingBacking: Bool = false
+    private let isProcessingLock = NSLock()
+
     /// Log messages for display in the UI
     @Published var logMessages: [String] = [] {
         didSet {
@@ -62,17 +86,8 @@ class ImageProcessor: ObservableObject {
         }
     }
 
-    /// Serial queue for log operations; `.utility` QoS prevents blocking higher-priority work.
-    private let logQueue = DispatchQueue(label: "me2.comic.me2comic.log", qos: .utility)
-
-    func appendLog(_ message: String) {
-        logQueue.async { [weak self] in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                self.logMessages.append(message)
-            }
-        }
-    }
+    /// Actor for ordered logging
+    private lazy var logActor = LogActor(owner: self)
 
     // Progress tracking
     /// Total number of images to process
@@ -82,14 +97,34 @@ class ImageProcessor: ObservableObject {
     /// Processing progress (0.0 - 1.0)
     @Published var processingProgress: Double = 0.0
 
-    /// Thread-safe helper to read isProcessing.
+    // MARK: - Logging & UI state helpers
+
+    /// Append a log message while preserving call order and thread-safety.
+    func appendLog(_ message: String) {
+        /// Non-blocking request to the actor; actor ensures order and MainActor update.
+        Task { await self.logActor.append(message) }
+    }
+
+    /// Thread-safe read of `isProcessing` via backing storage and lock.
     private func isProcessingThreadSafe() -> Bool {
         if Thread.isMainThread {
             return isProcessing
         } else {
-            return DispatchQueue.main.sync { [weak self] in
-                return self?.isProcessing ?? false
-            }
+            isProcessingLock.lock()
+            let value = isProcessingBacking
+            isProcessingLock.unlock()
+            return value
+        }
+    }
+
+    /// Thread-safe setter for `isProcessing`, updating @Published property on MainActor.
+    private func setIsProcessing(_ value: Bool) {
+        isProcessingLock.lock()
+        isProcessingBacking = value
+        isProcessingLock.unlock()
+
+        DispatchQueue.main.async { [weak self] in
+            self?.isProcessing = value
         }
     }
 
@@ -100,9 +135,9 @@ class ImageProcessor: ObservableObject {
         #endif
         processingQueue.cancelAllOperations()
         appendLog(NSLocalizedString("ProcessingStopped", comment: ""))
+        setIsProcessing(false)
+        // Reset progress
         DispatchQueue.main.async { [weak self] in
-            self?.isProcessing = false
-            // Reset progress
             self?.currentProcessedImages = 0
             self?.processingProgress = 0.0
         }
@@ -220,9 +255,8 @@ class ImageProcessor: ObservableObject {
         } catch {
             appendLog(String(format: NSLocalizedString("CannotCreateOutputDir", comment: ""),
                              error.localizedDescription))
-            DispatchQueue.main.async { [weak self] in
-                self?.isProcessing = false
-            }
+            // Ensure isProcessing cleared in a thread-safe manner
+            setIsProcessing(false)
             return false
         }
     }
@@ -233,17 +267,14 @@ class ImageProcessor: ObservableObject {
     ///   - outputDir: The output directory for processed images.
     ///   - parameters: The processing parameters.
     func processImages(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
-        DispatchQueue.main.async { [weak self] in
-            self?.isProcessing = true
-        }
+        // Mark processing started (thread-safe)
+        setIsProcessing(true)
         resetProcessingState()
         logStartParameters(parameters.widthThreshold, parameters.resizeHeight, parameters.quality, parameters.threadCount, parameters.unsharpRadius, parameters.unsharpSigma, parameters.unsharpAmount, parameters.unsharpThreshold, parameters.useGrayColorspace)
 
         /// Verify GraphicsMagick installation
         guard verifyGraphicsMagick() else {
-            DispatchQueue.main.async { [weak self] in
-                self?.isProcessing = false
-            }
+            setIsProcessing(false)
             return
         }
 
@@ -322,9 +353,7 @@ class ImageProcessor: ObservableObject {
         let allScanResults = analyzer.analyze(inputDir: inputDir, widthThreshold: parameters.widthThreshold)
 
         guard !allScanResults.isEmpty else {
-            DispatchQueue.main.async { [weak self] in
-                self?.isProcessing = false
-            }
+            setIsProcessing(false)
             return
         }
 
@@ -427,9 +456,8 @@ class ImageProcessor: ObservableObject {
 
         // Step 4: Process Global Batch category images
         if !globalBatchImages.isEmpty {
-            DispatchQueue.main.async { [weak self] in
-                self?.logMessages.append(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
-            }
+            // Uses centralized logging to maintain message ordering
+            appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
 
             let idealNumBatchesForGlobal = Int(ceil(Double(globalBatchImages.count) / Double(effectiveBatchSize))) // Use effectiveBatchSize as a base ideal batch size
             let adjustedNumBatchesForGlobal = roundUpToNearestMultiple(value: idealNumBatchesForGlobal, multiple: effectiveThreadCount)
@@ -468,13 +496,10 @@ class ImageProcessor: ObservableObject {
                     globalBatchLock.unlock()
 
                     if isLast {
-                        DispatchQueue.main.async {
-                            let formatted = String(
-                                format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
-                                globalProcessedCount
-                            )
-                            self.logMessages.append(formatted)
-                        }
+                        self.appendLog(String(
+                            format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
+                            globalProcessedCount
+                        ))
                     }
                 }
 
@@ -549,7 +574,7 @@ class ImageProcessor: ObservableObject {
                         )
                     }
 
-                    self.isProcessing = false
+                    self.setIsProcessing(false)
                 }
             }
         }
