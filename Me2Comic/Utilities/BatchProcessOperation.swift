@@ -161,14 +161,24 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                 try? pipeFileHandle.close()
             }
 
+            // Thread-safe tracking for generated output paths to prevent collisions.
             var generatedPaths = Set<String>()
             let pathLock = NSLock()
+
+            // Light-weight pre-scan for duplicate base names (within this batch).
+            var baseNameCounts: [String: Int] = [:]
+            for url in batchImages {
+                let base = url.deletingPathExtension().lastPathComponent.lowercased()
+                baseNameCounts[base, default: 0] += 1
+            }
+            let duplicateBaseNames = Set(baseNameCounts.compactMap { $0.value > 1 ? $0.key : nil })
 
             for imageFile in batchImages {
                 autoreleasepool {
                     if shouldStop || isCancelled { return }
                     let filename = imageFile.lastPathComponent
                     let filenameWithoutExt = imageFile.deletingPathExtension().lastPathComponent
+                    let srcExt = imageFile.pathExtension.lowercased() // Original extension in lowercase
                     let originalSubdirName = imageFile.deletingLastPathComponent().lastPathComponent
 
                     let finalOutputDirForImage: URL
@@ -178,7 +188,11 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                         finalOutputDirForImage = self.outputDir.appendingPathComponent(originalSubdirName)
                     }
 
-                    let outputBasePath = finalOutputDirForImage.appendingPathComponent(filenameWithoutExt).path
+                    // Appends source extension to base name to avoid filename collisions
+                    // E.g., cut01.jpg -> cut01_jpg; cut01.png -> cut01_png
+                    let useSafeBase = duplicateBaseNames.contains(filenameWithoutExt.lowercased())
+                    let baseNameForOutput = useSafeBase ? "\(filenameWithoutExt)_\(srcExt)" : filenameWithoutExt
+                    let outputBasePath = finalOutputDirForImage.appendingPathComponent(baseNameForOutput).path
 
                     guard let dimensions = batchDimensions[imageFile.path] else {
                         #if DEBUG
@@ -313,30 +327,48 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
     // MARK: - Path Collision Resolution
 
-    /// Generates a unique output path by appending a suffix if a collision is detected.
+    /// Generates a unique output path by appending a numeric suffix if a collision is detected.
+    /// - Parameters:
+    ///   - basePath: path without extension or trailing part (e.g. /out/dir/cut01_jpg)
+    ///   - suffix: desired suffix including leading dash if any and extension (e.g. ".jpg" or "-1.jpg")
+    ///   - generatedPaths: set tracking already-reserved paths within this operation (case-insensitive)
+    ///   - lock: NSLock protecting access to generatedPaths
     private func resolveOutputPath(basePath: String, suffix: String, generatedPaths: inout Set<String>, lock: NSLock) -> String {
         lock.lock()
         defer { lock.unlock() }
 
-        var finalPath = basePath + suffix
-        var attempt = 0
-        let maxAttempts = 26 // a-z
+        // initial candidate
+        var candidate = basePath + suffix
+        // lowercased key for case-insensitive comparison
+        var candidateKey = candidate.lowercased()
 
-        while generatedPaths.contains(finalPath.lowercased()) {
+        // If candidate conflicts with already-reserved path or file already exists on disk,
+        // iterate numeric suffixes until a free name is found.
+        var attempt = 0
+        let maxAttempts = 9999
+
+        while generatedPaths.contains(candidateKey) {
             attempt += 1
-            if attempt > maxAttempts {
-                // Fallback to a timestamp if letter suffixes are exhausted
+            if attempt <= maxAttempts {
+                // produce deterministic numeric candidate: basePath + "-" + attempt + suffix
+                // example:
+                //  basePath = /out/cut01_jpg, suffix = "-1.jpg"
+                //  attempt=1 -> /out/cut01_jpg-1-1.jpg
+                // This keeps the original "-1"/"-2" semantic (if any) and appends a numeric discriminator.
+                candidate = "\(basePath)-\(attempt)\(suffix)"
+                candidateKey = candidate.lowercased()
+            } else {
+                // fallback to timestamp to avoid infinite loop
                 let timestamp = Int(Date().timeIntervalSince1970 * 1000)
-                finalPath = "\(basePath)-\(timestamp)\(suffix)"
+                candidate = "\(basePath)-\(timestamp)\(suffix)"
+                candidateKey = candidate.lowercased()
                 break
             }
-            // Append -a, -b, ...
-            let letter = String(UnicodeScalar(UInt8(ascii: "a") + UInt8(attempt - 1)))
-            finalPath = "\(basePath)-\(letter)\(suffix)"
         }
 
-        generatedPaths.insert(finalPath.lowercased())
-        return finalPath
+        // reserve this candidate
+        generatedPaths.insert(candidateKey)
+        return candidate
     }
 
     // MARK: - Safe Write Implementation
