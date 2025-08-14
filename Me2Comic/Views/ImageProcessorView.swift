@@ -39,18 +39,18 @@ struct ImageProcessorView: View {
     @State private var unsharpAmount: String = "0.7"
     @State private var unsharpThreshold: String = "0.02"
     @State private var batchSize: String = "40"
-
+    
     @ObservedObject private var processor = ImageProcessor()
     @State private var showProgressAfterCompletion: Bool = false
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             LeftPanelView() // Left panel of the UI.
-
+            
             GradientDividerView() // Visual divider between panels.
-
+            
             VStack(spacing: 20) {
                 Spacer().frame(height: 5)
-
+                
                 // Input Directory Selection Button.
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Input Directory", comment: ""),
@@ -61,11 +61,11 @@ struct ImageProcessorView: View {
                     showOpenButton: false,
                     onDropAction: { url in
                         self.inputDirectory = url
-                        self.processor.logMessages.append(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
+                        self.processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
                     }
                 )
                 .padding(.top, -11)
-
+                
                 // Output Directory Selection Button.
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Output Directory", comment: ""),
@@ -78,17 +78,17 @@ struct ImageProcessorView: View {
                             NSWorkspace.shared.open(url)
                         }
                     },
-
+                    
                     showOpenButton: true,
                     onDropAction: { url in
                         self.outputDirectory = url
-                        self.processor.logMessages.append(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
+                        self.processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
                         // Save the newly selected output directory
                         UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
                     }
                 )
                 .padding(.bottom, 10)
-
+                
                 // Panel for image processing parameters.
                 HStack(alignment: .top, spacing: 18) {
                     SettingsPanelView(
@@ -104,7 +104,7 @@ struct ImageProcessorView: View {
                         useGrayColorspace: $useGrayColorspace,
                         isProcessing: processor.isProcessing
                     )
-
+                    
                     // Description for the processing parameters.
                     ParameterDescriptionView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -113,7 +113,7 @@ struct ImageProcessorView: View {
                 .padding(.horizontal, 4)
                 .fixedSize(horizontal: false, vertical: true)
                 .background(.panelBackground)
-
+                
                 // Action button to start or stop processing.
                 ActionButtonView(isProcessing: processor.isProcessing) {
                     if processor.isProcessing {
@@ -123,9 +123,9 @@ struct ImageProcessorView: View {
                     }
                 }
                 .disabled(!processor.isProcessing && (inputDirectory == nil || outputDirectory == nil))
-
+                
                 // Progress display when processing
-
+                
                 if (processor.isProcessing || showProgressAfterCompletion) && processor.totalImagesToProcess > 0 {
                     ProgressDisplayView(processor: processor)
                         .padding(.horizontal, 4)
@@ -163,21 +163,21 @@ struct ImageProcessorView: View {
             center.requestAuthorization(options: [.alert, .sound]) { granted, error in
                 if let error = error {
                     DispatchQueue.main.async {
-                        processor.logMessages.append(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
+                        self.processor.appendLog(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
                     }
                 } else if !granted {
                     DispatchQueue.main.async {
-                        processor.logMessages.append(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
+                        self.processor.appendLog(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
                     }
                 }
             }
-
+            
             // Load last used output directory
             if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
                 outputDirectory = URL(fileURLWithPath: savedPath)
-                processor.logMessages.append(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
+                processor.appendLog(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
             }
-
+            
             // Load saved parameters
             widthThreshold = UserDefaults.standard.string(forKey: widthThresholdKey) ?? widthThreshold
             resizeHeight = UserDefaults.standard.string(forKey: resizeHeightKey) ?? resizeHeight
@@ -191,42 +191,42 @@ struct ImageProcessorView: View {
             useGrayColorspace = UserDefaults.standard.bool(forKey: useGrayColorspaceKey)
         }
     }
-
+    
     /// Presents an `NSOpenPanel` to allow the user to select an input directory.
     private func selectInputDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-
+        
         if panel.runModal() == .OK, let url = panel.url {
             inputDirectory = url
-            processor.logMessages.append(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
+            processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
         }
     }
-
+    
     /// Presents an `NSOpenPanel` to allow the user to select an output directory.
     private func selectOutputDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-
+        
         if panel.runModal() == .OK, let url = panel.url {
             outputDirectory = url
-            processor.logMessages.append(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
+            processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
             // Save the newly selected output directory
             UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
         }
     }
-
+    
     /// Initiates the image processing operation using the selected directories and parameters.
     private func processImages() {
         guard let inputDir = inputDirectory, let outputDir = outputDirectory else {
-            processor.logMessages.append(NSLocalizedString("NoInputOrOutputDir", comment: ""))
+            processor.appendLog(NSLocalizedString("NoInputOrOutputDir", comment: ""))
             return
         }
-
+        
         // Save current parameters before processing
         UserDefaults.standard.set(widthThreshold, forKey: widthThresholdKey)
         UserDefaults.standard.set(resizeHeight, forKey: resizeHeightKey)
@@ -238,7 +238,7 @@ struct ImageProcessorView: View {
         UserDefaults.standard.set(unsharpThreshold, forKey: unsharpThresholdKey)
         UserDefaults.standard.set(batchSize, forKey: batchSizeKey)
         UserDefaults.standard.set(useGrayColorspace, forKey: useGrayColorspaceKey)
-
+        
         do {
             let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
                 inputDirectory: inputDir,
@@ -256,43 +256,43 @@ struct ImageProcessorView: View {
             )
             processor.processImages(inputDir: inputDir, outputDir: outputDir, parameters: parameters)
         } catch {
-            processor.logMessages.append(error.localizedDescription)
+            processor.appendLog(error.localizedDescription)
         }
     }
-}
-
-/// `LogTextView` is an `NSViewRepresentable` wrapper for `NSTextView`,
-/// used to display log messages from the `ImageProcessor`.
-struct LogTextView: NSViewRepresentable {
-    @ObservedObject var processor: ImageProcessor
-
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        let textView = scrollView.documentView as! NSTextView
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.backgroundColor = .clear
-        textView.textColor = NSColor(.textSecondary)
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        textView.textContainerInset = NSSize(width: 0, height: 0)
-        scrollView.borderType = .noBorder
-        textView.string = processor.logMessages.joined(separator: "\n")
-        textView.scrollToEndOfDocument(nil)
-        return scrollView
-    }
-
-    func updateNSView(_ nsView: NSScrollView, context: Context) {
-        guard let textView = nsView.documentView as? NSTextView else { return }
-        let newText = processor.logMessages.joined(separator: "\n")
-        if textView.string != newText {
-            textView.string = newText
+    
+    /// `LogTextView` is an `NSViewRepresentable` wrapper for `NSTextView`,
+    /// used to display log messages from the `ImageProcessor`.
+    struct LogTextView: NSViewRepresentable {
+        @ObservedObject var processor: ImageProcessor
+        
+        func makeNSView(context: Context) -> NSScrollView {
+            let scrollView = NSTextView.scrollableTextView()
+            let textView = scrollView.documentView as! NSTextView
+            textView.isEditable = false
+            textView.isSelectable = true
+            textView.backgroundColor = .clear
+            textView.textColor = NSColor(.textSecondary)
+            textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+            textView.textContainerInset = NSSize(width: 0, height: 0)
+            scrollView.borderType = .noBorder
+            textView.string = processor.logMessages.joined(separator: "\n")
             textView.scrollToEndOfDocument(nil)
+            return scrollView
+        }
+        
+        func updateNSView(_ nsView: NSScrollView, context: Context) {
+            guard let textView = nsView.documentView as? NSTextView else { return }
+            let newText = processor.logMessages.joined(separator: "\n")
+            if textView.string != newText {
+                textView.string = newText
+                textView.scrollToEndOfDocument(nil)
+            }
         }
     }
-}
-
-struct ImageProcessorView_Previews: PreviewProvider {
-    static var previews: some View {
-        ImageProcessorView()
+    
+    struct ImageProcessorView_Previews: PreviewProvider {
+        static var previews: some View {
+            ImageProcessorView()
+        }
     }
 }

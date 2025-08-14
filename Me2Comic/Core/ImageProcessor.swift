@@ -65,7 +65,7 @@ class ImageProcessor: ObservableObject {
     /// Serial queue for log operations; `.utility` QoS prevents blocking higher-priority work.
     private let logQueue = DispatchQueue(label: "me2.comic.me2comic.log", qos: .utility)
 
-    private func appendLog(_ message: String) {
+    func appendLog(_ message: String) {
         logQueue.async { [weak self] in
             DispatchQueue.main.async {
                 guard let self = self else { return }
@@ -100,11 +100,11 @@ class ImageProcessor: ObservableObject {
         #endif
         processingQueue.cancelAllOperations()
         appendLog(NSLocalizedString("ProcessingStopped", comment: ""))
-        DispatchQueue.main.async {
-            self.isProcessing = false
+        DispatchQueue.main.async { [weak self] in
+            self?.isProcessing = false
             // Reset progress
-            self.currentProcessedImages = 0
-            self.processingProgress = 0.0
+            self?.currentProcessedImages = 0
+            self?.processingProgress = 0.0
         }
     }
 
