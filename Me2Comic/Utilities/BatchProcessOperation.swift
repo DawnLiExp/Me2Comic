@@ -373,14 +373,21 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
 
     // MARK: - Safe Write Implementation
 
-    /// Writes data to file handle in chunks with cancellation checks
+    /// Writes data to file handle in chunks with cancellation checks and robust POSIX error handling.
     private func safeWrite(data: Data, to fileHandle: FileHandle) throws {
         let fd = fileHandle.fileDescriptor
         var bytesRemaining = data.count
         var offset = 0
-        // Write once using withUnsafeBytes and manage EINTR/EPIPE explicitly
+
+        // reasonable chunk size to avoid huge single write (16KB)
+        let chunkSize = 16 * 1024
+
         try data.withUnsafeBytes { rawBuffer in
-            guard let base = rawBuffer.baseAddress else { return }
+            guard let baseAddress = rawBuffer.baseAddress else { return }
+
+            // bind to UInt8 for pointer arithmetic compatible with write()
+            let bytePtr = baseAddress.assumingMemoryBound(to: UInt8.self)
+
             while bytesRemaining > 0 {
                 guard !isCancelled else {
                     #if DEBUG
@@ -389,28 +396,40 @@ class BatchProcessOperation: Operation, @unchecked Sendable {
                     return
                 }
 
-                let ptr = base.advanced(by: offset)
-                var attemptsForThisChunk = 0
-                // Attempt to write the remaining bytes; handle partial writes
-                while bytesRemaining > 0 {
-                    let writeLen = bytesRemaining
-                    let written = write(fd, ptr, writeLen)
+                let thisChunk = min(bytesRemaining, chunkSize)
+                var attemptsForChunk = 0
+
+                // pointer to current offset
+                let currentPtr = bytePtr.advanced(by: offset)
+                while true {
+                    // Attempt write
+                    let written = write(fd, currentPtr, thisChunk)
                     if written > 0 {
+                        // progress made
                         offset += written
                         bytesRemaining -= written
-                        // move pointer forward
-                        continue
+                        break
                     } else if written == 0 {
-                        // unusual: no progress; treat as temporary and retry a few times
-                        attemptsForThisChunk += 1
-                        if attemptsForThisChunk > 5 {
+                        // no progress, try a few times
+                        attemptsForChunk += 1
+                        if attemptsForChunk > 5 {
                             throw NSError(domain: "BatchProcessOperationErrorDomain", code: 2, userInfo: [NSLocalizedDescriptionKey: "No progress writing to pipe."])
                         }
+                        // slight pause to avoid busy loop
+                        Thread.sleep(forTimeInterval: 0.01)
                         continue
                     } else {
                         let currentErrno = errno
                         if currentErrno == EINTR {
-                            // interrupted by signal; retry
+                            // interrupted, retry immediately
+                            continue
+                        } else if currentErrno == EAGAIN || currentErrno == EWOULDBLOCK {
+                            // would block - retry briefly
+                            attemptsForChunk += 1
+                            if attemptsForChunk > 50 {
+                                throw NSError(domain: NSPOSIXErrorDomain, code: Int(currentErrno), userInfo: [NSLocalizedDescriptionKey: "Write would block repeatedly."])
+                            }
+                            Thread.sleep(forTimeInterval: 0.01)
                             continue
                         } else if currentErrno == EPIPE {
                             // Broken pipe — child closed; propagate as POSIXError(EPIPE)
