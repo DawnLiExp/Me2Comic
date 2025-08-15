@@ -33,12 +33,15 @@ actor LogActor {
         self.owner = owner
     }
 
-    /// Appends a log message, updating UI on MainActor.
+    /// Appends a log message, updating UI on MainActor and trimming old entries.
     func append(_ message: String) async {
-        /// Updates @Published logMessages on the MainActor.
         await MainActor.run { [weak owner] in
             guard let owner = owner else { return }
             owner.logMessages.append(message)
+            // Keep last 100 log messages — do trimming here on MainActor to avoid didSet concurrency.
+            if owner.logMessages.count > 100 {
+                owner.logMessages.removeFirst(owner.logMessages.count - 100)
+            }
         }
     }
 }
@@ -77,14 +80,8 @@ class ImageProcessor: ObservableObject {
     private let isProcessingLock = NSLock()
 
     /// Log messages for display in the UI
-    @Published var logMessages: [String] = [] {
-        didSet {
-            // Keep last 100 log messages
-            if logMessages.count > 100 {
-                logMessages.removeFirst(logMessages.count - 100)
-            }
-        }
-    }
+    /// Log messages for display in the UI
+    @Published var logMessages: [String] = []
 
     /// Actor for ordered logging
     private lazy var logActor = LogActor(owner: self)
