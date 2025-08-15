@@ -463,7 +463,6 @@ class ImageProcessor: ObservableObject {
             var completedGlobalBatches = 0
             let totalGlobalBatches = globalBatches.count
             var globalProcessedCount = 0
-            var globalFailedFiles: [String] = []
             let globalBatchLock = NSLock()
 
             for batch in globalBatches {
@@ -483,20 +482,29 @@ class ImageProcessor: ObservableObject {
 
                 op.onCompleted = { [weak self] count, fails in
                     guard let self = self else { return }
+
+                    // Perform common completion handling (metrics, callbacks)
                     self.handleBatchCompletion(processedCount: count, failedFiles: fails)
 
+                    // Update shared counters and failed-files list under lock
                     globalBatchLock.lock()
                     globalProcessedCount += count
-                    globalFailedFiles.append(contentsOf: fails)
                     completedGlobalBatches += 1
                     let isLast = (completedGlobalBatches == totalGlobalBatches)
                     globalBatchLock.unlock()
 
+                    // Log final batch summary only if processing is still active
                     if isLast {
-                        self.appendLog(String(
-                            format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
-                            globalProcessedCount
-                        ))
+                        if self.isProcessingThreadSafe() {
+                            self.appendLog(String(
+                                format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
+                                globalProcessedCount
+                            ))
+                        } else {
+                            #if DEBUG
+                                print("ImageProcessor: global batches finished but processing was stopped — skipping completion log.")
+                            #endif
+                        }
                     }
                 }
 
