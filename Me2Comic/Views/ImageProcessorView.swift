@@ -225,11 +225,6 @@ struct ImageProcessorView: View {
     
     /// Initiates the image processing operation using the selected directories and parameters.
     private func processImages() {
-        guard let inputDir = inputDirectory, let outputDir = outputDirectory else {
-            processor.appendLog(NSLocalizedString("NoInputOrOutputDir", comment: ""))
-            return
-        }
-        
         // Save current parameters before processing
         UserDefaults.standard.set(widthThreshold, forKey: widthThresholdKey)
         UserDefaults.standard.set(resizeHeight, forKey: resizeHeightKey)
@@ -243,9 +238,10 @@ struct ImageProcessorView: View {
         UserDefaults.standard.set(useGrayColorspace, forKey: useGrayColorspaceKey)
         
         do {
+            // Pass inputDirectory and outputDirectory (which might be nil)
             let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
-                inputDirectory: inputDir,
-                outputDirectory: outputDir,
+                inputDirectory: inputDirectory,
+                outputDirectory: outputDirectory,
                 widthThreshold: widthThreshold,
                 resizeHeight: resizeHeight,
                 quality: quality,
@@ -257,7 +253,8 @@ struct ImageProcessorView: View {
                 batchSize: batchSize,
                 useGrayColorspace: useGrayColorspace
             )
-            processor.processImages(inputDir: inputDir, outputDir: outputDir, parameters: parameters)
+            // At this point, inputDirectory and outputDirectory have been validated by validateAndCreateParameters and are not nil
+            processor.processImages(inputDir: inputDirectory!, outputDir: outputDirectory!, parameters: parameters)
         } catch {
             processor.appendLog(error.localizedDescription)
         }
