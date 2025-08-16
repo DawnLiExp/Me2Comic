@@ -80,7 +80,6 @@ class ImageProcessor: ObservableObject {
     private let isProcessingLock = NSLock()
 
     /// Log messages for display in the UI
-    /// Log messages for display in the UI
     @Published var logMessages: [String] = []
 
     /// Actor for ordered logging
@@ -93,6 +92,8 @@ class ImageProcessor: ObservableObject {
     @Published var currentProcessedImages: Int = 0
     /// Processing progress (0.0 - 1.0)
     @Published var processingProgress: Double = 0.0
+    /// Flag indicating all processing tasks have finished (true for the post-completion hold period).
+    @Published var didFinishAllTasks: Bool = false
 
     // MARK: - Logging & UI state helpers
 
@@ -579,7 +580,30 @@ class ImageProcessor: ObservableObject {
                         )
                     }
 
-                    self.setIsProcessing(false)
+                    // Notify UI that all tasks finished; let UI handle a short post-completion display.
+                    DispatchQueue.main.async { [weak self] in
+                        self?.didFinishAllTasks = true
+                    }
+                    // Schedule final reset and mark processing stopped after delay.
+                    DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                        guard let self = self else { return }
+                        // If processing was stopped earlier manually, avoid double-reset.
+                        if !self.isProcessingThreadSafe() {
+                            // Clear the finish flag if set, then exit.
+                            DispatchQueue.main.async {
+                                self.didFinishAllTasks = false
+                            }
+                            return
+                        }
+                        DispatchQueue.main.async {
+                            // Stop processing and clear progress counters.
+                            self.setIsProcessing(false)
+                            self.totalImagesToProcess = 0
+                            self.currentProcessedImages = 0
+                            self.processingProgress = 0.0
+                            self.didFinishAllTasks = false
+                        }
+                    }
                 }
             }
         }

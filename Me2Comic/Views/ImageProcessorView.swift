@@ -143,14 +143,17 @@ struct ImageProcessorView: View {
         .frame(minWidth: 994, minHeight: 735) // Sets minimum window size.
         .background(.panelBackground)
         // 1. Enable delayed hiding when processingProgress reaches 1.0
-        .onChange(of: processor.processingProgress) { newValue in
-            if newValue >= 1.0 {
-                showProgressAfterCompletion = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        .onChange(of: processor.didFinishAllTasks) { finished in
+            DispatchQueue.main.async {
+                if finished {
+                    // Model signaling: entire processing finished. Keep progress visible until model clears the flag.
+                    showProgressAfterCompletion = true
+                } else {
                     showProgressAfterCompletion = false
                 }
             }
         }
+
         // 2. Reset the completion display flag when processing restarts
         .onChange(of: processor.isProcessing) { isProcessing in
             if isProcessing {
