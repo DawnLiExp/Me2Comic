@@ -8,6 +8,10 @@
 import Darwin
 import Foundation
 
+// This class is marked `@unchecked Sendable` because it holds Foundation types
+// (`Process`, `FileHandle`, `NSLock`) that are not formally Sendable.
+// Safety relies on controlled use within OperationQueue and explicit locking.
+// Re-evaluate if migrating to structured concurrency.
 class BatchProcessOperation: Operation, @unchecked Sendable {
     // MARK: - Input Parameters
 
