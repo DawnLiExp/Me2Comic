@@ -37,11 +37,7 @@ actor LogActor {
     func append(_ message: String) async {
         await MainActor.run { [weak owner] in
             guard let owner = owner else { return }
-            owner.logMessages.append(message)
-            // Keep last 100 log messages — do trimming here on MainActor to avoid didSet concurrency.
-            if owner.logMessages.count > 100 {
-                owner.logMessages.removeFirst(owner.logMessages.count - 100)
-            }
+            owner.addLogMessageAndTrim(message)
         }
     }
 }
@@ -53,17 +49,13 @@ class ImageProcessor: ObservableObject {
 
     /// Operation queue for batch processing
     private let processingQueue = OperationQueue()
-
-    /// Concurrent dispatch queue for processing operations
     private let processingDispatchQueue = DispatchQueue(
         label: "me2.comic.me2comic.processing",
         qos: .userInitiated,
         attributes: .concurrent
     )
 
-    /// Total number of images processed
     private var totalImagesProcessed: Int = 0
-    /// Timestamp when processing started
     private var processingStartTime: Date?
 
     /// Thread-safe queue for results collection
@@ -97,10 +89,29 @@ class ImageProcessor: ObservableObject {
 
     // MARK: - Logging & UI state helpers
 
+    /// Centralized log trimming logic to maintain maximum 100 entries.
+    func addLogMessageAndTrim(_ message: String) {
+        logMessages.append(message)
+        if logMessages.count > 100 {
+            logMessages.removeFirst(logMessages.count - 100)
+        }
+    }
+
     /// Append a log message while preserving call order and thread-safety.
     func appendLog(_ message: String) {
         /// Non-blocking request to the actor; actor ensures order and MainActor update.
         Task { await self.logActor.append(message) }
+    }
+
+    /// Synchronously append multiple log messages in order on MainActor.
+    /// Used for critical completion logs to prevent ordering issues.
+    private func appendLogsInOrder(_ messages: [String]) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            for message in messages {
+                self.addLogMessageAndTrim(message)
+            }
+        }
     }
 
     /// Thread-safe read of `isProcessing` via backing storage and lock.
@@ -535,70 +546,77 @@ class ImageProcessor: ObservableObject {
             let elapsed = Int(Date().timeIntervalSince(self.processingStartTime ?? Date()))
             let duration = self.formatProcessingTime(elapsed)
 
-            // Asynchronously access results to avoid deadlocks
-            self.resultsQueue.async { [weak self, capturedScanResults = allScanResults] in
+            // Collect results synchronously to avoid race conditions
+            self.resultsQueue.sync { [weak self, capturedScanResults = allScanResults] in
                 guard let self = self else { return }
 
                 // Retrieve final processing metrics
                 let processedCount = self.totalImagesProcessed
                 let failedFiles = self.allFailedFiles
 
-                // Update UI on main thread
+                // Prepare completion logs in order
+                var completionLogs: [String] = []
+
+                if processedCount == 0 {
+                    completionLogs.append(NSLocalizedString("ProcessingComplete", comment: ""))
+                } else {
+                    // Add per-directory processing results
+                    for scanResult in capturedScanResults where scanResult.category == .isolated {
+                        let logMessage = String(format: NSLocalizedString("ProcessedSubdir", comment: ""),
+                                                scanResult.directoryURL.lastPathComponent)
+                        completionLogs.append(logMessage)
+                    }
+
+                    // Add failed files summary
+                    if !failedFiles.isEmpty {
+                        completionLogs.append(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
+                        for file in failedFiles.prefix(10) {
+                            completionLogs.append("- \(file)")
+                        }
+                        if failedFiles.count > 10 {
+                            completionLogs.append(String(format: ". %d more", failedFiles.count - 10))
+                        }
+                    }
+
+                    // Add the critical three logs in exact order
+                    completionLogs.append(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
+                    completionLogs.append(duration)
+                    completionLogs.append(NSLocalizedString("ProcessingComplete", comment: ""))
+                }
+
+                // Send logs in order and update UI state
+                self.appendLogsInOrder(completionLogs)
+
+                // Send notification
+                if processedCount > 0 {
+                    self.notificationManager.sendNotification(
+                        title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
+                        subtitle: failedFiles.count > 0 ?
+                            String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""),
+                                   processedCount, failedFiles.count) :
+                            String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount),
+                        body: duration
+                    )
+                }
+
+                // Update completion state on main thread
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
+                    self.didFinishAllTasks = true
 
-                    if processedCount == 0 {
-                        self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
-                    } else {
-                        // Log per-directory processing results
-                        for scanResult in capturedScanResults where scanResult.category == .isolated {
-                            let logMessage = String(format: NSLocalizedString("ProcessedSubdir", comment: ""),
-                                                    scanResult.directoryURL.lastPathComponent)
-                            self.appendLog(logMessage)
-                        }
-
-                        // Log failed files summary
-                        if !failedFiles.isEmpty {
-                            self.appendLog(String(format: NSLocalizedString("FailedFiles", comment: ""), failedFiles.count))
-                            for file in failedFiles.prefix(10) {
-                                self.appendLog("- \(file)")
-                            }
-                            if failedFiles.count > 10 {
-                                self.appendLog(String(format: ". %d more", failedFiles.count - 10))
-                            }
-                        }
-
-                        // Log processing summary
-                        self.appendLog(String(format: NSLocalizedString("TotalImagesProcessed", comment: ""), processedCount))
-                        self.appendLog(duration)
-                        self.appendLog(NSLocalizedString("ProcessingComplete", comment: ""))
-                        self.notificationManager.sendNotification(
-                            title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
-                            subtitle: failedFiles.count > 0 ?
-                                String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""),
-                                       processedCount, failedFiles.count) :
-                                String(format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""), processedCount),
-                            body: duration
-                        )
-                    }
-
-                    // Notify UI that all tasks finished; let UI handle a short post-completion display.
-                    DispatchQueue.main.async { [weak self] in
-                        self?.didFinishAllTasks = true
-                    }
-                    // Schedule final reset and mark processing stopped after delay.
+                    // Schedule final reset after delay
                     DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5) { [weak self] in
                         guard let self = self else { return }
-                        // If processing was stopped earlier manually, avoid double-reset.
+
+                        // Check if processing was stopped manually
                         if !self.isProcessingThreadSafe() {
-                            // Clear the finish flag if set, then exit.
                             DispatchQueue.main.async {
                                 self.didFinishAllTasks = false
                             }
                             return
                         }
+
                         DispatchQueue.main.async {
-                            // Stop processing and clear progress counters.
                             self.setIsProcessing(false)
                             self.totalImagesToProcess = 0
                             self.currentProcessedImages = 0
