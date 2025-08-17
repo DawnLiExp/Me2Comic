@@ -132,7 +132,9 @@ class ImageProcessor: ObservableObject {
             print("ImageProcessor: stopProcessing called. Cancelling all operations.")
         #endif
         processingQueue.cancelAllOperations()
-        appendLog(NSLocalizedString("ProcessingStopped", comment: ""))
+        // Log user-initiated stop (localized)
+        appendLog(NSLocalizedString("ProcessingStopRequested", comment: "User requested stop"))
+        appendLog(NSLocalizedString("ProcessingStopped", comment: "Processing has been stopped"))
         setIsProcessing(false)
         // Reset progress
         DispatchQueue.main.async { [weak self] in

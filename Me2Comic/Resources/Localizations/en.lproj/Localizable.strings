@@ -101,6 +101,7 @@
 "ProcessedSubdir" = "Completed processing double-page image directory: %@";
 
 /* Log messages for stopping processing */
+"ProcessingStopRequested" = "User has requested stop, cleaning up…";
 "ProcessingStopped" = "Processing stopped";
 
 /* Unknown error */

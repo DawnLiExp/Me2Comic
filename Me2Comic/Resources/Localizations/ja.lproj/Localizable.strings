@@ -101,6 +101,7 @@
 "ProcessedSubdir" = "見開き画像ディレクトリの処理が完了しました：%@";
 
 /* Log messages for stopping processing */
+"ProcessingStopRequested" = "ユーザーが停止を要求しました。後処理中…";
 "ProcessingStopped" = "処理停止完了";
 
 /* Unknown error */

@@ -101,6 +101,7 @@
 "ProcessedSubdir" = "完成处理双页图片目录：%@";
 
 /* Log messages for stopping processing */
+"ProcessingStopRequested" = "用户已请求停止，正在清理…";
 "ProcessingStopped" = "处理已停止";
 
 /* Unknown error */
