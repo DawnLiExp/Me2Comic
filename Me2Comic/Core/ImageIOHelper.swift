@@ -8,21 +8,17 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import os.lock
 import os.log
 
 enum ImageIOHelper {
-    /// Shared logger instance for ImageIO operations
+    // Shared logger instance for ImageIO operations.
+    // Keep messages concise and structured for system logging.
     private static let logger = OSLog(subsystem: "me2.comic.me2comic", category: "ImageIOHelper")
 
-    /// Thread-safe lock wrapper for os_unfair_lock
-    private final class UnfairLock {
+    // Simple lock wrapper using os_unfair_lock for small critical sections.
+    // Using a lightweight primitive for minimal contention in hot paths.
+    private final class UnfairLock: @unchecked Sendable {
         private var _lock = os_unfair_lock()
-
-        /// Executes a closure while holding the lock.
-        /// - Parameter body: The closure to execute.
-        /// - Returns: The result of the closure.
-        /// - Throws: Rethrows any error thrown by the closure.
         func withLock<R>(_ body: () throws -> R) rethrows -> R {
             os_unfair_lock_lock(&_lock)
             defer { os_unfair_lock_unlock(&_lock) }
@@ -30,96 +26,136 @@ enum ImageIOHelper {
         }
     }
 
-    /// Retrieves image dimensions (width and height) using the ImageIO framework.
-    /// - Parameter imagePath: The full path to the image file.
-    /// - Returns: A tuple containing the image's width and height, or nil if dimensions cannot be retrieved.
+    /// Synchronously obtains single image pixel dimensions using Image I/O.
+    /// - Parameter imagePath: Absolute path to the image file.
+    /// - Returns: (width, height) or nil when the dimensions cannot be determined.
     static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
-        // Use autoreleasepool to manage memory for each image processing
         autoreleasepool {
             guard FileManager.default.fileExists(atPath: imagePath) else {
-                os_log("File does not exist at path: %{public}s", log: logger, type: .error, imagePath)
+                os_log("File not found: %{public}s", log: logger, type: .debug, imagePath)
                 return nil
             }
 
-            let imageURL = URL(fileURLWithPath: imagePath)
-            let retainedURL = imageURL as CFURL
-
-            guard let imageSource = CGImageSourceCreateWithURL(retainedURL, nil) else {
-                os_log("Could not create image source for URL: %{public}s", log: logger, type: .error, imageURL.lastPathComponent)
+            let imageURL = URL(fileURLWithPath: imagePath) as CFURL
+            guard let imageSource = CGImageSourceCreateWithURL(imageURL, nil) else {
+                os_log("Unable to create CGImageSource for %{public}s", log: logger, type: .error, imagePath)
                 return nil
             }
 
-            // Prevent caching image data for performance when only metadata is needed.
+            // Avoid caching full image data when only properties are required.
             let options = [kCGImageSourceShouldCache: false] as CFDictionary
-            guard let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, options) as NSDictionary? else {
-                os_log("Could not copy image properties for %{public}s", log: logger, type: .error, imageURL.lastPathComponent)
+            guard let props = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, options) as NSDictionary? else {
+                os_log("Could not read properties for %{public}s", log: logger, type: .debug, imagePath)
                 return nil
             }
 
-            guard let pixelWidth = imageProperties[kCGImagePropertyPixelWidth as String] as? Int,
-                  let pixelHeight = imageProperties[kCGImagePropertyPixelHeight as String] as? Int
-            else {
-                os_log("Could not retrieve pixel dimensions for %{public}s", log: logger, type: .error, imageURL.lastPathComponent)
+            if let w = props[kCGImagePropertyPixelWidth as String] as? Int,
+               let h = props[kCGImagePropertyPixelHeight as String] as? Int
+            {
+                return (width: w, height: h)
+            } else {
+                os_log("Pixel dimensions absent for %{public}s", log: logger, type: .debug, imagePath)
                 return nil
             }
-
-            return (width: pixelWidth, height: pixelHeight)
         }
     }
 
-    /// Retrieves dimensions for multiple images in parallel using concurrent processing.
-    /// Uses optimized task distribution based on available CPU cores and thread-safe result collection.
-    /// - Parameter imagePaths: An array of full paths to the image files.
-    /// - Parameter shouldContinue: A closure that returns `true` if processing should continue, `false` otherwise.
-    /// - Returns: A dictionary mapping image paths to their dimensions (width and height).
-    static func getBatchImageDimensions(imagePaths: [String], shouldContinue: () -> Bool) -> [String: (width: Int, height: Int)] {
+    // MARK: - Async batch API
+
+    /// Asynchronously retrieves pixel dimensions for multiple images.
+    ///
+    /// Behavior:
+    /// - Uses a hybrid strategy: single-threaded for very small lists; otherwise uses
+    ///   concurrent partitions equal to the active processor count.
+    /// - Respects cooperative cancellation via Task.isCancelled and via an optional
+    ///   `cancellationCheck` closure. The closure should return `true` to continue.
+    /// - Returns partial results if cancelled; no exceptions are thrown for IO failures.
+    ///
+    /// - Parameters:
+    ///   - imagePaths: Array of absolute image paths.
+    ///   - cancellationCheck: Optional closure called frequently; return `true` to continue processing.
+    ///                        Default checks `Task.isCancelled`.
+    /// - Returns: Dictionary mapping path -> (width, height). Missing entries indicate failures.
+    static func getBatchImageDimensionsAsync(
+        imagePaths: [String],
+        cancellationCheck: @escaping () -> Bool = { !Task.isCancelled }
+    ) async -> [String: (width: Int, height: Int)] {
+        // Fast path
         guard !imagePaths.isEmpty else { return [:] }
 
-        var result: [String: (width: Int, height: Int)] = [:]
-        let lock = UnfairLock()
+        // Run the heavy work on a detached task so that we don't block the caller actor.
+        return await Task.detached(priority: .userInitiated) {
+            var result: [String: (width: Int, height: Int)] = [:]
+            let lock = UnfairLock()
 
-        // Calculate task distribution:
-        // - Serial for small batches (<20 images)
-        // - Parallel up to CPU core count
-        let taskCount: Int
-        if imagePaths.count < 20 {
-            taskCount = 1
-        } else {
-            // Utilize all available active processor cores
-            taskCount = min(
-                imagePaths.count,
-                ProcessInfo.processInfo.activeProcessorCount
-            )
-        }
+            // Concurrency decision:
+            // - Small batches run serially to avoid thread startup overhead.
+            // - Larger batches partition into `taskCount` chunks and process concurrently.
+            let taskCount: Int
+            if imagePaths.count < 20 {
+                taskCount = 1
+            } else {
+                taskCount = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount)
+            }
 
-        // Distribute images as evenly as possible among tasks.
-        let imagesPerTask = (imagePaths.count + taskCount - 1) / taskCount
+            // Partition size for roughly-even distribution.
+            let imagesPerTask = (imagePaths.count + taskCount - 1) / taskCount
 
-        DispatchQueue.concurrentPerform(iterations: taskCount) { taskIndex in
-            // Check for cancellation before processing each task chunk
-            guard shouldContinue() else { return }
+            DispatchQueue.concurrentPerform(iterations: taskCount) { taskIndex in
+                // Cooperative cancellation check at chunk start.
+                guard cancellationCheck() else { return }
 
-            // Determine the range of images this task should process
-            let start = taskIndex * imagesPerTask
-            let end = min(start + imagesPerTask, imagePaths.count)
+                let start = taskIndex * imagesPerTask
+                let end = min(start + imagesPerTask, imagePaths.count)
+                guard start < end else { return }
 
-            // Prevent invalid ranges (e.g., when imagesPerTask is 0 or start >= end).
-            guard start < end else { return }
+                for i in start ..< end {
+                    // Frequent cancellation point between images.
+                    if !cancellationCheck() { return }
 
-            // Process assigned image chunk
-            for index in start ..< end {
-                // Check for cancellation before processing each individual image
-                guard shouldContinue() else { return }
-
-                let path = imagePaths[index]
-                if let dims = getImageDimensions(imagePath: path) {
-                    lock.withLock {
-                        result[path] = dims
+                    let path = imagePaths[i]
+                    if let dims = getImageDimensions(imagePath: path) {
+                        lock.withLock {
+                            result[path] = dims
+                        }
+                    } else {
+                        // Log at debug level; do not treat as fatal.
+                        os_log("Unable to get dimensions for %{public}s", log: logger, type: .debug, path)
                     }
                 }
             }
-        }
 
+            return result
+        }.value
+    }
+
+    // MARK: - Backwards-compatible synchronous wrapper
+
+    /// Backwards-compatible synchronous API.
+    ///
+    /// This preserves existing call sites that expect a blocking call and the legacy `shouldContinue` closure.
+    /// Internally it reuses the async implementation executed on a detached task to avoid duplicating logic.
+    ///
+    /// - Parameters:
+    ///   - imagePaths: Array of absolute image paths.
+    ///   - shouldContinue: Closure returning `true` to continue processing, `false` to stop.
+    /// - Returns: Dictionary mapping path -> (width, height). Partial results possible on early stop.
+    static func getBatchImageDimensions(
+        imagePaths: [String],
+        shouldContinue: @escaping () -> Bool
+    ) -> [String: (width: Int, height: Int)] {
+        if imagePaths.isEmpty { return [:] }
+        var result: [String: (width: Int, height: Int)] = [:]
+        let semaphore = DispatchSemaphore(value: 0)
+        Task.detached(priority: .userInitiated) {
+            let r = await getBatchImageDimensionsAsync(
+                imagePaths: imagePaths,
+                cancellationCheck: shouldContinue
+            )
+            result = r
+            semaphore.signal()
+        }
+        semaphore.wait()
         return result
     }
 }

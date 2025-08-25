@@ -82,19 +82,15 @@ class ImageDirectoryAnalyzer {
                     continue
                 }
                 
-                // Process sample images
+                // Process sample images (choose first up to 5)
                 let sampleImages = Array(imageFiles.prefix(5))
                 let sampleImagePaths = sampleImages.map { $0.path }
-                
-                // Get dimensions with cancellation support
-                let sampleDimensions = await Task.detached {
-                    ImageIOHelper.getBatchImageDimensions(imagePaths: sampleImagePaths) {
-                        // Synchronous check for compatibility with existing ImageIOHelper
-                        // This is called frequently in tight loops, so we use a simple flag check
-                        !Task.isCancelled
-                    }
-                }.value
-                
+
+                // Use the new async batch API which supports cooperative cancellation.
+                // Cancellation is based on the currently running Task; external cancellation should
+                // ensure Task cancellation is propagated where used.
+                let sampleDimensions = await ImageIOHelper.getBatchImageDimensionsAsync(imagePaths: sampleImagePaths)
+
                 var isGlobalBatchCandidate = true
                 
                 for imageURL in sampleImages {
