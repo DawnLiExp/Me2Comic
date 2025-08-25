@@ -9,10 +9,10 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
-/// UserDefault key for storing the last used output directory.
+/// UserDefault key for storing the last used output directory
 private let lastUsedOutputDirKey = "lastUsedOutputDirectory"
 
-/// UserDefault keys for storing processing parameters.
+/// UserDefault keys for storing processing parameters
 private let widthThresholdKey = "widthThreshold"
 private let resizeHeightKey = "resizeHeight"
 private let qualityKey = "quality"
@@ -24,8 +24,7 @@ private let unsharpThresholdKey = "unsharpThreshold"
 private let batchSizeKey = "batchSize"
 private let useGrayColorspaceKey = "useGrayColorspace"
 
-/// `ImageProcessorView` defines the main user interface for the image processing application.
-/// It manages user inputs, displays processing logs, and orchestrates image processing operations.
+/// Main user interface for the image processing application
 struct ImageProcessorView: View {
     @State private var inputDirectory: URL?
     @State private var outputDirectory: URL?
@@ -40,18 +39,19 @@ struct ImageProcessorView: View {
     @State private var unsharpThreshold: String = "0.02"
     @State private var batchSize: String = "40"
     
-    @ObservedObject private var processor = ImageProcessor()
+    @StateObject private var processor = ImageProcessor()
     @State private var showProgressAfterCompletion: Bool = false
+    
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            LeftPanelView() // Left panel of the UI.
+            LeftPanelView() // Left panel of the UI
             
-            GradientDividerView() // Visual divider between panels.
+            GradientDividerView() // Visual divider between panels
             
             VStack(spacing: 20) {
                 Spacer().frame(height: 5)
                 
-                // Input Directory Selection Button.
+                // Input Directory Selection Button
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Input Directory", comment: ""),
                                   inputDirectory?.path ?? NSLocalizedString("Input Directory Placeholder", comment: "")),
@@ -66,19 +66,17 @@ struct ImageProcessorView: View {
                 )
                 .padding(.top, -11)
                 
-                // Output Directory Selection Button.
+                // Output Directory Selection Button
                 DirectoryButtonView(
                     title: String(format: NSLocalizedString("Output Directory", comment: ""),
                                   outputDirectory?.path ?? NSLocalizedString("Output Directory Placeholder", comment: "")),
-                    //    outputDirectory?.path ?? ""),
                     action: { selectOutputDirectory() },
                     isProcessing: processor.isProcessing,
-                    openAction: { // Action to open the output directory in Finder.
+                    openAction: {
                         if let url = outputDirectory {
                             NSWorkspace.shared.open(url)
                         }
                     },
-                    
                     showOpenButton: true,
                     onDropAction: { url in
                         self.outputDirectory = url
@@ -89,7 +87,7 @@ struct ImageProcessorView: View {
                 )
                 .padding(.bottom, 10)
                 
-                // Panel for image processing parameters.
+                // Panel for image processing parameters
                 HStack(alignment: .top, spacing: 18) {
                     SettingsPanelView(
                         widthThreshold: $widthThreshold,
@@ -105,7 +103,7 @@ struct ImageProcessorView: View {
                         isProcessing: processor.isProcessing
                     )
                     
-                    // Description for the processing parameters.
+                    // Description for the processing parameters
                     ParameterDescriptionView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .padding(.trailing, -3)
@@ -114,7 +112,7 @@ struct ImageProcessorView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .background(.panelBackground)
                 
-                // Action button to start or stop processing.
+                // Action button to start or stop processing
                 ActionButtonView(isProcessing: processor.isProcessing) {
                     if processor.isProcessing {
                         processor.stopProcessing()
@@ -125,14 +123,14 @@ struct ImageProcessorView: View {
                 .disabled(!processor.isProcessing && (inputDirectory == nil || outputDirectory == nil))
                 
                 // Progress display when processing
-                
                 if (processor.isProcessing || showProgressAfterCompletion) && processor.totalImagesToProcess > 0 {
                     ProgressDisplayView(processor: processor)
                         .padding(.horizontal, 4)
                         .padding(.top, -10)
                         .padding(.bottom, -10)
                 }
-                // Log console for displaying messages and progress.
+                
+                // Log console for displaying messages and progress
                 DecoratedView(content: LogTextView(processor: processor))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.bottom, 18)
@@ -140,62 +138,64 @@ struct ImageProcessorView: View {
             }
             .padding(.horizontal, 15)
         }
-        .frame(minWidth: 994, minHeight: 735) // Sets minimum window size.
+        .frame(minWidth: 994, minHeight: 735)
         .background(.panelBackground)
-        // 1. Enable delayed hiding when processingProgress reaches 1.0
         .onChange(of: processor.didFinishAllTasks) { finished in
-            DispatchQueue.main.async {
-                if finished {
-                    // Model signaling: entire processing finished. Keep progress visible until model clears the flag.
-                    showProgressAfterCompletion = true
-                } else {
-                    showProgressAfterCompletion = false
-                }
+            if finished {
+                showProgressAfterCompletion = true
+            } else {
+                showProgressAfterCompletion = false
             }
         }
-
-        // 2. Reset the completion display flag when processing restarts
         .onChange(of: processor.isProcessing) { isProcessing in
             if isProcessing {
                 showProgressAfterCompletion = false
             }
         }
         .onAppear {
-            // Request notification authorization when the view appears.
-            let center = UNUserNotificationCenter.current()
-            center.requestAuthorization(options: [.alert, .sound]) { granted, error in
-                if let error = error {
-                    DispatchQueue.main.async {
-                        self.processor.appendLog(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
-                    }
-                } else if !granted {
-                    DispatchQueue.main.async {
-                        self.processor.appendLog(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
-                    }
-                }
-            }
-            
-            // Load last used output directory
-            if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
-                outputDirectory = URL(fileURLWithPath: savedPath)
-                processor.appendLog(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
-            }
-            
-            // Load saved parameters
-            widthThreshold = UserDefaults.standard.string(forKey: widthThresholdKey) ?? widthThreshold
-            resizeHeight = UserDefaults.standard.string(forKey: resizeHeightKey) ?? resizeHeight
-            quality = UserDefaults.standard.string(forKey: qualityKey) ?? quality
-            threadCount = UserDefaults.standard.integer(forKey: threadCountKey)
-            unsharpRadius = UserDefaults.standard.string(forKey: unsharpRadiusKey) ?? unsharpRadius
-            unsharpSigma = UserDefaults.standard.string(forKey: unsharpSigmaKey) ?? unsharpSigma
-            unsharpAmount = UserDefaults.standard.string(forKey: unsharpAmountKey) ?? unsharpAmount
-            unsharpThreshold = UserDefaults.standard.string(forKey: unsharpThresholdKey) ?? unsharpThreshold
-            batchSize = UserDefaults.standard.string(forKey: batchSizeKey) ?? batchSize
-            useGrayColorspace = UserDefaults.standard.bool(forKey: useGrayColorspaceKey)
+            setupNotifications()
+            loadSavedSettings()
         }
     }
     
-    /// Presents an `NSOpenPanel` to allow the user to select an input directory.
+    /// Sets up notification permissions
+    private func setupNotifications() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                Task { @MainActor in
+                    processor.appendLog(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
+                }
+            } else if !granted {
+                Task { @MainActor in
+                    processor.appendLog(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
+                }
+            }
+        }
+    }
+    
+    /// Loads saved settings from UserDefaults
+    private func loadSavedSettings() {
+        // Load last used output directory
+        if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
+            outputDirectory = URL(fileURLWithPath: savedPath)
+            processor.appendLog(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
+        }
+        
+        // Load saved parameters
+        widthThreshold = UserDefaults.standard.string(forKey: widthThresholdKey) ?? widthThreshold
+        resizeHeight = UserDefaults.standard.string(forKey: resizeHeightKey) ?? resizeHeight
+        quality = UserDefaults.standard.string(forKey: qualityKey) ?? quality
+        threadCount = UserDefaults.standard.integer(forKey: threadCountKey)
+        unsharpRadius = UserDefaults.standard.string(forKey: unsharpRadiusKey) ?? unsharpRadius
+        unsharpSigma = UserDefaults.standard.string(forKey: unsharpSigmaKey) ?? unsharpSigma
+        unsharpAmount = UserDefaults.standard.string(forKey: unsharpAmountKey) ?? unsharpAmount
+        unsharpThreshold = UserDefaults.standard.string(forKey: unsharpThresholdKey) ?? unsharpThreshold
+        batchSize = UserDefaults.standard.string(forKey: batchSizeKey) ?? batchSize
+        useGrayColorspace = UserDefaults.standard.bool(forKey: useGrayColorspaceKey)
+    }
+    
+    /// Presents an NSOpenPanel to select an input directory
     private func selectInputDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -208,7 +208,7 @@ struct ImageProcessorView: View {
         }
     }
     
-    /// Presents an `NSOpenPanel` to allow the user to select an output directory.
+    /// Presents an NSOpenPanel to select an output directory
     private func selectOutputDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -223,22 +223,13 @@ struct ImageProcessorView: View {
         }
     }
     
-    /// Initiates the image processing operation using the selected directories and parameters.
+    /// Initiates the image processing operation
     private func processImages() {
         // Save current parameters before processing
-        UserDefaults.standard.set(widthThreshold, forKey: widthThresholdKey)
-        UserDefaults.standard.set(resizeHeight, forKey: resizeHeightKey)
-        UserDefaults.standard.set(quality, forKey: qualityKey)
-        UserDefaults.standard.set(threadCount, forKey: threadCountKey)
-        UserDefaults.standard.set(unsharpRadius, forKey: unsharpRadiusKey)
-        UserDefaults.standard.set(unsharpSigma, forKey: unsharpSigmaKey)
-        UserDefaults.standard.set(unsharpAmount, forKey: unsharpAmountKey)
-        UserDefaults.standard.set(unsharpThreshold, forKey: unsharpThresholdKey)
-        UserDefaults.standard.set(batchSize, forKey: batchSizeKey)
-        UserDefaults.standard.set(useGrayColorspace, forKey: useGrayColorspaceKey)
+        saveCurrentParameters()
         
         do {
-            // Pass inputDirectory and outputDirectory (which might be nil)
+            // Validate and create parameters
             let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
                 inputDirectory: inputDirectory,
                 outputDirectory: outputDirectory,
@@ -253,15 +244,33 @@ struct ImageProcessorView: View {
                 batchSize: batchSize,
                 useGrayColorspace: useGrayColorspace
             )
-            // At this point, inputDirectory and outputDirectory have been validated by validateAndCreateParameters and are not nil
-            processor.processImages(inputDir: inputDirectory!, outputDir: outputDirectory!, parameters: parameters)
+            
+            // Start processing (now using async internally)
+            processor.processImages(
+                inputDir: inputDirectory!,
+                outputDir: outputDirectory!,
+                parameters: parameters
+            )
         } catch {
             processor.appendLog(error.localizedDescription)
         }
     }
     
-    /// `LogTextView` is an `NSViewRepresentable` wrapper for `NSTextView`,
-    /// used to display log messages from the `ImageProcessor`.
+    /// Saves current parameters to UserDefaults
+    private func saveCurrentParameters() {
+        UserDefaults.standard.set(widthThreshold, forKey: widthThresholdKey)
+        UserDefaults.standard.set(resizeHeight, forKey: resizeHeightKey)
+        UserDefaults.standard.set(quality, forKey: qualityKey)
+        UserDefaults.standard.set(threadCount, forKey: threadCountKey)
+        UserDefaults.standard.set(unsharpRadius, forKey: unsharpRadiusKey)
+        UserDefaults.standard.set(unsharpSigma, forKey: unsharpSigmaKey)
+        UserDefaults.standard.set(unsharpAmount, forKey: unsharpAmountKey)
+        UserDefaults.standard.set(unsharpThreshold, forKey: unsharpThresholdKey)
+        UserDefaults.standard.set(batchSize, forKey: batchSizeKey)
+        UserDefaults.standard.set(useGrayColorspace, forKey: useGrayColorspaceKey)
+    }
+    
+    /// NSViewRepresentable wrapper for NSTextView to display log messages
     struct LogTextView: NSViewRepresentable {
         @ObservedObject var processor: ImageProcessor
         
