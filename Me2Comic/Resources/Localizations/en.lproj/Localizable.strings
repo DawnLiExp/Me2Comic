@@ -121,7 +121,7 @@
 "BatchProcessFailed" = "Batch processing failed: %@";
 "CannotCreateOutputSubdir" = "Cannot create output subdirectory: %@";
 "FailedFiles" = "Failed to process %d files";
-"ProcessingCompleteWithFailures" = "Processing completed with %d failures out of %d images";
+"ProcessingCompleteWithFailures" = "Processing completed, %d images succeeded, %d failed";
 "ProcessingFailed" = "Processing failed: %@";
 "NoSubdirectories" = "No subdirectories found in input directory";
 "NoImagesInDir" = "No images found in directory: %@";

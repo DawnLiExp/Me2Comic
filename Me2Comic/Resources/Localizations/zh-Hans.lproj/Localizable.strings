@@ -121,7 +121,7 @@
 "BatchProcessFailed" = "批量处理失败：%@";
 "CannotCreateOutputSubdir" = "无法创建输出子目录：%@";
 "FailedFiles" = "处理失败的文件数：%d";
-"ProcessingCompleteWithFailures" = "处理完成，%d张图像中%d张失败";
+"ProcessingCompleteWithFailures" = "处理完成，成功 %d 张图片，失败 %d 张";
 "ProcessingFailed" = "处理失败：%@";
 "NoSubdirectories" = "输入目录中未找到子目录";
 "NoImagesInDir" = "目录中未找到图片：%@";

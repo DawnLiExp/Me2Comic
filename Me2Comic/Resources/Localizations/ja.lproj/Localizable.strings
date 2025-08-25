@@ -121,7 +121,7 @@
 "BatchProcessFailed" = "バッチ処理に失敗しました:%@";
 "CannotCreateOutputSubdir" = "出力サブディレクトリを作成できません:%@";
 "FailedFiles" = "%dファイルの処理に失敗しました";
-"ProcessingCompleteWithFailures" = "処理が完了しました。%d枚中%d枚失敗";
+"ProcessingCompleteWithFailures" = "処理が完了しました。成功 %d 枚、失敗 %d 枚";
 "ProcessingFailed" = "処理に失敗しました:%@";
 "NoSubdirectories" = "入力ディレクトリにサブディレクトリが見つかりません";
 "NoImagesInDir" = "ディレクトリに画像が見つかりません:%@";

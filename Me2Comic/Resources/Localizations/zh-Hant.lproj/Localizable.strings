@@ -121,7 +121,7 @@
 "BatchProcessFailed" = "批次處理失敗：%@";
 "CannotCreateOutputSubdir" = "無法創建輸出子目錄：%@";
 "FailedFiles" = "處理失敗的檔案數：%d";
-"ProcessingCompleteWithFailures" = "處理完成，%d張圖像中%d張失敗";
+"ProcessingCompleteWithFailures" = "處理完成，成功 %d 張圖像，失敗 %d 張";
 "ProcessingFailed" = "處理失敗：%@";
 "NoSubdirectories" = "輸入目錄中未找到子目錄";
 "NoImagesInDir" = "目錄中未找到圖片：%@";
