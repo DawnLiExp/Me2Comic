@@ -300,6 +300,7 @@ class ImageProcessor: ObservableObject {
             }
         }
         
+        var globalProcessedCount = 0
         // Process Global Batch category
         if !globalBatchImages.isEmpty {
             appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
@@ -311,7 +312,6 @@ class ImageProcessor: ObservableObject {
             
             var completedGlobalBatches = 0
             let totalGlobalBatches = globalBatches.count
-            var globalProcessedCount = 0
             let globalBatchLock = NSLock()
             
             for batch in globalBatches {
@@ -322,7 +322,7 @@ class ImageProcessor: ObservableObject {
                 )
                 
                 let originalCompletion = op.onCompleted
-                op.onCompleted = { [weak self] count, fails in
+                op.onCompleted = { count, fails in
                     originalCompletion?(count, fails)
                     
                     globalBatchLock.lock()
@@ -332,15 +332,7 @@ class ImageProcessor: ObservableObject {
                     globalBatchLock.unlock()
                     
                     if isLast {
-                        Task { @MainActor [weak self] in
-                            guard let self = self else { return }
-                            if self.isProcessing {
-                                self.appendLog(String(
-                                    format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
-                                    globalProcessedCount
-                                ))
-                            }
-                        }
+                        // Defer logging of CompletedGlobalBatchWithCount until handleProcessingCompletion
                     }
                 }
                 
@@ -355,7 +347,7 @@ class ImageProcessor: ObservableObject {
             // Wait for completion using async wrapper
             processingQueue.addBarrierBlock { [weak self] in
                 Task { @MainActor [weak self] in
-                    await self?.handleProcessingCompletion(scanResults: allScanResults)
+                    await self?.handleProcessingCompletion(scanResults: allScanResults, globalProcessedCount: globalProcessedCount)
                     continuation.resume()
                 }
             }
@@ -405,7 +397,7 @@ class ImageProcessor: ObservableObject {
     }
     
     /// Handles final processing completion
-    private func handleProcessingCompletion(scanResults: [DirectoryScanResult]) async {
+    private func handleProcessingCompletion(scanResults: [DirectoryScanResult], globalProcessedCount: Int) async {
         let elapsed = Int(Date().timeIntervalSince(processingStartTime ?? Date()))
         let duration = formatProcessingTime(elapsed)
         
@@ -422,6 +414,10 @@ class ImageProcessor: ObservableObject {
                 let logMessage = String(format: NSLocalizedString("ProcessedSubdir", comment: ""),
                                         scanResult.directoryURL.lastPathComponent)
                 completionLogs.append(logMessage)
+            }
+            // Add global batch completion message if applicable
+            if globalProcessedCount > 0 {
+                completionLogs.append(String(format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""), globalProcessedCount))
             }
             
             // Add failed files summary
