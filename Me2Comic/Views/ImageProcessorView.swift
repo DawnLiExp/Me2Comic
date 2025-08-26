@@ -1,3 +1,4 @@
+
 //
 //  ImageProcessorView.swift
 //  Me2Comic
@@ -40,6 +41,7 @@ struct ImageProcessorView: View {
     @State private var batchSize: String = "40"
     
     @StateObject private var processor = ImageProcessor()
+    private let notificationManager = NotificationManager()
     @State private var showProgressAfterCompletion: Bool = false
     
     var body: some View {
@@ -153,23 +155,25 @@ struct ImageProcessorView: View {
             }
         }
         .onAppear {
-            setupNotifications()
+            Task {
+                await setupNotifications()
+            }
             loadSavedSettings()
         }
     }
     
-    /// Sets up notification permissions
-    private func setupNotifications() {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
-            if let error = error {
-                Task { @MainActor in
-                    processor.appendLog(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
-                }
-            } else if !granted {
-                Task { @MainActor in
+    /// Sets up notification permissions.
+    private func setupNotifications() async {
+        do {
+            let granted = try await notificationManager.requestNotificationAuthorization()
+            if !granted {
+                await MainActor.run {
                     processor.appendLog(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
                 }
+            }
+        } catch {
+            await MainActor.run {
+                processor.appendLog(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
             }
         }
     }

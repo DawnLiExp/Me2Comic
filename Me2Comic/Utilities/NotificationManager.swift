@@ -1,3 +1,4 @@
+
 //
 //  NotificationManager.swift
 //  Me2Comic
@@ -11,16 +12,10 @@ import UserNotifications
 /// Manages user notifications for the application.
 class NotificationManager {
     /// Requests authorization for user notifications.
-    func requestNotificationAuthorization() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            #if DEBUG
-                if granted {
-                    print("Notification authorization granted.")
-                } else if let error = error {
-                    print("Notification authorization denied: \(error.localizedDescription)")
-                }
-            #endif
-        }
+    /// - Returns: `true` if authorization was granted, `false` otherwise.
+    /// - Throws: An error if the authorization request failed.
+    func requestNotificationAuthorization() async throws -> Bool {
+        return try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
     }
 
     /// Sends a local user notification.
@@ -28,22 +23,9 @@ class NotificationManager {
     ///   - title: The title of the notification.
     ///   - subtitle: The subtitle of the notification.
     ///   - body: The main content of the notification.
-    func sendNotification(title: String, subtitle: String, body: String) {
-        if Thread.isMainThread {
-            createNotification(title: title, subtitle: subtitle, body: body)
-        } else {
-            DispatchQueue.main.async {
-                self.createNotification(title: title, subtitle: subtitle, body: body)
-            }
-        }
-    }
+    /// - Throws: An error if the notification could not be added.
 
-    /// Creates and schedules a local notification with the specified content.
-    /// - Parameters:
-    ///   - title: The notification title
-    ///   - subtitle: The notification subtitle
-    ///   - body: The notification body text
-    private func createNotification(title: String, subtitle: String, body: String) {
+    func sendNotification(title: String, subtitle: String, body: String) async throws {
         // Notification identifier for managing duplicate notifications
         let identifier = "me2.comic.me2comic.processing.complete"
 
@@ -62,12 +44,6 @@ class NotificationManager {
             trigger: nil
         )
 
-        UNUserNotificationCenter.current().add(request) { error in
-            #if DEBUG
-                if let error = error {
-                    print("Failed to send notification: \(error.localizedDescription)")
-                }
-            #endif
-        }
+        try await UNUserNotificationCenter.current().add(request)
     }
 }

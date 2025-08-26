@@ -442,7 +442,7 @@ class ImageProcessor: ObservableObject {
         
         // Send notification
         if processedCount > 0 {
-            notificationManager.sendNotification(
+            try? await notificationManager.sendNotification(
                 title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
                 subtitle: failedFiles.count > 0 ?
                     String(format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""),

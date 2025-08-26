@@ -1,3 +1,4 @@
+
 //
 //  Me2ComicApp.swift
 //  Me2Comic
@@ -34,7 +35,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
 
-        notificationManager.requestNotificationAuthorization()
+        // Request notification authorization asynchronously
+        Task {
+            do {
+                _ = try await notificationManager.requestNotificationAuthorization()
+            } catch {
+                // Log the error if authorization fails, but do not block app launch
+                #if DEBUG
+                print("Notification authorization failed: \(error.localizedDescription)")
+                #endif
+            }
+        }
+
         // Main window setup
         if let window = NSApp.windows.first {
             mainWindow = window
