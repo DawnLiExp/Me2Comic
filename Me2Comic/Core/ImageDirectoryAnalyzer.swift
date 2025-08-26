@@ -25,12 +25,17 @@ class ImageDirectoryAnalyzer {
     private let logHandler: (String) -> Void
     private let isProcessingCheck: () async -> Bool
     
+    /// - Parameters:
+    ///   - logHandler: closure used to emit ordered log messages (kept sync for caller to decide threading)
+    ///   - isProcessingCheck: async closure returning whether processing should continue
     init(logHandler: @escaping (String) -> Void, isProcessingCheck: @escaping () async -> Bool) {
         self.logHandler = logHandler
         self.isProcessingCheck = isProcessingCheck
     }
     
-    /// Scans a directory for supported image files
+    // MARK: - Directory file enumeration
+
+    /// Scans a directory for supported image files (non-recursive per-subdirectory)
     private func getImageFiles(_ directory: URL) -> [URL] {
         guard let enumerator = FileManager.default.enumerator(
             at: directory,
@@ -54,7 +59,14 @@ class ImageDirectoryAnalyzer {
         }
     }
     
-    /// Async version of directory analysis
+    // MARK: - Async version of directory analysis
+
+    /// Scans inputDir's immediate subdirectories, samples images and classifies directories.
+    ///
+    /// - Parameters:
+    ///   - inputDir: parent directory containing subdirectories to analyze
+    ///   - widthThreshold: threshold used to decide whether images are "wide" and thus isolated
+    /// - Returns: array of DirectoryScanResult
     func analyzeAsync(inputDir: URL, widthThreshold: Int) async -> [DirectoryScanResult] {
         let fileManager = FileManager.default
         var allScanResults: [DirectoryScanResult] = []
@@ -73,7 +85,7 @@ class ImageDirectoryAnalyzer {
             }
             
             for subdir in subdirs {
-                // Check for cancellation
+                // Cooperative cancellation: check via provided async closure
                 guard await isProcessingCheck() else { return [] }
                 
                 let imageFiles = getImageFiles(subdir)
@@ -82,18 +94,25 @@ class ImageDirectoryAnalyzer {
                     continue
                 }
                 
-                // Process sample images (choose first up to 5)
+                // Sample first up to 5 images for quick classification
                 let sampleImages = Array(imageFiles.prefix(5))
                 let sampleImagePaths = sampleImages.map { $0.path }
 
-                // Use the new async batch API which supports cooperative cancellation.
-                // Cancellation is based on the currently running Task; external cancellation should
-                // ensure Task cancellation is propagated where used.
-                let sampleDimensions = await ImageIOHelper.getBatchImageDimensionsAsync(imagePaths: sampleImagePaths)
-
+                // Use the async cancellation-aware batch dimensions API
+                let sampleDimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
+                    imagePaths: sampleImagePaths,
+                    asyncCancellationCheck: { [weak self] in
+                        guard let self = self else { return false }
+                        return await self.isProcessingCheck()
+                    }
+                )
+                
                 var isGlobalBatchCandidate = true
                 
                 for imageURL in sampleImages {
+                    // Cooperative cancellation check between samples
+                    guard await isProcessingCheck() else { return [] }
+
                     if let dims = sampleDimensions[imageURL.path] {
                         if dims.width >= widthThreshold {
                             isGlobalBatchCandidate = false
@@ -130,9 +149,10 @@ class ImageDirectoryAnalyzer {
         return allScanResults
     }
     
-    /// Legacy synchronous version for compatibility
+    // MARK: - Legacy synchronous version for compatibility
+
+    /// Synchronous wrapper for callers that expect blocking behavior.
     func analyze(inputDir: URL, widthThreshold: Int) -> [DirectoryScanResult] {
-        // Create a synchronous wrapper for the async version
         let semaphore = DispatchSemaphore(value: 0)
         var result: [DirectoryScanResult] = []
         

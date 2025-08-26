@@ -12,19 +12,9 @@ import os.log
 
 enum ImageIOHelper {
     // Shared logger instance for ImageIO operations.
-    // Keep messages concise and structured for system logging.
     private static let logger = OSLog(subsystem: "me2.comic.me2comic", category: "ImageIOHelper")
 
-    // Simple lock wrapper using os_unfair_lock for small critical sections.
-    // Using a lightweight primitive for minimal contention in hot paths.
-    private final class UnfairLock: @unchecked Sendable {
-        private var _lock = os_unfair_lock()
-        func withLock<R>(_ body: () throws -> R) rethrows -> R {
-            os_unfair_lock_lock(&_lock)
-            defer { os_unfair_lock_unlock(&_lock) }
-            return try body()
-        }
-    }
+    // MARK: - Low-level helper: read single image dimensions (synchronous)
 
     /// Synchronously obtains single image pixel dimensions using Image I/O.
     /// - Parameter imagePath: Absolute path to the image file.
@@ -60,86 +50,98 @@ enum ImageIOHelper {
         }
     }
 
-    // MARK: - Async batch API
+    // MARK: - Thread-safe result aggregator (actor)
+
+    private actor DimensionsStore {
+        private var dict: [String: (width: Int, height: Int)] = [:]
+        func set(_ path: String, dims: (Int, Int)) {
+            dict[path] = dims
+        }
+
+        func getAll() -> [String: (width: Int, height: Int)] {
+            return dict
+        }
+    }
+
+    // MARK: - Async batch API (preferred): supports async cancellation check
 
     /// Asynchronously retrieves pixel dimensions for multiple images.
     ///
-    /// Behavior:
-    /// - Uses a hybrid strategy: single-threaded for very small lists; otherwise uses
-    ///   concurrent partitions equal to the active processor count.
-    /// - Respects cooperative cancellation via Task.isCancelled and via an optional
-    ///   `cancellationCheck` closure. The closure should return `true` to continue.
-    /// - Returns partial results if cancelled; no exceptions are thrown for IO failures.
+    /// - Uses structured concurrency (`TaskGroup`) to create workers and cooperatively checks the provided
+    ///   async cancellation closure frequently.
+    /// - Returns partial results if the cancellation closure indicates stop or the Task is cancelled.
     ///
     /// - Parameters:
     ///   - imagePaths: Array of absolute image paths.
-    ///   - cancellationCheck: Optional closure called frequently; return `true` to continue processing.
-    ///                        Default checks `Task.isCancelled`.
+    ///   - asyncCancellationCheck: async closure called frequently; return `true` to continue.
     /// - Returns: Dictionary mapping path -> (width, height). Missing entries indicate failures.
     static func getBatchImageDimensionsAsync(
         imagePaths: [String],
-        cancellationCheck: @escaping () -> Bool = { !Task.isCancelled }
+        asyncCancellationCheck: @escaping () async -> Bool
     ) async -> [String: (width: Int, height: Int)] {
-        // Fast path
         guard !imagePaths.isEmpty else { return [:] }
 
-        // Run the heavy work on a detached task so that we don't block the caller actor.
-        return await Task.detached(priority: .userInitiated) {
-            var result: [String: (width: Int, height: Int)] = [:]
-            let lock = UnfairLock()
+        // Fast path for small lists: process serially on a detached task (less overhead).
+        if imagePaths.count < 20 {
+            return await Task.detached(priority: .userInitiated) {
+                let store = DimensionsStore()
+                for path in imagePaths {
+                    // Cooperative cancellation points
+                    if Task.isCancelled { break }
+                    if !(await asyncCancellationCheck()) { break }
 
-            // Concurrency decision:
-            // - Small batches run serially to avoid thread startup overhead.
-            // - Larger batches partition into `taskCount` chunks and process concurrently.
-            let taskCount: Int
-            if imagePaths.count < 20 {
-                taskCount = 1
-            } else {
-                taskCount = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount)
-            }
-
-            // Partition size for roughly-even distribution.
-            let imagesPerTask = (imagePaths.count + taskCount - 1) / taskCount
-
-            DispatchQueue.concurrentPerform(iterations: taskCount) { taskIndex in
-                // Cooperative cancellation check at chunk start.
-                guard cancellationCheck() else { return }
-
-                let start = taskIndex * imagesPerTask
-                let end = min(start + imagesPerTask, imagePaths.count)
-                guard start < end else { return }
-
-                for i in start ..< end {
-                    // Frequent cancellation point between images.
-                    if !cancellationCheck() { return }
-
-                    let path = imagePaths[i]
                     if let dims = getImageDimensions(imagePath: path) {
-                        lock.withLock {
-                            result[path] = dims
-                        }
+                        await store.set(path, dims: (dims.width, dims.height))
                     } else {
-                        // Log at debug level; do not treat as fatal.
-                        os_log("Unable to get dimensions for %{public}s", log: logger, type: .debug, path)
+                        os_log("Unable to get dimensions for %{public}s (serial small-batch)", log: logger, type: .debug, path)
                     }
                 }
+                return await store.getAll()
+            }.value
+        }
+
+        // For larger lists use structured concurrency and partition work among child tasks.
+        return await Task.detached(priority: .userInitiated) {
+            let store = DimensionsStore()
+            // Determine concurrency level
+            let workerCount = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount)
+            // Partition roughly evenly
+            let chunkSize = (imagePaths.count + workerCount - 1) / workerCount
+
+            await withTaskGroup(of: Void.self) { group in
+                for workerIndex in 0 ..< workerCount {
+                    let start = workerIndex * chunkSize
+                    let end = min(start + chunkSize, imagePaths.count)
+                    if start >= end { continue }
+                    let subrange = imagePaths[start ..< end]
+
+                    group.addTask {
+                        // Each child cooperatively checks cancellation and the asyncCancellationCheck frequently
+                        for path in subrange {
+                            if Task.isCancelled { break }
+                            if !(await asyncCancellationCheck()) { break }
+
+                            if let dims = getImageDimensions(imagePath: path) {
+                                await store.set(path, dims: (dims.width, dims.height))
+                            } else {
+                                os_log("Unable to get dimensions for %{public}s (worker)", log: logger, type: .debug, path)
+                            }
+                        }
+                    }
+                }
+
+                // Await all children (they can exit early on cancellation)
+                await group.waitForAll()
             }
 
-            return result
+            return await store.getAll()
         }.value
     }
 
-    // MARK: - Backwards-compatible synchronous wrapper
+    // MARK: - Backwards-compatible variants
 
-    /// Backwards-compatible synchronous API.
-    ///
-    /// This preserves existing call sites that expect a blocking call and the legacy `shouldContinue` closure.
-    /// Internally it reuses the async implementation executed on a detached task to avoid duplicating logic.
-    ///
-    /// - Parameters:
-    ///   - imagePaths: Array of absolute image paths.
-    ///   - shouldContinue: Closure returning `true` to continue processing, `false` to stop.
-    /// - Returns: Dictionary mapping path -> (width, height). Partial results possible on early stop.
+    /// Legacy synchronous wrapper that accepts a synchronous `shouldContinue` closure.
+    /// Preserves existing synchronous call sites by running the async implementation on a detached Task.
     static func getBatchImageDimensions(
         imagePaths: [String],
         shouldContinue: @escaping () -> Bool
@@ -148,14 +150,24 @@ enum ImageIOHelper {
         var result: [String: (width: Int, height: Int)] = [:]
         let semaphore = DispatchSemaphore(value: 0)
         Task.detached(priority: .userInitiated) {
-            let r = await getBatchImageDimensionsAsync(
-                imagePaths: imagePaths,
-                cancellationCheck: shouldContinue
-            )
+            let r = await getBatchImageDimensionsAsync(imagePaths: imagePaths, asyncCancellationCheck: {
+                shouldContinue()
+            })
             result = r
             semaphore.signal()
         }
         semaphore.wait()
         return result
+    }
+
+    /// Backwards-compatible async wrapper that accepts a synchronous `cancellationCheck`.
+    /// (Keeps existing internal callers that supply a sync closure working.)
+    static func getBatchImageDimensionsAsync(
+        imagePaths: [String],
+        cancellationCheck: @escaping () -> Bool
+    ) async -> [String: (width: Int, height: Int)] {
+        return await getBatchImageDimensionsAsync(imagePaths: imagePaths, asyncCancellationCheck: {
+            cancellationCheck()
+        })
     }
 }
