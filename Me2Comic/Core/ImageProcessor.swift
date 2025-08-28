@@ -272,11 +272,27 @@ class ImageProcessor: ObservableObject {
         effectiveThreadCount: Int,
         effectiveBatchSize: Int
     ) async {
+        let initialIsProcessing = isProcessing
+
+        if Task.isCancelled || !isProcessing {
+            #if DEBUG
+            print("ImageProcessor: processWithAsyncApproach aborted early (cancelled or not processing).")
+            #endif
+            return
+        }
+
         // Prepare all batch tasks
         var batchTasks: [(images: [URL], outputDir: URL, batchSize: Int, isGlobal: Bool)] = []
         
         // Process Isolated category
         for scanResult in allScanResults where scanResult.category == .isolated {
+            if Task.isCancelled || !isProcessing {
+                #if DEBUG
+                print("ImageProcessor: stopped while preparing isolated batches.")
+                #endif
+                return
+            }
+            
             let subName = scanResult.directoryURL.lastPathComponent
             let outputSubdir = outputDir.appendingPathComponent(subName)
             
@@ -301,8 +317,15 @@ class ImageProcessor: ObservableObject {
         // Process Global Batch category
         var globalProcessedCount = 0
         if !globalBatchImages.isEmpty {
-            appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+            if Task.isCancelled || !isProcessing {
+                #if DEBUG
+                print("ImageProcessor: cancelled before starting global batch.")
+                #endif
+                return
+            }
             
+            appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+
             let idealNumBatchesForGlobal = Int(ceil(Double(globalBatchImages.count) / Double(effectiveBatchSize)))
             let adjustedNumBatchesForGlobal = roundUpToNearestMultiple(value: idealNumBatchesForGlobal, multiple: effectiveThreadCount)
             let effectiveGlobalBatchSize = max(1, min(1000, Int(ceil(Double(globalBatchImages.count) / Double(adjustedNumBatchesForGlobal)))))
@@ -324,14 +347,14 @@ class ImageProcessor: ObservableObject {
                     // Wait for available slot
                     await semaphore.wait()
                     
-                    // Check cancellation
-                    if Task.isCancelled {
+                    // Check cancellation (again) before executing each batch
+                    if Task.isCancelled || !initialIsProcessing {
                         await semaphore.signal()
                         return (0, [], false)
                     }
                     
                     // Execute batch processing
-                    let (processed, failed) = await processBatch(
+                    let (processed, failed) = await self.processBatch(
                         images: batchTask.images,
                         outputDir: batchTask.outputDir,
                         parameters: parameters
@@ -344,11 +367,26 @@ class ImageProcessor: ObservableObject {
             
             // Collect results
             for await result in group {
+                // If the overall operation was cancelled, stop integrating results and skip remaining work
+                if Task.isCancelled || !isProcessing {
+                    #if DEBUG
+                    print("ImageProcessor: detected cancellation while collecting group results.")
+                    #endif
+                    break
+                }
+                
                 await handleBatchCompletion(processedCount: result.processed, failedFiles: result.failed)
                 if result.isGlobal {
                     globalProcessedCount += result.processed
                 }
             }
+        }
+        
+        if Task.isCancelled || !isProcessing {
+            #if DEBUG
+            print("ImageProcessor: skipping final completion logs due to cancellation/stop.")
+            #endif
+            return
         }
         
         // Handle final completion

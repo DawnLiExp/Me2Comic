@@ -247,11 +247,44 @@ struct BatchImageProcessor {
                 // Close pipe to signal EOF
                 try? pipeFileHandle.close()
                 
-                // Wait for process to exit
+                // Wait for process to exit (this function already uses Task-aware polling)
                 await waitForProcessCompletion(batchTask)
                 
-                // Check termination status
-                if batchTask.terminationStatus != 0, !Task.isCancelled {
+                // --- Safely obtain terminationStatus: only read it if process is confirmed not running.
+                // There is a race: cancellation handler may have called terminate() but process
+                // can still be in the process of exiting. Accessing terminationStatus while the task
+                // is still running triggers an Objective-C exception. So we only read it when
+                // process.isRunning == false, otherwise we try to wait a short bounded time; if
+                // still running, we avoid reading terminationStatus.
+                var exitCode: Int32?
+                if !batchTask.isRunning {
+                    // safe to read
+                    exitCode = batchTask.terminationStatus
+                } else {
+                    // Try bounded polling (total ~1s) for the process to actually exit
+                    var attempts = 0
+                    while batchTask.isRunning, attempts < 10 {
+                        // If task was cancelled, ensure we let terminateProcess do its work.
+                        // Sleep briefly (100ms) between checks to avoid busy-looping.
+                        do {
+                            try await Task.sleep(nanoseconds: 100000000) // 0.1s
+                        } catch {
+                            // Task.sleep can throw on cancellation — break out to avoid blocking.
+                            break
+                        }
+                        attempts += 1
+                    }
+                    if !batchTask.isRunning {
+                        exitCode = batchTask.terminationStatus
+                    } else {
+                        // Still running after bounded wait -> avoid calling terminationStatus to prevent exception.
+                        exitCode = nil
+                    }
+                }
+                
+                // If we have a real exit code and it's non-zero, and the current Task is not cancelled,
+                // treat it as failure for remaining items (keep original behavior).
+                if let code = exitCode, code != 0, !Task.isCancelled {
                     #if DEBUG
                     let stderrData = await dataCollector.getStderr()
                     if !stderrData.isEmpty, let s = String(data: stderrData, encoding: .utf8) {
@@ -497,23 +530,28 @@ struct BatchImageProcessor {
         }
     }
     
-    /// Wait for process to complete
+    /// Wait for process to complete (compatible with Swift structured concurrency)
     private func waitForProcessCompletion(_ process: Process) async {
-        await withCheckedContinuation { continuation in
-            if process.isRunning {
-                // Set up a timer to check process status
-                let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-                    if !process.isRunning {
-                        timer.invalidate()
-                        continuation.resume()
-                    }
+        while process.isRunning {
+            if Task.isCancelled {
+                if process.isRunning {
+                    terminateProcess(process)
                 }
-                // Ensure timer runs on current run loop
-                RunLoop.current.add(timer, forMode: .default)
-            } else {
-                continuation.resume()
+                break
+            }
+            do {
+                try await Task.sleep(nanoseconds: 100000000) // 0.1s
+            } catch {
+                if process.isRunning {
+                    terminateProcess(process)
+                }
+                break
             }
         }
+
+        do {
+            try await Task.sleep(nanoseconds: 50000000) // 0.05s
+        } catch {}
     }
     
     /// Terminate process and close pipes
