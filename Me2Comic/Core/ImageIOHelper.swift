@@ -10,164 +10,156 @@ import Foundation
 import ImageIO
 import os.log
 
+/// Helper for efficient image I/O operations
 enum ImageIOHelper {
-    // Shared logger instance for ImageIO operations.
+    // MARK: - Properties
+    
     private static let logger = OSLog(subsystem: "me2.comic.me2comic", category: "ImageIOHelper")
-
-    // MARK: - Low-level helper: read single image dimensions (synchronous)
-
-    /// Synchronously obtains single image pixel dimensions using Image I/O.
-    /// - Parameter imagePath: Absolute path to the image file.
-    /// - Returns: (width, height) or nil when the dimensions cannot be determined.
+    
+    // MARK: - Constants
+    
+    private enum Constants {
+        static let smallBatchThreshold = 20
+    }
+    
+    // MARK: - Public Methods
+    
+    /// Get pixel dimensions for single image
+    /// - Parameter imagePath: Absolute path to image file
+    /// - Returns: Tuple of (width, height) or nil if unavailable
     static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
         autoreleasepool {
             guard FileManager.default.fileExists(atPath: imagePath) else {
                 os_log("File not found: %{public}s", log: logger, type: .debug, imagePath)
                 return nil
             }
-
+            
             let imageURL = URL(fileURLWithPath: imagePath) as CFURL
             guard let imageSource = CGImageSourceCreateWithURL(imageURL, nil) else {
-                os_log("Unable to create CGImageSource for %{public}s", log: logger, type: .error, imagePath)
+                os_log("Failed to create image source: %{public}s", log: logger, type: .error, imagePath)
                 return nil
             }
-
-            // Avoid caching full image data when only properties are required.
+            
+            // Avoid caching when reading properties only
             let options = [kCGImageSourceShouldCache: false] as CFDictionary
-            guard let props = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, options) as NSDictionary? else {
-                os_log("Could not read properties for %{public}s", log: logger, type: .debug, imagePath)
+            guard let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, options) as NSDictionary? else {
+                os_log("Failed to read properties: %{public}s", log: logger, type: .debug, imagePath)
                 return nil
             }
-
-            if let w = props[kCGImagePropertyPixelWidth as String] as? Int,
-               let h = props[kCGImagePropertyPixelHeight as String] as? Int
-            {
-                return (width: w, height: h)
-            } else {
-                os_log("Pixel dimensions absent for %{public}s", log: logger, type: .debug, imagePath)
+            
+            guard let width = properties[kCGImagePropertyPixelWidth as String] as? Int,
+                  let height = properties[kCGImagePropertyPixelHeight as String] as? Int
+            else {
+                os_log("Missing dimensions: %{public}s", log: logger, type: .debug, imagePath)
                 return nil
             }
+            
+            return (width: width, height: height)
         }
     }
-
-    // MARK: - Thread-safe result aggregator (actor)
-
-    private actor DimensionsStore {
-        private var dict: [String: (width: Int, height: Int)] = [:]
-        func set(_ path: String, dims: (Int, Int)) {
-            dict[path] = dims
-        }
-
-        func getAll() -> [String: (width: Int, height: Int)] {
-            return dict
-        }
-    }
-
-    // MARK: - Async batch API (preferred): supports async cancellation check
-
-    /// Asynchronously retrieves pixel dimensions for multiple images.
-    ///
-    /// - Uses structured concurrency (`TaskGroup`) to create workers and cooperatively checks the provided
-    ///   async cancellation closure frequently.
-    /// - Returns partial results if the cancellation closure indicates stop or the Task is cancelled.
-    ///
+    
+    /// Asynchronously get dimensions for multiple images with cancellation support
     /// - Parameters:
-    ///   - imagePaths: Array of absolute image paths.
-    ///   - asyncCancellationCheck: async closure called frequently; return `true` to continue.
-    /// - Returns: Dictionary mapping path -> (width, height). Missing entries indicate failures.
+    ///   - imagePaths: Array of absolute image paths
+    ///   - asyncCancellationCheck: Async closure returning true to continue processing
+    /// - Returns: Dictionary mapping path to dimensions
     static func getBatchImageDimensionsAsync(
         imagePaths: [String],
         asyncCancellationCheck: @escaping () async -> Bool
     ) async -> [String: (width: Int, height: Int)] {
         guard !imagePaths.isEmpty else { return [:] }
-
-        // Fast path for small lists: process serially on a detached task (less overhead).
-        if imagePaths.count < 20 {
-            return await Task.detached(priority: .userInitiated) {
-                let store = DimensionsStore()
-                for path in imagePaths {
-                    // Cooperative cancellation points
-                    if Task.isCancelled { break }
-                    if !(await asyncCancellationCheck()) { break }
-
-                    if let dims = getImageDimensions(imagePath: path) {
-                        await store.set(path, dims: (dims.width, dims.height))
-                    } else {
-                        os_log("Unable to get dimensions for %{public}s (serial small-batch)", log: logger, type: .debug, path)
-                    }
-                }
-                return await store.getAll()
-            }.value
+        
+        // Use serial processing for small batches
+        if imagePaths.count < Constants.smallBatchThreshold {
+            return await processSerially(
+                imagePaths: imagePaths,
+                cancellationCheck: asyncCancellationCheck
+            )
         }
-
-        // For larger lists use structured concurrency and partition work among child tasks.
-        return await Task.detached(priority: .userInitiated) {
+        
+        // Use parallel processing for larger batches
+        return await processInParallel(
+            imagePaths: imagePaths,
+            cancellationCheck: asyncCancellationCheck
+        )
+    }
+    
+    // MARK: - Private Methods
+    
+    /// Process images serially (for small batches)
+    private static func processSerially(
+        imagePaths: [String],
+        cancellationCheck: @escaping () async -> Bool
+    ) async -> [String: (width: Int, height: Int)] {
+        await Task.detached(priority: .userInitiated) {
             let store = DimensionsStore()
-            // Determine concurrency level
+            
+            for path in imagePaths {
+                guard !Task.isCancelled else { break }
+                guard await cancellationCheck() else { break }
+                
+                if let dimensions = getImageDimensions(imagePath: path) {
+                    await store.set(path, dimensions: dimensions)
+                } else {
+                    os_log("Failed to get dimensions: %{public}s", log: logger, type: .debug, path)
+                }
+            }
+            
+            return await store.getAll()
+        }.value
+    }
+    
+    /// Process images in parallel (for large batches)
+    private static func processInParallel(
+        imagePaths: [String],
+        cancellationCheck: @escaping () async -> Bool
+    ) async -> [String: (width: Int, height: Int)] {
+        await Task.detached(priority: .userInitiated) {
+            let store = DimensionsStore()
             let workerCount = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount)
-            // Partition roughly evenly
             let chunkSize = (imagePaths.count + workerCount - 1) / workerCount
-
+            
             await withTaskGroup(of: Void.self) { group in
-                for workerIndex in 0 ..< workerCount {
+                for workerIndex in 0..<workerCount {
                     let start = workerIndex * chunkSize
                     let end = min(start + chunkSize, imagePaths.count)
-                    if start >= end { continue }
-                    let subrange = imagePaths[start ..< end]
-
+                    guard start < end else { continue }
+                    
+                    let chunk = Array(imagePaths[start..<end])
+                    
                     group.addTask {
-                        // Each child cooperatively checks cancellation and the asyncCancellationCheck frequently
-                        for path in subrange {
-                            if Task.isCancelled { break }
-                            if !(await asyncCancellationCheck()) { break }
-
-                            if let dims = getImageDimensions(imagePath: path) {
-                                await store.set(path, dims: (dims.width, dims.height))
+                        for path in chunk {
+                            guard !Task.isCancelled else { break }
+                            guard await cancellationCheck() else { break }
+                            
+                            if let dimensions = getImageDimensions(imagePath: path) {
+                                await store.set(path, dimensions: dimensions)
                             } else {
-                                os_log("Unable to get dimensions for %{public}s (worker)", log: logger, type: .debug, path)
+                                os_log("Failed to get dimensions: %{public}s", log: logger, type: .debug, path)
                             }
                         }
                     }
                 }
-
-                // Await all children (they can exit early on cancellation)
+                
                 await group.waitForAll()
             }
-
+            
             return await store.getAll()
         }.value
     }
+}
 
-    // MARK: - Backwards-compatible variants
+// MARK: - Private Types
 
-    /// Legacy synchronous wrapper that accepts a synchronous `shouldContinue` closure.
-    /// Preserves existing synchronous call sites by running the async implementation on a detached Task.
-    static func getBatchImageDimensions(
-        imagePaths: [String],
-        shouldContinue: @escaping () -> Bool
-    ) -> [String: (width: Int, height: Int)] {
-        if imagePaths.isEmpty { return [:] }
-        var result: [String: (width: Int, height: Int)] = [:]
-        let semaphore = DispatchSemaphore(value: 0)
-        Task.detached(priority: .userInitiated) {
-            let r = await getBatchImageDimensionsAsync(imagePaths: imagePaths, asyncCancellationCheck: {
-                shouldContinue()
-            })
-            result = r
-            semaphore.signal()
-        }
-        semaphore.wait()
-        return result
+/// Thread-safe storage for image dimensions
+private actor DimensionsStore {
+    private var dimensions: [String: (width: Int, height: Int)] = [:]
+    
+    func set(_ path: String, dimensions: (width: Int, height: Int)) {
+        self.dimensions[path] = dimensions
     }
-
-    /// Backwards-compatible async wrapper that accepts a synchronous `cancellationCheck`.
-    /// (Keeps existing internal callers that supply a sync closure working.)
-    static func getBatchImageDimensionsAsync(
-        imagePaths: [String],
-        cancellationCheck: @escaping () -> Bool
-    ) async -> [String: (width: Int, height: Int)] {
-        return await getBatchImageDimensionsAsync(imagePaths: imagePaths, asyncCancellationCheck: {
-            cancellationCheck()
-        })
+    
+    func getAll() -> [String: (width: Int, height: Int)] {
+        dimensions
     }
 }
