@@ -24,25 +24,34 @@ struct ProcessingParameters {
     let useGrayColorspace: Bool
 }
 
+/// Actor for thread-safe batch result aggregation
+private actor BatchResultAggregator {
+    private var totalProcessed: Int = 0
+    private var failedFiles: [String] = []
+    
+    func addResult(processed: Int, failed: [String]) {
+        totalProcessed += processed
+        failedFiles.append(contentsOf: failed)
+    }
+    
+    func getResults() -> (processed: Int, failed: [String]) {
+        return (totalProcessed, failedFiles)
+    }
+    
+    func reset() {
+        totalProcessed = 0
+        failedFiles.removeAll()
+    }
+}
+
 /// Actor responsible for managing the image processing workflow
 @MainActor
 class ImageProcessor: ObservableObject {
     private let notificationManager = NotificationManager()
     private var gmPath: String = ""
     
-    /// Operation queue for batch processing (retained for Process management)
-    private let processingQueue = OperationQueue()
-    private let processingDispatchQueue = DispatchQueue(
-        label: "me2.comic.me2comic.processing",
-        qos: .userInitiated,
-        attributes: .concurrent
-    )
-    
-    private var totalImagesProcessed: Int = 0
     private var processingStartTime: Date?
-    
-    /// List of files that failed processing
-    private var allFailedFiles: [String] = []
+    private let batchResultAggregator = BatchResultAggregator()
     
     // UI state
     /// Indicates if processing is currently active
@@ -122,9 +131,6 @@ class ImageProcessor: ObservableObject {
         // Cancel async task
         activeProcessingTask?.cancel()
         activeProcessingTask = nil
-        
-        // Cancel operations in queue
-        processingQueue.cancelAllOperations()
         
         appendLog(NSLocalizedString("ProcessingStopRequested", comment: "User requested stop"))
         appendLog(NSLocalizedString("ProcessingStopped", comment: "Processing has been stopped"))
@@ -246,12 +252,8 @@ class ImageProcessor: ObservableObject {
             }
         }
         
-        // Configure operation queue for batch operations
-        processingQueue.maxConcurrentOperationCount = effectiveThreadCount
-        processingQueue.underlyingQueue = processingDispatchQueue
-        
-        // Process using hybrid approach
-        await processWithHybridApproach(
+        // Process using async/await approach
+        await processWithAsyncApproach(
             allScanResults: allScanResults,
             globalBatchImages: globalBatchImages,
             outputDir: outputDir,
@@ -261,8 +263,8 @@ class ImageProcessor: ObservableObject {
         )
     }
     
-    /// Hybrid processing using Operations with async coordination
-    private func processWithHybridApproach(
+    /// Async processing using TaskGroup
+    private func processWithAsyncApproach(
         allScanResults: [DirectoryScanResult],
         globalBatchImages: [URL],
         outputDir: URL,
@@ -270,7 +272,8 @@ class ImageProcessor: ObservableObject {
         effectiveThreadCount: Int,
         effectiveBatchSize: Int
     ) async {
-        var allOps: [BatchProcessOperation] = []
+        // Prepare all batch tasks
+        var batchTasks: [(images: [URL], outputDir: URL, batchSize: Int, isGlobal: Bool)] = []
         
         // Process Isolated category
         for scanResult in allScanResults where scanResult.category == .isolated {
@@ -291,78 +294,75 @@ class ImageProcessor: ObservableObject {
             }
             
             for batch in splitIntoBatches(scanResult.imageFiles, batchSize: batchSize) {
-                let op = createBatchOperation(
-                    images: batch,
-                    outputDir: outputSubdir,
-                    parameters: parameters
-                )
-                allOps.append(op)
+                batchTasks.append((images: batch, outputDir: outputSubdir, batchSize: batchSize, isGlobal: false))
             }
         }
         
-        var globalProcessedCount = 0
         // Process Global Batch category
+        var globalProcessedCount = 0
         if !globalBatchImages.isEmpty {
             appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
             
             let idealNumBatchesForGlobal = Int(ceil(Double(globalBatchImages.count) / Double(effectiveBatchSize)))
             let adjustedNumBatchesForGlobal = roundUpToNearestMultiple(value: idealNumBatchesForGlobal, multiple: effectiveThreadCount)
             let effectiveGlobalBatchSize = max(1, min(1000, Int(ceil(Double(globalBatchImages.count) / Double(adjustedNumBatchesForGlobal)))))
-            let globalBatches = splitIntoBatches(globalBatchImages, batchSize: effectiveGlobalBatchSize)
             
-            var completedGlobalBatches = 0
-            let totalGlobalBatches = globalBatches.count
-            let globalBatchLock = NSLock()
-            
-            for batch in globalBatches {
-                let op = createBatchOperation(
-                    images: batch,
-                    outputDir: outputDir,
-                    parameters: parameters
-                )
-                
-                let originalCompletion = op.onCompleted
-                op.onCompleted = { count, fails in
-                    originalCompletion?(count, fails)
-                    
-                    globalBatchLock.lock()
-                    globalProcessedCount += count
-                    completedGlobalBatches += 1
-                    let isLast = (completedGlobalBatches == totalGlobalBatches)
-                    globalBatchLock.unlock()
-                    
-                    if isLast {
-                        // Defer logging of CompletedGlobalBatchWithCount until handleProcessingCompletion
-                    }
-                }
-                
-                allOps.append(op)
+            for batch in splitIntoBatches(globalBatchImages, batchSize: effectiveGlobalBatchSize) {
+                batchTasks.append((images: batch, outputDir: outputDir, batchSize: effectiveGlobalBatchSize, isGlobal: true))
             }
         }
         
-        // Add operations to queue
-        await withCheckedContinuation { continuation in
-            processingQueue.addOperations(allOps, waitUntilFinished: false)
+        // Execute batches with controlled concurrency
+        await withTaskGroup(of: (processed: Int, failed: [String], isGlobal: Bool).self) { group in
+            // Semaphore to control concurrency
+            let semaphore = AsyncSemaphore(limit: effectiveThreadCount)
             
-            // Wait for completion using async wrapper
-            processingQueue.addBarrierBlock { [weak self] in
-                Task { @MainActor [weak self] in
-                    await self?.handleProcessingCompletion(scanResults: allScanResults, globalProcessedCount: globalProcessedCount)
-                    continuation.resume()
+            for batchTask in batchTasks {
+                group.addTask { [weak self] in
+                    guard let self = self else { return (0, [], false) }
+                    
+                    // Wait for available slot
+                    await semaphore.wait()
+                    
+                    // Check cancellation
+                    if Task.isCancelled {
+                        await semaphore.signal()
+                        return (0, [], false)
+                    }
+                    
+                    // Execute batch processing
+                    let (processed, failed) = await processBatch(
+                        images: batchTask.images,
+                        outputDir: batchTask.outputDir,
+                        parameters: parameters
+                    )
+                    
+                    await semaphore.signal()
+                    return (processed, failed, batchTask.isGlobal)
+                }
+            }
+            
+            // Collect results
+            for await result in group {
+                await handleBatchCompletion(processedCount: result.processed, failedFiles: result.failed)
+                if result.isGlobal {
+                    globalProcessedCount += result.processed
                 }
             }
         }
+        
+        // Handle final completion
+        await handleProcessingCompletion(scanResults: allScanResults, globalProcessedCount: globalProcessedCount)
     }
     
-    /// Creates a batch operation with completion handler
-    private func createBatchOperation(
+    /// Process a single batch of images
+    private func processBatch(
         images: [URL],
         outputDir: URL,
         parameters: ProcessingParameters
-    ) -> BatchProcessOperation {
-        let op = BatchProcessOperation(
-            images: images,
-            outputDir: outputDir,
+    ) async -> (processed: Int, failed: [String]) {
+        let processor = BatchImageProcessor(
+            gmPath: gmPath,
             widthThreshold: parameters.widthThreshold,
             resizeHeight: parameters.resizeHeight,
             quality: parameters.quality,
@@ -370,23 +370,15 @@ class ImageProcessor: ObservableObject {
             unsharpSigma: parameters.unsharpSigma,
             unsharpAmount: parameters.unsharpAmount,
             unsharpThreshold: parameters.unsharpThreshold,
-            useGrayColorspace: parameters.useGrayColorspace,
-            gmPath: gmPath
+            useGrayColorspace: parameters.useGrayColorspace
         )
         
-        op.onCompleted = { [weak self] count, fails in
-            Task { @MainActor [weak self] in
-                self?.handleBatchCompletion(processedCount: count, failedFiles: fails)
-            }
-        }
-        
-        return op
+        return await processor.processBatch(images: images, outputDir: outputDir)
     }
     
     /// Handles batch completion
-    private func handleBatchCompletion(processedCount: Int, failedFiles: [String]) {
-        totalImagesProcessed += processedCount
-        allFailedFiles.append(contentsOf: failedFiles)
+    private func handleBatchCompletion(processedCount: Int, failedFiles: [String]) async {
+        await batchResultAggregator.addResult(processed: processedCount, failed: failedFiles)
         
         currentProcessedImages += processedCount
         if totalImagesToProcess > 0 {
@@ -401,8 +393,7 @@ class ImageProcessor: ObservableObject {
         let elapsed = Int(Date().timeIntervalSince(processingStartTime ?? Date()))
         let duration = formatProcessingTime(elapsed)
         
-        let processedCount = totalImagesProcessed
-        let failedFiles = allFailedFiles
+        let (processedCount, failedFiles) = await batchResultAggregator.getResults()
         
         var completionLogs: [String] = []
         
@@ -476,9 +467,9 @@ class ImageProcessor: ObservableObject {
     
     /// Resets internal processing state
     private func resetProcessingState() {
-        processingQueue.cancelAllOperations()
-        totalImagesProcessed = 0
-        allFailedFiles.removeAll()
+        Task {
+            await batchResultAggregator.reset()
+        }
         processingStartTime = Date()
         totalImagesToProcess = 0
         currentProcessedImages = 0
@@ -605,6 +596,39 @@ class ImageProcessor: ObservableObject {
             let minutes = seconds / 60
             let remaining = seconds % 60
             return String(format: NSLocalizedString("ProcessingTimeMinutesSeconds", comment: ""), minutes, remaining)
+        }
+    }
+}
+
+// MARK: - AsyncSemaphore
+
+/// Simple async semaphore for concurrency control
+private actor AsyncSemaphore {
+    private let limit: Int
+    private var count: Int
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    
+    init(limit: Int) {
+        self.limit = limit
+        count = limit
+    }
+    
+    func wait() async {
+        if count > 0 {
+            count -= 1
+        } else {
+            await withCheckedContinuation { continuation in
+                waiters.append(continuation)
+            }
+        }
+    }
+    
+    func signal() async {
+        if let waiter = waiters.first {
+            waiters.removeFirst()
+            waiter.resume()
+        } else {
+            count += 1
         }
     }
 }
