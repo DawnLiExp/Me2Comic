@@ -135,10 +135,16 @@ class ImageProcessor: ObservableObject {
     /// Process directories with categorization
     private func processDirectoriesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
         let analyzer = ImageDirectoryAnalyzer(
-            logHandler: { [weak self] in self?.logger.appendLog($0) },
-            isProcessingCheck: { [weak self] in
+            logHandler: { @Sendable [weak self] message in
+                Task { @MainActor [weak self] in
+                    self?.logger.appendLog(message)
+                }
+            },
+            isProcessingCheck: { @Sendable [weak self] in
                 guard let self = self else { return false }
-                return self.stateManager.isProcessing && !Task.isCancelled
+                return await MainActor.run {
+                    self.stateManager.isProcessing && !Task.isCancelled
+                }
             }
         )
         
@@ -465,6 +471,7 @@ class ImageProcessor: ObservableObject {
                 processedCount
             )
         
+        let notificationManager = self.notificationManager
         try? await notificationManager.sendNotification(
             title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
             subtitle: subtitle,

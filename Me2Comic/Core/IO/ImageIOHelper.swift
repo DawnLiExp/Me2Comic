@@ -65,7 +65,7 @@ enum ImageIOHelper {
     /// - Returns: Dictionary mapping path to dimensions
     static func getBatchImageDimensionsAsync(
         imagePaths: [String],
-        asyncCancellationCheck: @escaping () async -> Bool
+        asyncCancellationCheck: @escaping @Sendable () async -> Bool
     ) async -> [String: (width: Int, height: Int)] {
         guard !imagePaths.isEmpty else { return [:] }
         
@@ -89,9 +89,9 @@ enum ImageIOHelper {
     /// Process images serially (for small batches)
     private static func processSerially(
         imagePaths: [String],
-        cancellationCheck: @escaping () async -> Bool
+        cancellationCheck: @escaping @Sendable () async -> Bool
     ) async -> [String: (width: Int, height: Int)] {
-        await Task.detached(priority: .userInitiated) {
+        await Task.detached(priority: .userInitiated) { @Sendable in
             let store = DimensionsStore()
             
             for path in imagePaths {
@@ -112,9 +112,9 @@ enum ImageIOHelper {
     /// Process images in parallel (for large batches)
     private static func processInParallel(
         imagePaths: [String],
-        cancellationCheck: @escaping () async -> Bool
+        cancellationCheck: @escaping @Sendable () async -> Bool
     ) async -> [String: (width: Int, height: Int)] {
-        await Task.detached(priority: .userInitiated) {
+        await Task.detached(priority: .userInitiated) { @Sendable in
             let store = DimensionsStore()
             let workerCount = min(imagePaths.count, ProcessInfo.processInfo.activeProcessorCount)
             let chunkSize = (imagePaths.count + workerCount - 1) / workerCount
@@ -127,7 +127,7 @@ enum ImageIOHelper {
                     
                     let chunk = Array(imagePaths[start..<end])
                     
-                    group.addTask {
+                    group.addTask { @Sendable in
                         for path in chunk {
                             guard !Task.isCancelled else { break }
                             guard await cancellationCheck() else { break }

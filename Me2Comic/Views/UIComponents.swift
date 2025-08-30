@@ -322,14 +322,18 @@ struct ActionButtonView: View {
     private func startAnimation() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            dotCount = (dotCount + 1) % 4
+            Task { @MainActor in
+                dotCount = (dotCount + 1) % 4
+            }
         }
     }
 
     private func stopAnimation() {
         timer?.invalidate()
         timer = nil
-        dotCount = 0
+        Task { @MainActor in
+            dotCount = 0
+        }
     }
 }
 
@@ -437,12 +441,6 @@ struct LeftPanelView: View {
     }
 }
 
-extension ParameterInputView: Equatable {
-    static func == (lhs: ParameterInputView, rhs: ParameterInputView) -> Bool {
-        lhs.title == rhs.title && lhs.text == rhs.text && lhs.isProcessing == rhs.isProcessing
-    }
-}
-
 // 进度显示视图
 struct ProgressDisplayView: View {
     @ObservedObject var processor: ImageProcessor
@@ -473,11 +471,5 @@ struct ProgressDisplayView: View {
             RoundedRectangle(cornerRadius: 6)
                 .stroke(.accent.opacity(0.3), lineWidth: 1)
         )
-    }
-}
-
-extension ParameterDescription: Equatable {
-    static func == (lhs: ParameterDescription, rhs: ParameterDescription) -> Bool {
-        lhs.label == rhs.label && lhs.description == rhs.description
     }
 }

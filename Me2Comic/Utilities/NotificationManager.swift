@@ -1,4 +1,3 @@
-
 //
 //  NotificationManager.swift
 //  Me2Comic
@@ -10,7 +9,7 @@ import Foundation
 import UserNotifications
 
 /// Manages user notifications for the application.
-class NotificationManager {
+final class NotificationManager: Sendable {
     /// Requests authorization for user notifications.
     /// - Returns: `true` if authorization was granted, `false` otherwise.
     /// - Throws: An error if the authorization request failed.

@@ -10,11 +10,11 @@ import Foundation
 // MARK: - Image Directory Analyzer
 
 /// Analyzes image directories for processing categorization
-class ImageDirectoryAnalyzer {
+final class ImageDirectoryAnalyzer: Sendable {
     // MARK: - Properties
     
-    private let logHandler: (String) -> Void
-    private let isProcessingCheck: () async -> Bool
+    private let logHandler: @Sendable (String) -> Void
+    private let isProcessingCheck: @Sendable () async -> Bool
     
     // MARK: - Constants
     
@@ -30,8 +30,8 @@ class ImageDirectoryAnalyzer {
     ///   - logHandler: Closure for logging messages
     ///   - isProcessingCheck: Async closure to check if processing should continue
     init(
-        logHandler: @escaping (String) -> Void,
-        isProcessingCheck: @escaping () async -> Bool
+        logHandler: @escaping @Sendable (String) -> Void,
+        isProcessingCheck: @escaping @Sendable () async -> Bool
     ) {
         self.logHandler = logHandler
         self.isProcessingCheck = isProcessingCheck
@@ -127,10 +127,7 @@ class ImageDirectoryAnalyzer {
         
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
             imagePaths: samplePaths,
-            asyncCancellationCheck: { [weak self] in
-                guard let self = self else { return false }
-                return await self.isProcessingCheck()
-            }
+            asyncCancellationCheck: isProcessingCheck
         )
         
         // Check if any sample exceeds width threshold
