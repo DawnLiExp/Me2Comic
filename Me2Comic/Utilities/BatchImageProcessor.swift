@@ -87,8 +87,6 @@ struct BatchImageProcessor {
     private enum Constants {
         static let writeChunkSize = 16 * 1024 // 16KB
         static let maxWriteAttempts = 50
-        static let processWaitInterval: UInt64 = 100_000_000 // 0.1s
-        static let processTerminationTimeout = 10 // attempts
     }
     
     // MARK: - Initialization
@@ -227,13 +225,13 @@ struct BatchImageProcessor {
             // Close input to signal completion
             try? writeHandle.close()
             
-            // Wait for process completion
+            // Wait for process completion using event-driven approach
             await waitForProcessTermination(process)
             
-            // Check exit status
-            let exitCode = getProcessExitCode(process)
+            // Process is guaranteed to be terminated, safe to read exit code
+            let exitCode = process.terminationStatus
             
-            if let code = exitCode, code != 0, !Task.isCancelled {
+            if exitCode != 0, !Task.isCancelled {
                 logProcessError(outputCollector: outputCollector)
                 return (0, images.map { $0.lastPathComponent })
             }
@@ -459,30 +457,16 @@ struct BatchImageProcessor {
         }
     }
     
-    /// Wait for process termination
+    /// Wait for process termination using event-driven approach
     private func waitForProcessTermination(_ process: Process) async {
-        var attempts = 0
+        guard process.isRunning else { return }
         
-        while process.isRunning, attempts < Constants.processTerminationTimeout * 10 {
-            if Task.isCancelled {
-                terminateProcess(process)
-                break
-            }
-            
-            do {
-                try await Task.sleep(nanoseconds: Constants.processWaitInterval)
-                attempts += 1
-            } catch {
-                terminateProcess(process)
-                break
+        // Bridge callback-based terminationHandler to async/await
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            process.terminationHandler = { _ in
+                continuation.resume()
             }
         }
-    }
-    
-    /// Safely get process exit code
-    private func getProcessExitCode(_ process: Process) -> Int32? {
-        guard !process.isRunning else { return nil }
-        return process.terminationStatus
     }
     
     /// Create batch process
@@ -528,6 +512,10 @@ struct BatchImageProcessor {
         
         (process.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
         process.terminate()
+        
+        #if DEBUG
+        print("BatchImageProcessor: Process terminated")
+        #endif
     }
     
     /// Analyze duplicate base names
