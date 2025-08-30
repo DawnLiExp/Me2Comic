@@ -7,21 +7,6 @@
 
 import Foundation
 
-// MARK: - Types
-
-/// Processing category for directories
-enum ProcessingCategory {
-    case globalBatch // Images not requiring cropping
-    case isolated // Images requiring cropping or unclear classification
-}
-
-/// Result of directory scan
-struct DirectoryScanResult {
-    let directoryURL: URL
-    let imageFiles: [URL]
-    let category: ProcessingCategory
-}
-
 // MARK: - Image Directory Analyzer
 
 /// Analyzes image directories for processing categorization

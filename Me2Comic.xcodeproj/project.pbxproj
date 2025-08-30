@@ -18,6 +18,11 @@
 		FCD13BC62E431DC8003A8023 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD13BC52E431DC6003A8023 /* Extensions.swift */; };
 		FCD13BC82E431E0F003A8023 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD13BC72E431E0D003A8023 /* AboutView.swift */; };
 		FCDCAEA62E4389EF00216C1D /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */; };
+		FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */; };
+		FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */; };
+		FCEAFA642E60DAAD008575D6 /* BatchTaskOrganizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA632E60DAAB008575D6 /* BatchTaskOrganizer.swift */; };
+		FCEAFA662E60DACE008575D6 /* AutoParameterCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA652E60DACB008575D6 /* AutoParameterCalculator.swift */; };
+		FCEAFA682E60DD11008575D6 /* ProcessingTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA672E60DD04008575D6 /* ProcessingTypes.swift */; };
 		FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */; };
 		FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */; };
 		FCF8E79E2DC9F8F60044291C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = FCF8E7A02DC9F8F60044291C /* Localizable.strings */; };
@@ -40,6 +45,11 @@
 		FCD13BC52E431DC6003A8023 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		FCD13BC72E431E0D003A8023 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingStateManager.swift; sourceTree = "<group>"; };
+		FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingLogger.swift; sourceTree = "<group>"; };
+		FCEAFA632E60DAAB008575D6 /* BatchTaskOrganizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchTaskOrganizer.swift; sourceTree = "<group>"; };
+		FCEAFA652E60DACB008575D6 /* AutoParameterCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoParameterCalculator.swift; sourceTree = "<group>"; };
+		FCEAFA672E60DD04008575D6 /* ProcessingTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingTypes.swift; sourceTree = "<group>"; };
 		FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessor.swift; sourceTree = "<group>"; };
 		FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsMagickHelper.swift; sourceTree = "<group>"; };
 		FCF8E79F2DC9F8F60044291C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -60,9 +70,9 @@
 		FC19ED782DF464CC007A2F24 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
-				FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */,
-				FCD13BC52E431DC6003A8023 /* Extensions.swift */,
 				FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */,
+				FCD13BC52E431DC6003A8023 /* Extensions.swift */,
+				FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -82,6 +92,50 @@
 				FCF8E7A02DC9F8F60044291C /* Localizable.strings */,
 			);
 			path = Localizations;
+			sourceTree = "<group>";
+		};
+		FC3BA1632E62BC9300CEAC99 /* Processing */ = {
+			isa = PBXGroup;
+			children = (
+				FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */,
+				FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */,
+				FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */,
+				FCEAFA632E60DAAB008575D6 /* BatchTaskOrganizer.swift */,
+				FCEAFA652E60DACB008575D6 /* AutoParameterCalculator.swift */,
+			);
+			path = Processing;
+			sourceTree = "<group>";
+		};
+		FC3BA1642E62BCC900CEAC99 /* Analysis */ = {
+			isa = PBXGroup;
+			children = (
+				FCFCBCE72E24D92C00312F32 /* ImageDirectoryAnalyzer.swift */,
+			);
+			path = Analysis;
+			sourceTree = "<group>";
+		};
+		FC3BA1652E62BCE200CEAC99 /* IO */ = {
+			isa = PBXGroup;
+			children = (
+				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
+			);
+			path = IO;
+			sourceTree = "<group>";
+		};
+		FC3BA1662E62BD0E00CEAC99 /* Validation */ = {
+			isa = PBXGroup;
+			children = (
+				FCA94A162E43C43600CC23BC /* ProcessingParametersValidator.swift */,
+			);
+			path = Validation;
+			sourceTree = "<group>";
+		};
+		FC3BA1672E62BD9B00CEAC99 /* Types */ = {
+			isa = PBXGroup;
+			children = (
+				FCEAFA672E60DD04008575D6 /* ProcessingTypes.swift */,
+			);
+			path = Types;
 			sourceTree = "<group>";
 		};
 		FC9092EA2DFEC37700867319 /* Frameworks */ = {
@@ -112,10 +166,10 @@
 		FCB9B0C62DBDFD4500110511 /* Me2Comic */ = {
 			isa = PBXGroup;
 			children = (
+				FCF6FDC32DF08BA500572AC1 /* Core */,
 				FCF717162DF49EF2001999BD /* ExternalTools */,
 				FC19ED782DF464CC007A2F24 /* Utilities */,
 				FCF6FDC42DF08BBA00572AC1 /* Views */,
-				FCF6FDC32DF08BA500572AC1 /* Core */,
 				FC39697C2DCE28FA006BB484 /* Resources */,
 				FCB9B0C72DBDFD4500110511 /* Me2ComicApp.swift */,
 				FCB9B0D02DBDFD4700110511 /* Me2Comic.entitlements */,
@@ -126,10 +180,11 @@
 		FCF6FDC32DF08BA500572AC1 /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				FCA94A162E43C43600CC23BC /* ProcessingParametersValidator.swift */,
-				FCFCBCE72E24D92C00312F32 /* ImageDirectoryAnalyzer.swift */,
-				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
-				FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */,
+				FC3BA1672E62BD9B00CEAC99 /* Types */,
+				FC3BA1662E62BD0E00CEAC99 /* Validation */,
+				FC3BA1652E62BCE200CEAC99 /* IO */,
+				FC3BA1642E62BCC900CEAC99 /* Analysis */,
+				FC3BA1632E62BC9300CEAC99 /* Processing */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -138,8 +193,8 @@
 			isa = PBXGroup;
 			children = (
 				FCD13BC72E431E0D003A8023 /* AboutView.swift */,
-				FC0976852DC72DF900C307FD /* UIComponents.swift */,
 				FCB9B0C92DBDFD4500110511 /* ImageProcessorView.swift */,
+				FC0976852DC72DF900C307FD /* UIComponents.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -221,6 +276,10 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 				FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */,
+				FCEAFA682E60DD11008575D6 /* ProcessingTypes.swift in Sources */,
+				FCEAFA642E60DAAD008575D6 /* BatchTaskOrganizer.swift in Sources */,
+				FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */,
+				FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */,
 				FCA94A172E43C43A00CC23BC /* ProcessingParametersValidator.swift in Sources */,
 				FCD13BC62E431DC8003A8023 /* Extensions.swift in Sources */,
 				FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */,
@@ -229,6 +288,7 @@
 				FCD13BC82E431E0F003A8023 /* AboutView.swift in Sources */,
 				FCB9B0CA2DBDFD4500110511 /* ImageProcessorView.swift in Sources */,
 				FC0976862DC72DF900C307FD /* UIComponents.swift in Sources */,
+				FCEAFA662E60DACE008575D6 /* AutoParameterCalculator.swift in Sources */,
 				FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */,
 				FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */,
 				FCFCBCE92E24D92C00312F32 /* ImageDirectoryAnalyzer.swift in Sources */,
