@@ -27,6 +27,10 @@ class AutoParameterCalculator {
     
     init(logger: ProcessingLogger) {
         self.logger = logger
+        
+        #if DEBUG
+        logger.logDebug("AutoParameterCalculator initialized", source: "AutoParameterCalculator")
+        #endif
     }
     
     // MARK: - Public Methods
@@ -41,10 +45,17 @@ class AutoParameterCalculator {
         totalImages: Int
     ) -> (threadCount: Int, batchSize: Int) {
         guard parameters.threadCount == Constants.autoModeThreadCount else {
+            #if DEBUG
+            logger.logDebug("Manual mode: threads=\(parameters.threadCount), batch=\(parameters.batchSize)", source: "AutoParameterCalculator")
+            #endif
             return (parameters.threadCount, parameters.batchSize)
         }
         
         logger.appendLog(NSLocalizedString("AutoModeEnabled", comment: ""))
+        
+        #if DEBUG
+        logger.logDebug("Auto mode enabled for \(totalImages) images", source: "AutoParameterCalculator")
+        #endif
         
         let autoParams = calculateAutoParameters(totalImageCount: totalImages)
         
@@ -53,6 +64,10 @@ class AutoParameterCalculator {
             autoParams.threadCount,
             autoParams.batchSize
         ))
+        
+        #if DEBUG
+        logger.logDebug("Auto-calculated parameters: threads=\(autoParams.threadCount), batch=\(autoParams.batchSize)", source: "AutoParameterCalculator")
+        #endif
         
         return autoParams
     }
@@ -64,12 +79,26 @@ class AutoParameterCalculator {
         let threadCount: Int = {
             switch totalImageCount {
             case ..<10:
+                #if DEBUG
+                logger.logDebug("Small workload (<10 images): allocating 1 thread", source: "AutoParameterCalculator")
+                #endif
                 return 1
             case 10..<50:
-                return min(3, 1 + Int(ceil(Double(totalImageCount - 10) / 20.0)))
+                let calculatedThreads = min(3, 1 + Int(ceil(Double(totalImageCount - 10) / 20.0)))
+                #if DEBUG
+                logger.logDebug("Medium workload (10-49 images): allocating \(calculatedThreads) threads", source: "AutoParameterCalculator")
+                #endif
+                return calculatedThreads
             case 50..<300:
-                return min(Constants.maxThreadCount, 3 + Int(ceil(Double(totalImageCount - 50) / 50.0)))
+                let calculatedThreads = min(Constants.maxThreadCount, 3 + Int(ceil(Double(totalImageCount - 50) / 50.0)))
+                #if DEBUG
+                logger.logDebug("Large workload (50-299 images): allocating \(calculatedThreads) threads", source: "AutoParameterCalculator")
+                #endif
+                return calculatedThreads
             default:
+                #if DEBUG
+                logger.logDebug("Very large workload (≥300 images): allocating maximum \(Constants.maxThreadCount) threads", source: "AutoParameterCalculator")
+                #endif
                 return Constants.maxThreadCount
             }
         }()
@@ -78,6 +107,10 @@ class AutoParameterCalculator {
             Constants.maxBatchSize,
             Int(ceil(Double(totalImageCount) / Double(threadCount)))
         ))
+        
+        #if DEBUG
+        logger.logDebug("Calculated batch size: \(batchSize) (images per thread: ~\(Double(totalImageCount) / Double(threadCount)))", source: "AutoParameterCalculator")
+        #endif
         
         return (threadCount, batchSize)
     }

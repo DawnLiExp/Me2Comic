@@ -13,7 +13,7 @@ import Foundation
 final class ImageDirectoryAnalyzer: Sendable {
     // MARK: - Properties
     
-    private let logHandler: @Sendable (String) -> Void
+    private let logHandler: @Sendable (String, LogLevel, String?) -> Void
     private let isProcessingCheck: @Sendable () async -> Bool
     
     // MARK: - Constants
@@ -27,14 +27,29 @@ final class ImageDirectoryAnalyzer: Sendable {
     
     /// Initialize analyzer with logging and cancellation support
     /// - Parameters:
-    ///   - logHandler: Closure for logging messages
+    ///   - logHandler: Closure for logging messages with level and source
     ///   - isProcessingCheck: Async closure to check if processing should continue
     init(
-        logHandler: @escaping @Sendable (String) -> Void,
+        logHandler: @escaping @Sendable (String, LogLevel, String?) -> Void,
         isProcessingCheck: @escaping @Sendable () async -> Bool
     ) {
         self.logHandler = logHandler
         self.isProcessingCheck = isProcessingCheck
+    }
+    
+    /// Initialize analyzer with simple log handler (backward compatibility)
+    convenience init(
+        logHandler: @escaping @Sendable (String) -> Void,
+        isProcessingCheck: @escaping @Sendable () async -> Bool
+    ) {
+        self.init(
+            logHandler: { message, level, source in
+                if level.isUserVisible {
+                    logHandler(message)
+                }
+            },
+            isProcessingCheck: isProcessingCheck
+        )
     }
     
     // MARK: - Public Methods
@@ -45,15 +60,23 @@ final class ImageDirectoryAnalyzer: Sendable {
     ///   - widthThreshold: Threshold for determining if images need splitting
     /// - Returns: Array of scan results
     func analyzeAsync(inputDir: URL, widthThreshold: Int) async -> [DirectoryScanResult] {
+        #if DEBUG
+        logHandler("Starting directory analysis for: \(inputDir.path)", .debug, "ImageDirectoryAnalyzer")
+        #endif
+        
         let fileManager = FileManager.default
         
         do {
             let subdirectories = try getSubdirectories(in: inputDir, fileManager: fileManager)
             
             guard !subdirectories.isEmpty else {
-                logHandler(NSLocalizedString("NoSubdirectories", comment: ""))
+                logHandler(NSLocalizedString("NoSubdirectories", comment: ""), .warning, "ImageDirectoryAnalyzer")
                 return []
             }
+            
+            #if DEBUG
+            logHandler("Found \(subdirectories.count) subdirectories to analyze", .debug, "ImageDirectoryAnalyzer")
+            #endif
             
             return await analyzeSubdirectories(
                 subdirectories,
@@ -65,7 +88,7 @@ final class ImageDirectoryAnalyzer: Sendable {
                 format: NSLocalizedString("ErrorScanningDirectory", comment: ""),
                 inputDir.lastPathComponent,
                 error.localizedDescription
-            ))
+            ), .error, "ImageDirectoryAnalyzer")
             return []
         }
     }
@@ -74,12 +97,18 @@ final class ImageDirectoryAnalyzer: Sendable {
     
     /// Get subdirectories from parent directory
     private func getSubdirectories(in directory: URL, fileManager: FileManager) throws -> [URL] {
-        try fileManager.contentsOfDirectory(
+        let subdirectories = try fileManager.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: [.isDirectoryKey]
         ).filter { url in
             (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
         }
+        
+        #if DEBUG
+        logHandler("Retrieved \(subdirectories.count) subdirectories from \(directory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
+        #endif
+        
+        return subdirectories
     }
     
     /// Analyze subdirectories for processing
@@ -90,7 +119,12 @@ final class ImageDirectoryAnalyzer: Sendable {
         var results: [DirectoryScanResult] = []
         
         for subdirectory in subdirectories {
-            guard await isProcessingCheck() else { return results }
+            guard await isProcessingCheck() else {
+                #if DEBUG
+                logHandler("Directory analysis cancelled", .debug, "ImageDirectoryAnalyzer")
+                #endif
+                return results
+            }
             
             let imageFiles = getImageFiles(in: subdirectory)
             
@@ -98,14 +132,23 @@ final class ImageDirectoryAnalyzer: Sendable {
                 logHandler(String(
                     format: NSLocalizedString("NoImagesInDir", comment: ""),
                     subdirectory.lastPathComponent
-                ))
+                ), .warning, "ImageDirectoryAnalyzer")
                 continue
             }
             
+            #if DEBUG
+            logHandler("Found \(imageFiles.count) images in \(subdirectory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
+            #endif
+            
             let category = await categorizeDirectory(
                 imageFiles: imageFiles,
-                widthThreshold: widthThreshold
+                widthThreshold: widthThreshold,
+                directoryName: subdirectory.lastPathComponent
             )
+            
+            #if DEBUG
+            logHandler("Categorized \(subdirectory.lastPathComponent) as \(category)", .debug, "ImageDirectoryAnalyzer")
+            #endif
             
             results.append(DirectoryScanResult(
                 directoryURL: subdirectory,
@@ -120,10 +163,15 @@ final class ImageDirectoryAnalyzer: Sendable {
     /// Categorize directory based on sample images
     private func categorizeDirectory(
         imageFiles: [URL],
-        widthThreshold: Int
+        widthThreshold: Int,
+        directoryName: String
     ) async -> ProcessingCategory {
         let sampleImages = Array(imageFiles.prefix(Constants.sampleSize))
         let samplePaths = sampleImages.map { $0.path }
+        
+        #if DEBUG
+        logHandler("Sampling \(sampleImages.count) images from \(directoryName) for categorization", .debug, "ImageDirectoryAnalyzer")
+        #endif
         
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
             imagePaths: samplePaths,
@@ -132,20 +180,36 @@ final class ImageDirectoryAnalyzer: Sendable {
         
         // Check if any sample exceeds width threshold
         for imageURL in sampleImages {
-            guard await isProcessingCheck() else { return .isolated }
-            
-            guard let dims = dimensions[imageURL.path] else {
-                // Conservative: treat as isolated if dimensions unavailable
+            guard await isProcessingCheck() else {
                 #if DEBUG
-                print("ImageDirectoryAnalyzer: Missing dimensions for \(imageURL.lastPathComponent), treating as isolated")
+                logHandler("Categorization cancelled for \(directoryName)", .debug, "ImageDirectoryAnalyzer")
                 #endif
                 return .isolated
             }
             
+            guard let dims = dimensions[imageURL.path] else {
+                // Conservative: treat as isolated if dimensions unavailable
+                #if DEBUG
+                logHandler("Missing dimensions for \(imageURL.lastPathComponent) in \(directoryName), treating as isolated", .debug, "ImageDirectoryAnalyzer")
+                #endif
+                return .isolated
+            }
+            
+            #if DEBUG
+            logHandler("Sample image \(imageURL.lastPathComponent): \(dims.width)x\(dims.height)", .debug, "ImageDirectoryAnalyzer")
+            #endif
+            
             if dims.width >= widthThreshold {
+                #if DEBUG
+                logHandler("\(directoryName) categorized as isolated (width \(dims.width) >= \(widthThreshold))", .debug, "ImageDirectoryAnalyzer")
+                #endif
                 return .isolated
             }
         }
+        
+        #if DEBUG
+        logHandler("\(directoryName) categorized as global batch (all samples < \(widthThreshold)px wide)", .debug, "ImageDirectoryAnalyzer")
+        #endif
         
         return .globalBatch
     }
@@ -160,18 +224,27 @@ final class ImageDirectoryAnalyzer: Sendable {
             logHandler(String(
                 format: NSLocalizedString("ErrorReadingDirectory", comment: ""),
                 directory.lastPathComponent
-            ) + ": " + NSLocalizedString("FailedToCreateEnumerator", comment: ""))
+            ) + ": " + NSLocalizedString("FailedToCreateEnumerator", comment: ""), .error, "ImageDirectoryAnalyzer")
             return []
         }
         
-        return enumerator.compactMap { element in
+        var imageFiles: [URL] = []
+        
+        // Use while loop instead of compactMap to avoid type inference issues
+        while let element = enumerator.nextObject() {
             guard let url = element as? URL,
                   (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false,
                   Constants.supportedExtensions.contains(url.pathExtension.lowercased())
             else {
-                return nil
+                continue
             }
-            return url
+            imageFiles.append(url)
         }
+        
+        #if DEBUG
+        logHandler("Enumerated \(imageFiles.count) supported image files in \(directory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
+        #endif
+        
+        return imageFiles
     }
 }

@@ -47,6 +47,10 @@ class BatchTaskOrganizer {
     
     init(logger: ProcessingLogger) {
         self.logger = logger
+        
+        #if DEBUG
+        logger.logDebug("BatchTaskOrganizer initialized", source: "BatchTaskOrganizer")
+        #endif
     }
     
     // MARK: - Public Methods
@@ -61,6 +65,10 @@ class BatchTaskOrganizer {
         effectiveBatchSize: Int
     ) -> [BatchTask] {
         var tasks: [BatchTask] = []
+        
+        #if DEBUG
+        logger.logDebug("Preparing batch tasks: \(scanResults.count) scan results, \(globalBatchImages.count) global images", source: "BatchTaskOrganizer")
+        #endif
         
         // Prepare isolated directory tasks
         for result in scanResults where result.category == .isolated {
@@ -79,7 +87,17 @@ class BatchTaskOrganizer {
                 defaultSize: parameters.batchSize
             )
             
-            for batch in splitIntoBatches(result.imageFiles, batchSize: batchSize) {
+            #if DEBUG
+            logger.logDebug("Isolated directory \(subName): \(result.imageFiles.count) images, batch size \(batchSize)", source: "BatchTaskOrganizer")
+            #endif
+            
+            let batches = splitIntoBatches(result.imageFiles, batchSize: batchSize)
+            
+            #if DEBUG
+            logger.logDebug("Split \(subName) into \(batches.count) batches", source: "BatchTaskOrganizer")
+            #endif
+            
+            for batch in batches {
                 tasks.append(BatchTask(
                     images: batch,
                     outputDir: outputSubdir,
@@ -99,7 +117,17 @@ class BatchTaskOrganizer {
                 baseBatchSize: effectiveBatchSize
             )
             
-            for batch in splitIntoBatches(globalBatchImages, batchSize: globalBatchSize) {
+            #if DEBUG
+            logger.logDebug("Global batch: \(globalBatchImages.count) images, batch size \(globalBatchSize)", source: "BatchTaskOrganizer")
+            #endif
+            
+            let globalBatches = splitIntoBatches(globalBatchImages, batchSize: globalBatchSize)
+            
+            #if DEBUG
+            logger.logDebug("Split global images into \(globalBatches.count) batches", source: "BatchTaskOrganizer")
+            #endif
+            
+            for batch in globalBatches {
                 tasks.append(BatchTask(
                     images: batch,
                     outputDir: outputDir,
@@ -109,16 +137,31 @@ class BatchTaskOrganizer {
             }
         }
         
+        #if DEBUG
+        logger.logDebug("Total batch tasks prepared: \(tasks.count)", source: "BatchTaskOrganizer")
+        #endif
+        
         return tasks
     }
     
     /// Split array into batches
     func splitIntoBatches<T>(_ items: [T], batchSize: Int) -> [[T]] {
-        guard batchSize > 0, !items.isEmpty else { return [] }
+        guard batchSize > 0, !items.isEmpty else {
+            #if DEBUG
+            logger.logDebug("Invalid batch parameters: batchSize=\(batchSize), itemCount=\(items.count)", source: "BatchTaskOrganizer")
+            #endif
+            return []
+        }
         
-        return stride(from: 0, to: items.count, by: batchSize).map {
+        let batches = stride(from: 0, to: items.count, by: batchSize).map {
             Array(items[$0 ..< min($0 + batchSize, items.count)])
         }
+        
+        #if DEBUG
+        logger.logDebug("Split \(items.count) items into \(batches.count) batches of size \(batchSize)", source: "BatchTaskOrganizer")
+        #endif
+        
+        return batches
     }
     
     // MARK: - Private Methods
@@ -130,7 +173,12 @@ class BatchTaskOrganizer {
         isAuto: Bool,
         defaultSize: Int
     ) -> Int {
-        guard isAuto else { return defaultSize }
+        guard isAuto else {
+            #if DEBUG
+            logger.logDebug("Manual batch size: \(defaultSize)", source: "BatchTaskOrganizer")
+            #endif
+            return defaultSize
+        }
         
         let idealBatches = Int(ceil(Double(imageCount) / Double(Constants.defaultBatchSize)))
         let adjustedBatches = roundUpToNearestMultiple(
@@ -138,10 +186,16 @@ class BatchTaskOrganizer {
             multiple: threadCount
         )
         
-        return max(1, min(
+        let calculatedSize = max(1, min(
             Constants.maxBatchSize,
             Int(ceil(Double(imageCount) / Double(adjustedBatches)))
         ))
+        
+        #if DEBUG
+        logger.logDebug("Auto batch size calculation: \(imageCount) images, \(threadCount) threads -> \(calculatedSize) batch size", source: "BatchTaskOrganizer")
+        #endif
+        
+        return calculatedSize
     }
     
     /// Calculate batch size for global processing
@@ -156,16 +210,36 @@ class BatchTaskOrganizer {
             multiple: threadCount
         )
         
-        return max(1, min(
+        let calculatedSize = max(1, min(
             Constants.maxBatchSize,
             Int(ceil(Double(imageCount) / Double(adjustedBatches)))
         ))
+        
+        #if DEBUG
+        logger.logDebug("Global batch size calculation: \(imageCount) images, \(threadCount) threads, base=\(baseBatchSize) -> \(calculatedSize)", source: "BatchTaskOrganizer")
+        #endif
+        
+        return calculatedSize
     }
     
     /// Round up to nearest multiple
     private func roundUpToNearestMultiple(value: Int, multiple: Int) -> Int {
-        guard multiple > 0 else { return value }
+        guard multiple > 0 else {
+            #if DEBUG
+            logger.logDebug("Invalid multiple value: \(multiple), returning original value \(value)", source: "BatchTaskOrganizer")
+            #endif
+            return value
+        }
+        
         let remainder = value % multiple
-        return remainder == 0 ? value : value + (multiple - remainder)
+        let result = remainder == 0 ? value : value + (multiple - remainder)
+        
+        #if DEBUG
+        if result != value {
+            logger.logDebug("Rounded \(value) up to nearest multiple of \(multiple): \(result)", source: "BatchTaskOrganizer")
+        }
+        #endif
+        
+        return result
     }
 }

@@ -70,6 +70,10 @@ class ImageProcessor: ObservableObject {
         
         // Bind state changes
         setupBindings()
+        
+        #if DEBUG
+        logger.logDebug("ImageProcessor initialized", source: "ImageProcessor")
+        #endif
     }
     
     // MARK: - Public Methods
@@ -81,6 +85,10 @@ class ImageProcessor: ObservableObject {
     
     /// Stops all active processing
     func stopProcessing() {
+        #if DEBUG
+        logger.logDebug("Stop processing requested", source: "ImageProcessor")
+        #endif
+        
         activeProcessingTask?.cancel()
         activeProcessingTask = nil
         
@@ -92,6 +100,12 @@ class ImageProcessor: ObservableObject {
     
     /// Initiates image processing workflow
     func processImages(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
+        #if DEBUG
+        logger.logDebug("Starting image processing workflow", source: "ImageProcessor")
+        logger.logDebug("Input: \(inputDir.path)", source: "ImageProcessor")
+        logger.logDebug("Output: \(outputDir.path)", source: "ImageProcessor")
+        #endif
+        
         activeProcessingTask?.cancel()
         
         stateManager.startProcessing()
@@ -111,16 +125,25 @@ class ImageProcessor: ObservableObject {
     /// Main async processing implementation
     private func processImagesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
         guard await verifyGraphicsMagickAsync() else {
+            #if DEBUG
+            logger.logDebug("GraphicsMagick verification failed, stopping processing", source: "ImageProcessor")
+            #endif
             stateManager.stopProcessing()
             return
         }
         
         guard createDirectory(at: outputDir) else {
+            #if DEBUG
+            logger.logDebug("Output directory creation failed, stopping processing", source: "ImageProcessor")
+            #endif
             stateManager.stopProcessing()
             return
         }
         
         guard !Task.isCancelled else {
+            #if DEBUG
+            logger.logDebug("Processing task cancelled before directory processing", source: "ImageProcessor")
+            #endif
             stateManager.stopProcessing()
             return
         }
@@ -134,12 +157,10 @@ class ImageProcessor: ObservableObject {
     
     /// Process directories with categorization
     private func processDirectoriesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
+        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
+        
         let analyzer = ImageDirectoryAnalyzer(
-            logHandler: { @Sendable [weak self] message in
-                Task { @MainActor [weak self] in
-                    self?.logger.appendLog(message)
-                }
-            },
+            logHandler: loggerClosure,
             isProcessingCheck: { @Sendable [weak self] in
                 guard let self = self else { return false }
                 return await MainActor.run {
@@ -154,6 +175,9 @@ class ImageProcessor: ObservableObject {
         )
         
         guard !scanResults.isEmpty else {
+            #if DEBUG
+            logger.logDebug("No scan results available, stopping processing", source: "ImageProcessor")
+            #endif
             stateManager.stopProcessing()
             return
         }
@@ -161,6 +185,10 @@ class ImageProcessor: ObservableObject {
         let totalImages = scanResults.reduce(0) { $0 + $1.imageFiles.count }
         stateManager.setTotalImages(totalImages)
         logger.appendLog(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), totalImages))
+        
+        #if DEBUG
+        logger.logDebug("Processing \(totalImages) total images across \(scanResults.count) directories", source: "ImageProcessor")
+        #endif
         
         let globalBatchImages = scanResults
             .filter { $0.category == .globalBatch }
@@ -171,7 +199,14 @@ class ImageProcessor: ObservableObject {
             totalImages: totalImages
         )
         
+        #if DEBUG
+        logger.logDebug("Effective parameters: threads=\(effectiveThreadCount), batchSize=\(effectiveBatchSize)", source: "ImageProcessor")
+        #endif
+        
         guard await createOutputDirectories(scanResults: scanResults, outputDir: outputDir) else {
+            #if DEBUG
+            logger.logDebug("Output directory setup failed, stopping processing", source: "ImageProcessor")
+            #endif
             stateManager.stopProcessing()
             return
         }
@@ -195,7 +230,12 @@ class ImageProcessor: ObservableObject {
         effectiveThreadCount: Int,
         effectiveBatchSize: Int
     ) async {
-        guard stateManager.isProcessing && !Task.isCancelled else { return }
+        guard stateManager.isProcessing && !Task.isCancelled else {
+            #if DEBUG
+            logger.logDebug("Batch processing skipped due to cancellation or state", source: "ImageProcessor")
+            #endif
+            return
+        }
         
         let batchTasks = taskOrganizer.prepareBatchTasks(
             scanResults: scanResults,
@@ -206,7 +246,16 @@ class ImageProcessor: ObservableObject {
             effectiveBatchSize: effectiveBatchSize
         )
         
-        guard !batchTasks.isEmpty else { return }
+        guard !batchTasks.isEmpty else {
+            #if DEBUG
+            logger.logDebug("No batch tasks generated", source: "ImageProcessor")
+            #endif
+            return
+        }
+        
+        #if DEBUG
+        logger.logDebug("Generated \(batchTasks.count) batch tasks for concurrent processing", source: "ImageProcessor")
+        #endif
         
         var globalProcessedCount = 0
         
@@ -255,10 +304,19 @@ class ImageProcessor: ObservableObject {
                 if result.isGlobal {
                     globalProcessedCount += result.processed
                 }
+                
+                #if DEBUG
+                logger.logDebug("Batch completed: processed=\(result.processed), failed=\(result.failed.count), isGlobal=\(result.isGlobal)", source: "ImageProcessor")
+                #endif
             }
         }
         
-        guard !Task.isCancelled && stateManager.isProcessing else { return }
+        guard !Task.isCancelled && stateManager.isProcessing else {
+            #if DEBUG
+            logger.logDebug("Batch processing completed due to cancellation", source: "ImageProcessor")
+            #endif
+            return
+        }
         
         await handleProcessingCompletion(
             scanResults: scanResults,
@@ -272,6 +330,8 @@ class ImageProcessor: ObservableObject {
         outputDir: URL,
         parameters: ProcessingParameters
     ) async -> (processed: Int, failed: [String]) {
+        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
+        
         let processor = BatchImageProcessor(
             gmPath: gmPath,
             widthThreshold: parameters.widthThreshold,
@@ -281,7 +341,8 @@ class ImageProcessor: ObservableObject {
             unsharpSigma: parameters.unsharpSigma,
             unsharpAmount: parameters.unsharpAmount,
             unsharpThreshold: parameters.unsharpThreshold,
-            useGrayColorspace: parameters.useGrayColorspace
+            useGrayColorspace: parameters.useGrayColorspace,
+            logger: loggerClosure
         )
         
         return await processor.processBatch(
@@ -298,6 +359,10 @@ class ImageProcessor: ObservableObject {
         let elapsed = stateManager.getElapsedTime()
         let duration = logger.formatProcessingTime(elapsed)
         let (processedCount, failedFiles) = await stateManager.getAggregatedResults()
+        
+        #if DEBUG
+        logger.logDebug("Processing completion: processed=\(processedCount), failed=\(failedFiles.count), duration=\(elapsed)s", source: "ImageProcessor")
+        #endif
         
         var completionLogs: [String] = []
         
@@ -390,28 +455,49 @@ class ImageProcessor: ObservableObject {
     
     /// Verify GraphicsMagick installation
     private func verifyGraphicsMagickAsync() async -> Bool {
+        #if DEBUG
+        logger.logDebug("Verifying GraphicsMagick installation", source: "ImageProcessor")
+        #endif
+        
+        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
+        
         let path = await Task.detached {
             GraphicsMagickHelper.detectGMPathSafely { message in
-                Task { @MainActor [weak self] in
-                    self?.logger.appendLog(message)
+                Task {
+                    loggerClosure(message, .info, "GraphicsMagickHelper")
                 }
             }
         }.value
         
-        guard let path = path else { return false }
+        guard let path = path else {
+            #if DEBUG
+            logger.logDebug("GraphicsMagick path detection failed", source: "ImageProcessor")
+            #endif
+            return false
+        }
         
         gmPath = path
         
-        return await Task.detached {
+        #if DEBUG
+        logger.logDebug("GraphicsMagick path detected: \(path)", source: "ImageProcessor")
+        #endif
+        
+        let isVerified = await Task.detached {
             GraphicsMagickHelper.verifyGraphicsMagick(
                 gmPath: path,
                 logHandler: { message in
-                    Task { @MainActor [weak self] in
-                        self?.logger.appendLog(message)
+                    Task {
+                        loggerClosure(message, .info, "GraphicsMagickHelper")
                     }
                 }
             )
         }.value
+        
+        #if DEBUG
+        logger.logDebug("GraphicsMagick verification result: \(isVerified)", source: "ImageProcessor")
+        #endif
+        
+        return isVerified
     }
     
     /// Create directory with error handling
@@ -422,12 +508,23 @@ class ImageProcessor: ObservableObject {
                 at: canonicalURL,
                 withIntermediateDirectories: true
             )
+            
+            #if DEBUG
+            logger.logDebug("Created directory: \(canonicalURL.path)", source: "ImageProcessor")
+            #endif
+            
             return true
         } catch {
-            logger.appendLog(String(
+            let errorMessage = String(
                 format: NSLocalizedString("CannotCreateOutputDir", comment: ""),
                 error.localizedDescription
-            ))
+            )
+            logger.logError(errorMessage, source: "ImageProcessor")
+            
+            #if DEBUG
+            logger.logDebug("Directory creation failed for \(url.path): \(error)", source: "ImageProcessor")
+            #endif
+            
             return false
         }
     }
@@ -444,6 +541,10 @@ class ImageProcessor: ObservableObject {
                 .standardizedFileURL
                 .path
         })
+        
+        #if DEBUG
+        logger.logDebug("Creating \(uniquePaths.count) unique output directories", source: "ImageProcessor")
+        #endif
         
         for path in uniquePaths {
             guard createDirectory(at: URL(fileURLWithPath: path)) else {
@@ -470,6 +571,10 @@ class ImageProcessor: ObservableObject {
                 format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""),
                 processedCount
             )
+        
+        #if DEBUG
+        logger.logDebug("Sending completion notification", source: "ImageProcessor")
+        #endif
         
         let notificationManager = self.notificationManager
         try? await notificationManager.sendNotification(

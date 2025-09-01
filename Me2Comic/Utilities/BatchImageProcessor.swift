@@ -13,6 +13,11 @@ import Foundation
 /// Thread-safe output path management
 private actor PathCollisionManager {
     private var reservedPaths: Set<String> = []
+    private let logger: (@Sendable (String, LogLevel, String?) -> Void)?
+    
+    init(logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil) {
+        self.logger = logger
+    }
     
     /// Generate unique output path with collision avoidance
     /// - Parameters:
@@ -32,16 +37,30 @@ private actor PathCollisionManager {
         
         // Fallback to timestamp if too many collisions
         if reservedPaths.contains(candidateKey) {
+            #if DEBUG
+            logger?("Excessive path collisions detected, using timestamp fallback", .debug, "PathCollisionManager")
+            #endif
+            
             let timestamp = Int(Date().timeIntervalSince1970 * 1000)
             candidate = "\(basePath)-\(timestamp)\(suffix)"
             candidateKey = candidate.lowercased()
         }
         
         reservedPaths.insert(candidateKey)
+        
+        #if DEBUG
+        if attempt > 0 {
+            logger?("Path collision resolved: \(attempt) attempts for \(basePath)", .debug, "PathCollisionManager")
+        }
+        #endif
+        
         return candidate
     }
     
     func reset() {
+        #if DEBUG
+        logger?("Path collision manager reset, cleared \(reservedPaths.count) reserved paths", .debug, "PathCollisionManager")
+        #endif
         reservedPaths.removeAll()
     }
 }
@@ -52,17 +71,32 @@ private actor PathCollisionManager {
 private actor ProcessOutputCollector {
     private var stdout = Data()
     private var stderr = Data()
+    private let logger: (@Sendable (String, LogLevel, String?) -> Void)?
+    
+    init(logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil) {
+        self.logger = logger
+    }
     
     func appendStdout(_ data: Data) {
         stdout.append(data)
+        #if DEBUG
+        if !data.isEmpty {
+            logger?("Collected \(data.count) bytes of stdout", .debug, "ProcessOutputCollector")
+        }
+        #endif
     }
     
     func appendStderr(_ data: Data) {
         stderr.append(data)
+        #if DEBUG
+        if !data.isEmpty {
+            logger?("Collected \(data.count) bytes of stderr", .debug, "ProcessOutputCollector")
+        }
+        #endif
     }
     
     func getOutput() -> (stdout: Data, stderr: Data) {
-        (stdout, stderr)
+        return (stdout, stderr)
     }
 }
 
@@ -81,6 +115,7 @@ struct BatchImageProcessor {
     private let unsharpAmount: Float
     private let unsharpThreshold: Float
     private let useGrayColorspace: Bool
+    private let logger: (@Sendable (String, LogLevel, String?) -> Void)?
     
     // MARK: - Constants
     
@@ -100,7 +135,8 @@ struct BatchImageProcessor {
         unsharpSigma: Float,
         unsharpAmount: Float,
         unsharpThreshold: Float,
-        useGrayColorspace: Bool
+        useGrayColorspace: Bool,
+        logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil
     ) {
         self.gmPath = gmPath
         self.widthThreshold = widthThreshold
@@ -111,6 +147,7 @@ struct BatchImageProcessor {
         self.unsharpAmount = unsharpAmount
         self.unsharpThreshold = unsharpThreshold
         self.useGrayColorspace = useGrayColorspace
+        self.logger = logger
     }
     
     // MARK: - Public Methods
@@ -125,6 +162,10 @@ struct BatchImageProcessor {
             return (0, [])
         }
         
+        #if DEBUG
+        logger?("Starting batch processing for \(images.count) images", .debug, "BatchImageProcessor")
+        #endif
+        
         // Fetch image dimensions
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
             imagePaths: images.map { $0.path },
@@ -132,8 +173,15 @@ struct BatchImageProcessor {
         )
         
         guard !Task.isCancelled, !dimensions.isEmpty else {
+            #if DEBUG
+            logger?("Batch processing cancelled or no dimensions retrieved", .debug, "BatchImageProcessor")
+            #endif
             return (0, images.map { $0.lastPathComponent })
         }
+        
+        #if DEBUG
+        logger?("Retrieved dimensions for \(dimensions.count)/\(images.count) images", .debug, "BatchImageProcessor")
+        #endif
         
         return await executeBatch(
             images: images,
@@ -150,8 +198,8 @@ struct BatchImageProcessor {
         dimensions: [String: (width: Int, height: Int)],
         outputDir: URL
     ) async -> (processed: Int, failed: [String]) {
-        let pathManager = PathCollisionManager()
-        let outputCollector = ProcessOutputCollector()
+        let pathManager = PathCollisionManager(logger: logger)
+        let outputCollector = ProcessOutputCollector(logger: logger)
         
         // Setup process
         let process = createBatchProcess()
@@ -203,9 +251,16 @@ struct BatchImageProcessor {
         outputCollector: ProcessOutputCollector
     ) async -> (processed: Int, failed: [String]) {
         do {
+            #if DEBUG
+            logger?("Starting GraphicsMagick batch process", .debug, "BatchImageProcessor")
+            #endif
+            
             try process.run()
             
             guard !Task.isCancelled else {
+                #if DEBUG
+                logger?("Processing cancelled, terminating GM process", .debug, "BatchImageProcessor")
+                #endif
                 terminateProcess(process)
                 return (0, [])
             }
@@ -225,20 +280,31 @@ struct BatchImageProcessor {
             // Close input to signal completion
             try? writeHandle.close()
             
+            #if DEBUG
+            logger?("Commands written, waiting for process completion", .debug, "BatchImageProcessor")
+            #endif
+            
             // Wait for process completion using event-driven approach
             await waitForProcessTermination(process)
             
             // Process is guaranteed to be terminated, safe to read exit code
             let exitCode = process.terminationStatus
             
+            #if DEBUG
+            logger?("GraphicsMagick process completed with exit code: \(exitCode)", .debug, "BatchImageProcessor")
+            #endif
+            
             if exitCode != 0, !Task.isCancelled {
-                logProcessError(outputCollector: outputCollector)
+                await logProcessError(outputCollector: outputCollector)
                 return (0, images.map { $0.lastPathComponent })
             }
             
             return result
             
         } catch {
+            #if DEBUG
+            logger?("BatchImageProcessor execution error: \(error.localizedDescription)", .debug, "BatchImageProcessor")
+            #endif
             return (0, images.map { $0.lastPathComponent })
         }
     }
@@ -257,10 +323,19 @@ struct BatchImageProcessor {
         // Analyze duplicate base names
         let duplicateBaseNames = analyzeDuplicateBaseNames(images: images)
         
+        #if DEBUG
+        if !duplicateBaseNames.isEmpty {
+            logger?("Found \(duplicateBaseNames.count) duplicate base names requiring safe naming", .debug, "BatchImageProcessor")
+        }
+        #endif
+        
         for image in images {
             guard !Task.isCancelled else { break }
             
             guard let dims = dimensions[image.path] else {
+                #if DEBUG
+                logger?("Missing dimensions for image: \(image.lastPathComponent)", .debug, "BatchImageProcessor")
+                #endif
                 failedFiles.append(image.lastPathComponent)
                 continue
             }
@@ -278,7 +353,15 @@ struct BatchImageProcessor {
                     try await writeCommand(command, to: fileHandle)
                 }
                 processedCount += 1
+                
+                #if DEBUG
+                logger?("Generated \(commands.count) command(s) for \(image.lastPathComponent)", .debug, "BatchImageProcessor")
+                #endif
+                
             } catch {
+                #if DEBUG
+                logger?("Failed to write commands for \(image.lastPathComponent): \(error.localizedDescription)", .debug, "BatchImageProcessor")
+                #endif
                 failedFiles.append(image.lastPathComponent)
                 break // Stop on write error
             }
@@ -296,7 +379,6 @@ struct BatchImageProcessor {
         duplicateBaseNames: Set<String>
     ) async -> [String] {
         let (width, height) = dimensions
-        // let filename = image.lastPathComponent
         let filenameWithoutExt = image.deletingPathExtension().lastPathComponent
         let srcExt = image.pathExtension.lowercased()
         let originalSubdir = image.deletingLastPathComponent().lastPathComponent
@@ -320,6 +402,10 @@ struct BatchImageProcessor {
                 suffix: ".jpg"
             )
             
+            #if DEBUG
+            logger?("Single image processing: \(image.lastPathComponent) (\(width)x\(height))", .debug, "BatchImageProcessor")
+            #endif
+            
             commands.append(GraphicsMagickHelper.buildConvertCommand(
                 inputPath: image.path,
                 outputPath: outputPath,
@@ -336,6 +422,10 @@ struct BatchImageProcessor {
             // Split image processing
             let leftWidth = (width + 1) / 2
             let rightWidth = width - leftWidth
+            
+            #if DEBUG
+            logger?("Split image processing: \(image.lastPathComponent) (\(width)x\(height)) -> L:\(leftWidth) R:\(rightWidth)", .debug, "BatchImageProcessor")
+            #endif
             
             // Right half
             let rightPath = await pathManager.generateUniquePath(
@@ -382,6 +472,9 @@ struct BatchImageProcessor {
     /// Write command to pipe with proper error handling
     private func writeCommand(_ command: String, to fileHandle: FileHandle) async throws {
         guard let data = (command + "\n").data(using: .utf8) else {
+            #if DEBUG
+            logger?("Failed to encode command to UTF-8", .debug, "BatchImageProcessor")
+            #endif
             throw NSError(
                 domain: "BatchImageProcessor",
                 code: 1,
@@ -389,7 +482,7 @@ struct BatchImageProcessor {
             )
         }
         
-        // Extract buffer pointer synchronously - Fixed return type
+        // Extract buffer pointer synchronously
         let bufferCopy: (UnsafeMutableRawPointer, Int)? = data.withUnsafeBytes { buffer in
             guard let baseAddress = buffer.baseAddress else {
                 return nil
@@ -404,6 +497,9 @@ struct BatchImageProcessor {
         }
         
         guard let (bufferPointer, bufferCount) = bufferCopy else {
+            #if DEBUG
+            logger?("Failed to access data buffer for command write", .debug, "BatchImageProcessor")
+            #endif
             throw NSError(
                 domain: "BatchImageProcessor",
                 code: 2,
@@ -431,9 +527,18 @@ struct BatchImageProcessor {
             if result > 0 {
                 written += result
                 attempts = 0
+                
+                #if DEBUG
+                if written == bufferCount {
+                    logger?("Command write completed: \(bufferCount) bytes", .debug, "BatchImageProcessor")
+                }
+                #endif
             } else if result == 0 {
                 attempts += 1
                 if attempts > 5 {
+                    #if DEBUG
+                    logger?("Write failed: no progress after 5 attempts", .debug, "BatchImageProcessor")
+                    #endif
                     throw POSIXError(.EIO)
                 }
                 try await Task.sleep(nanoseconds: 10_000_000) // 10ms
@@ -441,16 +546,28 @@ struct BatchImageProcessor {
                 let err = errno
                 switch err {
                 case EINTR:
+                    #if DEBUG
+                    logger?("Write interrupted (EINTR), retrying", .debug, "BatchImageProcessor")
+                    #endif
                     continue
                 case EAGAIN, EWOULDBLOCK:
                     attempts += 1
                     if attempts > Constants.maxWriteAttempts {
+                        #if DEBUG
+                        logger?("Write timeout after \(Constants.maxWriteAttempts) attempts", .debug, "BatchImageProcessor")
+                        #endif
                         throw POSIXError(.EAGAIN)
                     }
                     try await Task.sleep(nanoseconds: 10_000_000) // 10ms
                 case EPIPE:
+                    #if DEBUG
+                    logger?("Broken pipe detected (EPIPE)", .debug, "BatchImageProcessor")
+                    #endif
                     throw POSIXError(.EPIPE)
                 default:
+                    #if DEBUG
+                    logger?("Write error: errno \(err)", .debug, "BatchImageProcessor")
+                    #endif
                     throw POSIXError(POSIXError.Code(rawValue: err) ?? .EIO)
                 }
             }
@@ -461,12 +578,20 @@ struct BatchImageProcessor {
     private func waitForProcessTermination(_ process: Process) async {
         guard process.isRunning else { return }
         
+        #if DEBUG
+        logger?("Waiting for GraphicsMagick process termination", .debug, "BatchImageProcessor")
+        #endif
+        
         // Bridge callback-based terminationHandler to async/await
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             process.terminationHandler = { _ in
                 continuation.resume()
             }
         }
+        
+        #if DEBUG
+        logger?("GraphicsMagick process terminated", .debug, "BatchImageProcessor")
+        #endif
     }
     
     /// Create batch process
@@ -474,6 +599,11 @@ struct BatchImageProcessor {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: gmPath)
         process.arguments = ["batch", "-stop-on-error", "off"]
+        
+        #if DEBUG
+        logger?("Created GM batch process: \(gmPath) batch -stop-on-error off", .debug, "BatchImageProcessor")
+        #endif
+        
         return process
     }
     
@@ -494,10 +624,18 @@ struct BatchImageProcessor {
             guard !data.isEmpty else { return }
             Task { await collector.appendStderr(data) }
         }
+        
+        #if DEBUG
+        logger?("Setup GM process output handlers", .debug, "BatchImageProcessor")
+        #endif
     }
     
     /// Cleanup process and handlers
     private func cleanupProcess(_ process: Process?, outputPipe: Pipe, errorPipe: Pipe) {
+        #if DEBUG
+        logger?("Cleaning up GM process and handlers", .debug, "BatchImageProcessor")
+        #endif
+        
         outputPipe.fileHandleForReading.readabilityHandler = nil
         errorPipe.fileHandleForReading.readabilityHandler = nil
         
@@ -510,12 +648,12 @@ struct BatchImageProcessor {
     private func terminateProcess(_ process: Process?) {
         guard let process = process, process.isRunning else { return }
         
+        #if DEBUG
+        logger?("Terminating GraphicsMagick process", .debug, "BatchImageProcessor")
+        #endif
+        
         (process.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
         process.terminate()
-        
-        #if DEBUG
-        print("BatchImageProcessor: Process terminated")
-        #endif
     }
     
     /// Analyze duplicate base names
@@ -531,14 +669,12 @@ struct BatchImageProcessor {
     }
     
     /// Log process error for debugging
-    private func logProcessError(outputCollector: ProcessOutputCollector) {
-        #if DEBUG
-        Task {
-            let (_, stderr) = await outputCollector.getOutput()
-            if !stderr.isEmpty, let errorString = String(data: stderr, encoding: .utf8) {
-                print("BatchImageProcessor: Process error: \(errorString)")
-            }
+    private func logProcessError(outputCollector: ProcessOutputCollector) async {
+        let (_, stderr) = await outputCollector.getOutput()
+        if !stderr.isEmpty, let errorString = String(data: stderr, encoding: .utf8) {
+            #if DEBUG
+            logger?("GraphicsMagick stderr: \(errorString)", .debug, "BatchImageProcessor")
+            #endif
         }
-        #endif
     }
 }
