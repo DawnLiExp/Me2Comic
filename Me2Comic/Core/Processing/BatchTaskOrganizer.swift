@@ -177,22 +177,33 @@ class BatchTaskOrganizer {
             #if DEBUG
             logger.logDebug("Manual batch size: \(defaultSize)", source: "BatchTaskOrganizer")
             #endif
-            return defaultSize
+            return max(1, defaultSize)
         }
         
-        let idealBatches = Int(ceil(Double(imageCount) / Double(Constants.defaultBatchSize)))
+        // Boundary safety: ensure sensible threadCount and imageCount values
+        let safeThreadCount = max(1, threadCount)
+        let safeImageCount = max(0, imageCount)
+        
+        guard safeImageCount > 0 else {
+            #if DEBUG
+            logger.logDebug("Image count is zero, returning batch size 1", source: "BatchTaskOrganizer")
+            #endif
+            return 1
+        }
+        
+        let idealBatches = Int(ceil(Double(safeImageCount) / Double(Constants.defaultBatchSize)))
         let adjustedBatches = roundUpToNearestMultiple(
-            value: idealBatches,
-            multiple: threadCount
+            value: max(1, idealBatches),
+            multiple: safeThreadCount
         )
         
         let calculatedSize = max(1, min(
             Constants.maxBatchSize,
-            Int(ceil(Double(imageCount) / Double(adjustedBatches)))
+            Int(ceil(Double(safeImageCount) / Double(max(1, adjustedBatches))))
         ))
         
         #if DEBUG
-        logger.logDebug("Auto batch size calculation: \(imageCount) images, \(threadCount) threads -> \(calculatedSize) batch size", source: "BatchTaskOrganizer")
+        logger.logDebug("Auto batch size calculation: \(safeImageCount) images, \(safeThreadCount) threads -> \(calculatedSize) batch size", source: "BatchTaskOrganizer")
         #endif
         
         return calculatedSize
