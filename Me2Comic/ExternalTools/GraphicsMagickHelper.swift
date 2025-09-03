@@ -9,6 +9,60 @@ import Foundation
 
 /// `GraphicsMagickHelper` provides utility functions for interacting with the GraphicsMagick command-line tool.
 class GraphicsMagickHelper {
+    /// Verify GraphicsMagick installation and return executable path
+    /// - Parameter logger: Logger closure for status messages
+    /// - Returns: Result with GM path on success or error on failure
+    static func verifyGraphicsMagickAsync(
+        logger: (@Sendable (String, LogLevel, String?) -> Void)?
+    ) async -> Result<String, ProcessingError> {
+        #if DEBUG
+        logger?("Verifying GraphicsMagick installation", .debug, "GraphicsMagickHelper")
+        #endif
+
+        let path = await Task.detached {
+            detectGMPathSafely { message in
+                Task {
+                    logger?(message, .info, "GraphicsMagickHelper")
+                }
+            }
+        }.value
+
+        guard let path = path else {
+            #if DEBUG
+            logger?("GraphicsMagick path detection failed", .debug, "GraphicsMagickHelper")
+            #endif
+            return .failure(.graphicsMagickNotFound)
+        }
+
+        #if DEBUG
+        logger?("GraphicsMagick path detected: \(path)", .debug, "GraphicsMagickHelper")
+        #endif
+
+        let verifyResult = await Task.detached {
+            Self.verifyGraphicsMagick(
+                gmPath: path,
+                logHandler: { message in
+                    Task {
+                        logger?(message, .info, "GraphicsMagickHelper")
+                    }
+                }
+            )
+        }.value
+
+        switch verifyResult {
+        case .success:
+            #if DEBUG
+            logger?("GraphicsMagick verification succeeded", .debug, "GraphicsMagickHelper")
+            #endif
+            return .success(path)
+        case .failure(let error):
+            #if DEBUG
+            logger?("GraphicsMagick verification failed: \(error)", .debug, "GraphicsMagickHelper")
+            #endif
+            return .failure(error)
+        }
+    }
+
     /// Attempts to detect the GraphicsMagick executable path by checking common installation locations.
     /// If not found in known paths, it falls back to using the `which` command.
     /// - Parameter logHandler: A closure to handle log messages during the detection process.

@@ -17,12 +17,33 @@ final class NotificationManager: Sendable {
         return try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
     }
 
-    /// Sends a local user notification.
+    /// Send processing completion notification
     /// - Parameters:
-    ///   - title: The title of the notification.
-    ///   - subtitle: The subtitle of the notification.
-    ///   - body: The main content of the notification.
-    /// - Throws: An error if the notification could not be added.
+    ///   - processedCount: Number of successfully processed images
+    ///   - failedCount: Number of failed images
+    ///   - duration: Processing duration string
+    func sendCompletionNotification(
+        processedCount: Int,
+        failedCount: Int,
+        duration: String
+    ) async throws {
+        let subtitle = failedCount > 0
+            ? String(
+                format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""),
+                processedCount,
+                failedCount
+            )
+            : String(
+                format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""),
+                processedCount
+            )
+
+        try await sendNotification(
+            title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
+            subtitle: subtitle,
+            body: duration
+        )
+    }
 
     func sendNotification(title: String, subtitle: String, body: String) async throws {
         // Notification identifier for managing duplicate notifications
