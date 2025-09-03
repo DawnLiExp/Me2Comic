@@ -594,8 +594,10 @@ struct BatchImageProcessor {
         
         // Bridge callback-based terminationHandler to async/await
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            process.terminationHandler = { _ in
+            process.terminationHandler = { proc in
+                // Resume continuation exactly once and then clear handler to avoid retaining closure/process
                 continuation.resume()
+                proc.terminationHandler = nil
             }
         }
         
@@ -649,8 +651,13 @@ struct BatchImageProcessor {
         outputPipe.fileHandleForReading.readabilityHandler = nil
         errorPipe.fileHandleForReading.readabilityHandler = nil
         
-        if let process = process, process.isRunning {
-            terminateProcess(process)
+        if let proc = process {
+            // Clear termination handler to avoid retaining closure
+            proc.terminationHandler = nil
+            
+            if proc.isRunning {
+                terminateProcess(proc)
+            }
         }
     }
     
