@@ -169,7 +169,8 @@ struct BatchImageProcessor {
         // Fetch image dimensions
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
             imagePaths: images.map { $0.path },
-            asyncCancellationCheck: { !Task.isCancelled }
+            asyncCancellationCheck: { !Task.isCancelled },
+            logger: logger
         )
         
         guard !Task.isCancelled, !dimensions.isEmpty else {
@@ -295,7 +296,12 @@ struct BatchImageProcessor {
             #endif
             
             if exitCode != 0, !Task.isCancelled {
-                await logProcessError(outputCollector: outputCollector)
+                let stderrString = await getProcessError(outputCollector: outputCollector)
+                let error = ProcessingError.graphicsMagickExecutionFailed(
+                    exitCode: exitCode,
+                    stderr: stderrString
+                )
+                logger?(error.localizedDescription, .error, "BatchImageProcessor")
                 return (0, images.map { $0.lastPathComponent })
             }
             
@@ -348,22 +354,19 @@ struct BatchImageProcessor {
                 duplicateBaseNames: duplicateBaseNames
             )
             
-            do {
-                for command in commands {
-                    try await writeCommand(command, to: fileHandle)
-                }
+            let writeResult = await writeCommands(commands, to: fileHandle)
+            switch writeResult {
+            case .success:
                 processedCount += 1
-                
                 #if DEBUG
                 logger?("Generated \(commands.count) command(s) for \(image.lastPathComponent)", .debug, "BatchImageProcessor")
                 #endif
-                
-            } catch {
+            case .failure(let error):
                 #if DEBUG
-                logger?("Failed to write commands for \(image.lastPathComponent): \(error.localizedDescription)", .debug, "BatchImageProcessor")
+                logger?("Failed to write commands for \(image.lastPathComponent): \(error)", .debug, "BatchImageProcessor")
                 #endif
                 failedFiles.append(image.lastPathComponent)
-                break // Stop on write error
+                // Stop on write error
             }
         }
         
@@ -469,17 +472,24 @@ struct BatchImageProcessor {
         return commands
     }
     
+    /// Write commands to pipe
+    private func writeCommands(_ commands: [String], to fileHandle: FileHandle) async -> Result<Void, ProcessingError> {
+        for command in commands {
+            let result = await writeCommand(command, to: fileHandle)
+            if case .failure(let error) = result {
+                return .failure(error)
+            }
+        }
+        return .success(())
+    }
+    
     /// Write command to pipe with proper error handling
-    private func writeCommand(_ command: String, to fileHandle: FileHandle) async throws {
+    private func writeCommand(_ command: String, to fileHandle: FileHandle) async -> Result<Void, ProcessingError> {
         guard let data = (command + "\n").data(using: .utf8) else {
             #if DEBUG
             logger?("Failed to encode command to UTF-8", .debug, "BatchImageProcessor")
             #endif
-            throw NSError(
-                domain: "BatchImageProcessor",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to encode command"]
-            )
+            return .failure(.commandEncodingFailed)
         }
         
         // Extract buffer pointer synchronously
@@ -500,11 +510,7 @@ struct BatchImageProcessor {
             #if DEBUG
             logger?("Failed to access data buffer for command write", .debug, "BatchImageProcessor")
             #endif
-            throw NSError(
-                domain: "BatchImageProcessor",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to access data buffer"]
-            )
+            return .failure(.commandEncodingFailed)
         }
         
         defer {
@@ -516,7 +522,9 @@ struct BatchImageProcessor {
         var attempts = 0
         
         while written < bufferCount {
-            try Task.checkCancellation()
+            guard !Task.isCancelled else {
+                return .failure(.processingCancelled)
+            }
             
             let remaining = bufferCount - written
             let chunkSize = min(remaining, Constants.writeChunkSize)
@@ -539,9 +547,9 @@ struct BatchImageProcessor {
                     #if DEBUG
                     logger?("Write failed: no progress after 5 attempts", .debug, "BatchImageProcessor")
                     #endif
-                    throw POSIXError(.EIO)
+                    return .failure(.pipeWriteFailed(POSIXError: POSIXError(.EIO)))
                 }
-                try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                try? await Task.sleep(nanoseconds: 10000000) // 10ms
             } else {
                 let err = errno
                 switch err {
@@ -556,22 +564,24 @@ struct BatchImageProcessor {
                         #if DEBUG
                         logger?("Write timeout after \(Constants.maxWriteAttempts) attempts", .debug, "BatchImageProcessor")
                         #endif
-                        throw POSIXError(.EAGAIN)
+                        return .failure(.processIOTimeout)
                     }
-                    try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                    try? await Task.sleep(nanoseconds: 10000000) // 10ms
                 case EPIPE:
                     #if DEBUG
                     logger?("Broken pipe detected (EPIPE)", .debug, "BatchImageProcessor")
                     #endif
-                    throw POSIXError(.EPIPE)
+                    return .failure(.pipeBroken)
                 default:
                     #if DEBUG
                     logger?("Write error: errno \(err)", .debug, "BatchImageProcessor")
                     #endif
-                    throw POSIXError(POSIXError.Code(rawValue: err) ?? .EIO)
+                    return .failure(.pipeWriteFailed(POSIXError: POSIXError(POSIXError.Code(rawValue: err) ?? .EIO)))
                 }
             }
         }
+        
+        return .success(())
     }
     
     /// Wait for process termination using event-driven approach
@@ -668,13 +678,15 @@ struct BatchImageProcessor {
         return Set(counts.compactMap { $0.value > 1 ? $0.key : nil })
     }
     
-    /// Log process error for debugging
-    private func logProcessError(outputCollector: ProcessOutputCollector) async {
+    /// Get process error for debugging
+    private func getProcessError(outputCollector: ProcessOutputCollector) async -> String? {
         let (_, stderr) = await outputCollector.getOutput()
         if !stderr.isEmpty, let errorString = String(data: stderr, encoding: .utf8) {
             #if DEBUG
             logger?("GraphicsMagick stderr: \(errorString)", .debug, "BatchImageProcessor")
             #endif
+            return errorString
         }
+        return nil
     }
 }

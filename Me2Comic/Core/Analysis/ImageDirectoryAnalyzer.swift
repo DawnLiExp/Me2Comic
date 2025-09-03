@@ -43,7 +43,7 @@ final class ImageDirectoryAnalyzer: Sendable {
         isProcessingCheck: @escaping @Sendable () async -> Bool
     ) {
         self.init(
-            logHandler: { message, level, source in
+            logHandler: { message, level, _ in
                 if level.isUserVisible {
                     logHandler(message)
                 }
@@ -66,9 +66,10 @@ final class ImageDirectoryAnalyzer: Sendable {
         
         let fileManager = FileManager.default
         
-        do {
-            let subdirectories = try getSubdirectories(in: inputDir, fileManager: fileManager)
-            
+        let subdirectoriesResult = getSubdirectories(in: inputDir, fileManager: fileManager)
+        
+        switch subdirectoriesResult {
+        case .success(let subdirectories):
             guard !subdirectories.isEmpty else {
                 logHandler(NSLocalizedString("NoSubdirectories", comment: ""), .warning, "ImageDirectoryAnalyzer")
                 return []
@@ -83,12 +84,8 @@ final class ImageDirectoryAnalyzer: Sendable {
                 widthThreshold: widthThreshold
             )
             
-        } catch {
-            logHandler(String(
-                format: NSLocalizedString("ErrorScanningDirectory", comment: ""),
-                inputDir.lastPathComponent,
-                error.localizedDescription
-            ), .error, "ImageDirectoryAnalyzer")
+        case .failure(let error):
+            logHandler(error.localizedDescription, .error, "ImageDirectoryAnalyzer")
             return []
         }
     }
@@ -96,19 +93,29 @@ final class ImageDirectoryAnalyzer: Sendable {
     // MARK: - Private Methods
     
     /// Get subdirectories from parent directory
-    private func getSubdirectories(in directory: URL, fileManager: FileManager) throws -> [URL] {
-        let subdirectories = try fileManager.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: [.isDirectoryKey]
-        ).filter { url in
-            (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+    private func getSubdirectories(
+        in directory: URL,
+        fileManager: FileManager
+    ) -> Result<[URL], ProcessingError> {
+        do {
+            let subdirectories = try fileManager.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: [.isDirectoryKey]
+            ).filter { url in
+                (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            }
+            
+            #if DEBUG
+            logHandler("Retrieved \(subdirectories.count) subdirectories from \(directory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
+            #endif
+            
+            return .success(subdirectories)
+        } catch {
+            #if DEBUG
+            logHandler("Failed to enumerate subdirectories: \(error)", .debug, "ImageDirectoryAnalyzer")
+            #endif
+            return .failure(.directoryReadFailed(path: directory.path, underlyingError: error))
         }
-        
-        #if DEBUG
-        logHandler("Retrieved \(subdirectories.count) subdirectories from \(directory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
-        #endif
-        
-        return subdirectories
     }
     
     /// Analyze subdirectories for processing
@@ -129,10 +136,11 @@ final class ImageDirectoryAnalyzer: Sendable {
             let imageFiles = getImageFiles(in: subdirectory)
             
             guard !imageFiles.isEmpty else {
-                logHandler(String(
-                    format: NSLocalizedString("NoImagesInDir", comment: ""),
-                    subdirectory.lastPathComponent
-                ), .warning, "ImageDirectoryAnalyzer")
+                logHandler(
+                    ProcessingError.noImagesFound(directory: subdirectory.lastPathComponent).localizedDescription,
+                    .warning,
+                    "ImageDirectoryAnalyzer"
+                )
                 continue
             }
             
@@ -175,7 +183,8 @@ final class ImageDirectoryAnalyzer: Sendable {
         
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
             imagePaths: samplePaths,
-            asyncCancellationCheck: isProcessingCheck
+            asyncCancellationCheck: isProcessingCheck,
+            logger: logHandler
         )
         
         // Check if any sample exceeds width threshold
@@ -221,10 +230,11 @@ final class ImageDirectoryAnalyzer: Sendable {
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
         ) else {
-            logHandler(String(
-                format: NSLocalizedString("ErrorReadingDirectory", comment: ""),
-                directory.lastPathComponent
-            ) + ": " + NSLocalizedString("FailedToCreateEnumerator", comment: ""), .error, "ImageDirectoryAnalyzer")
+            let error = ProcessingError.directoryReadFailed(
+                path: directory.path,
+                underlyingError: CocoaError(.fileReadUnknown)
+            )
+            logHandler(error.localizedDescription, .error, "ImageDirectoryAnalyzer")
             return []
         }
         

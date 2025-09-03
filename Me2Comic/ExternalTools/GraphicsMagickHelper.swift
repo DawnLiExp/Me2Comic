@@ -66,8 +66,8 @@ class GraphicsMagickHelper {
     /// - Parameters:
     ///   - gmPath: The path to the GraphicsMagick executable.
     ///   - logHandler: A closure to handle log messages.
-    /// - Returns: `true` if GraphicsMagick is installed and functional, `false` otherwise.
-    static func verifyGraphicsMagick(gmPath: String, logHandler: (String) -> Void) -> Bool {
+    /// - Returns: Result indicating success or failure with error details.
+    static func verifyGraphicsMagick(gmPath: String, logHandler: (String) -> Void) -> Result<Void, ProcessingError> {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: gmPath)
         task.arguments = ["--version"]
@@ -80,18 +80,18 @@ class GraphicsMagickHelper {
             task.waitUntilExit()
             let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
             let outputMessage = String(data: outputData, encoding: .utf8) ?? NSLocalizedString("CannotReadOutput", comment: "")
+
             if task.terminationStatus != 0 {
                 logHandler(NSLocalizedString("GMExecutionFailed", comment: "gm command failed to run properly"))
-                return false
+                return .failure(.graphicsMagickVerificationFailed(details: outputMessage))
             } else {
                 logHandler(String(format: NSLocalizedString("GraphicsMagickVersion", comment: ""), outputMessage))
+                return .success(())
             }
         } catch {
             logHandler(NSLocalizedString("GMExecutionException", comment: "Exception thrown when trying to run gm"))
-            return false
+            return .failure(.graphicsMagickVerificationFailed(details: error.localizedDescription))
         }
-
-        return true
     }
 
     /// Escapes a given file path for safe use within shell commands.

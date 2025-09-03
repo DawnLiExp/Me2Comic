@@ -1,4 +1,3 @@
-
 //
 //  ImageProcessorView.swift
 //  Me2Comic
@@ -63,7 +62,7 @@ struct ImageProcessorView: View {
                     showOpenButton: false,
                     onDropAction: { url in
                         self.inputDirectory = url
-                        self.processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
+                        processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
                     }
                 )
                 .padding(.top, -11)
@@ -82,9 +81,9 @@ struct ImageProcessorView: View {
                     showOpenButton: true,
                     onDropAction: { url in
                         self.outputDirectory = url
-                        self.processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
+                        processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
                         // Save the newly selected output directory
-                        UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
+                        saveOutputDirectory(url: url)
                     }
                 )
                 .padding(.bottom, 10)
@@ -162,31 +161,45 @@ struct ImageProcessorView: View {
         }
     }
     
-    /// Sets up notification permissions.
+    /// Sets up notification permissions
     private func setupNotifications() async {
         do {
             let granted = try await notificationManager.requestNotificationAuthorization()
-            if !granted {
+            if granted {
+                // Log success via processor's interface
+                await MainActor.run {
+                    // No logging for successful permission grant to keep logs clean
+                }
+            } else {
                 await MainActor.run {
                     processor.appendLog(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
                 }
             }
         } catch {
             await MainActor.run {
-                processor.appendLog(String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription))
+                let errorMessage = String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription)
+                processor.appendLog(errorMessage)
             }
         }
     }
     
     /// Loads saved settings from UserDefaults
     private func loadSavedSettings() {
-        // Load last used output directory
+        // Load last used output directory with validation
         if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
-            outputDirectory = URL(fileURLWithPath: savedPath)
-            processor.appendLog(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
+            let url = URL(fileURLWithPath: savedPath)
+            // Validate directory existence
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: savedPath, isDirectory: &isDirectory), isDirectory.boolValue {
+                outputDirectory = url
+                processor.appendLog(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
+            } else {
+                // Clean up invalid path without logging to keep startup clean
+                UserDefaults.standard.removeObject(forKey: lastUsedOutputDirKey)
+            }
         }
         
-        // Load saved parameters
+        // Load saved parameters with fallback values
         widthThreshold = UserDefaults.standard.string(forKey: widthThresholdKey) ?? widthThreshold
         resizeHeight = UserDefaults.standard.string(forKey: resizeHeightKey) ?? resizeHeight
         quality = UserDefaults.standard.string(forKey: qualityKey) ?? quality
@@ -205,11 +218,16 @@ struct ImageProcessorView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
+        panel.title = NSLocalizedString("Input Directory", comment: "")
+        panel.prompt = NSLocalizedString("Select", comment: "")
         
-        if panel.runModal() == .OK, let url = panel.url {
+        let result = panel.runModal()
+        
+        if result == .OK, let url = panel.url {
             inputDirectory = url
             processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
         }
+        // Don't log cancellation or other results to keep logs clean
     }
     
     /// Presents an NSOpenPanel to select an output directory
@@ -218,12 +236,27 @@ struct ImageProcessorView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
+        panel.title = NSLocalizedString("Output Directory", comment: "")
+        panel.prompt = NSLocalizedString("Select", comment: "")
         
-        if panel.runModal() == .OK, let url = panel.url {
+        let result = panel.runModal()
+        
+        if result == .OK, let url = panel.url {
             outputDirectory = url
             processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
-            // Save the newly selected output directory
-            UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
+            saveOutputDirectory(url: url)
+        }
+        // Don't log cancellation or other results to keep logs clean
+    }
+    
+    /// Save output directory
+    private func saveOutputDirectory(url: URL) {
+        UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
+        
+        // Verify the save operation silently
+        if UserDefaults.standard.string(forKey: lastUsedOutputDirKey) != url.path {
+            // Only log if there's an actual error
+            processor.appendLog("Failed to save output directory preference")
         }
     }
     
@@ -255,23 +288,41 @@ struct ImageProcessorView: View {
                 outputDir: outputDirectory!,
                 parameters: parameters
             )
-        } catch {
+        } catch let error as ProcessingError {
             processor.appendLog(error.localizedDescription)
+        } catch {
+            let processingError = ProcessingError.invalidParameter(
+                parameter: "validation",
+                reason: error.localizedDescription
+            )
+            processor.appendLog(processingError.localizedDescription)
         }
     }
     
     /// Saves current parameters to UserDefaults
     private func saveCurrentParameters() {
-        UserDefaults.standard.set(widthThreshold, forKey: widthThresholdKey)
-        UserDefaults.standard.set(resizeHeight, forKey: resizeHeightKey)
-        UserDefaults.standard.set(quality, forKey: qualityKey)
+        let parameters = [
+            (widthThreshold, widthThresholdKey),
+            (resizeHeight, resizeHeightKey),
+            (quality, qualityKey),
+            (unsharpRadius, unsharpRadiusKey),
+            (unsharpSigma, unsharpSigmaKey),
+            (unsharpAmount, unsharpAmountKey),
+            (unsharpThreshold, unsharpThresholdKey),
+            (batchSize, batchSizeKey)
+        ]
+        
+        for (value, key) in parameters {
+            UserDefaults.standard.set(value, forKey: key)
+        }
+        
         UserDefaults.standard.set(threadCount, forKey: threadCountKey)
-        UserDefaults.standard.set(unsharpRadius, forKey: unsharpRadiusKey)
-        UserDefaults.standard.set(unsharpSigma, forKey: unsharpSigmaKey)
-        UserDefaults.standard.set(unsharpAmount, forKey: unsharpAmountKey)
-        UserDefaults.standard.set(unsharpThreshold, forKey: unsharpThresholdKey)
-        UserDefaults.standard.set(batchSize, forKey: batchSizeKey)
         UserDefaults.standard.set(useGrayColorspace, forKey: useGrayColorspaceKey)
+        
+        // Force synchronization silently - only log if it fails
+        if !UserDefaults.standard.synchronize() {
+            processor.appendLog("Warning: Settings may not have been saved properly")
+        }
     }
     
     /// NSViewRepresentable wrapper for NSTextView to display log messages

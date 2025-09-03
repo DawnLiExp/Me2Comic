@@ -124,18 +124,25 @@ class ImageProcessor: ObservableObject {
     
     /// Main async processing implementation
     private func processImagesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
-        guard await verifyGraphicsMagickAsync() else {
+        let gmResult = await verifyGraphicsMagickAsync()
+        switch gmResult {
+        case .success(let path):
+            gmPath = path
+        case .failure(let error):
             #if DEBUG
-            logger.logDebug("GraphicsMagick verification failed, stopping processing", source: "ImageProcessor")
+            logger.logDebug("GraphicsMagick verification failed: \(error)", source: "ImageProcessor")
             #endif
+            logger.logError(error.localizedDescription, source: "ImageProcessor")
             stateManager.stopProcessing()
             return
         }
         
-        guard createDirectory(at: outputDir) else {
+        let dirResult = createDirectory(at: outputDir)
+        if case .failure(let error) = dirResult {
             #if DEBUG
-            logger.logDebug("Output directory creation failed, stopping processing", source: "ImageProcessor")
+            logger.logDebug("Output directory creation failed: \(error)", source: "ImageProcessor")
             #endif
+            logger.logError(error.localizedDescription, source: "ImageProcessor")
             stateManager.stopProcessing()
             return
         }
@@ -203,10 +210,12 @@ class ImageProcessor: ObservableObject {
         logger.logDebug("Effective parameters: threads=\(effectiveThreadCount), batchSize=\(effectiveBatchSize)", source: "ImageProcessor")
         #endif
         
-        guard await createOutputDirectories(scanResults: scanResults, outputDir: outputDir) else {
+        let createResult = await createOutputDirectories(scanResults: scanResults, outputDir: outputDir)
+        if case .failure(let error) = createResult {
             #if DEBUG
-            logger.logDebug("Output directory setup failed, stopping processing", source: "ImageProcessor")
+            logger.logDebug("Output directory setup failed: \(error)", source: "ImageProcessor")
             #endif
+            logger.logError(error.localizedDescription, source: "ImageProcessor")
             stateManager.stopProcessing()
             return
         }
@@ -454,7 +463,7 @@ class ImageProcessor: ObservableObject {
     }
     
     /// Verify GraphicsMagick installation
-    private func verifyGraphicsMagickAsync() async -> Bool {
+    private func verifyGraphicsMagickAsync() async -> Result<String, ProcessingError> {
         #if DEBUG
         logger.logDebug("Verifying GraphicsMagick installation", source: "ImageProcessor")
         #endif
@@ -473,16 +482,14 @@ class ImageProcessor: ObservableObject {
             #if DEBUG
             logger.logDebug("GraphicsMagick path detection failed", source: "ImageProcessor")
             #endif
-            return false
+            return .failure(.graphicsMagickNotFound)
         }
-        
-        gmPath = path
         
         #if DEBUG
         logger.logDebug("GraphicsMagick path detected: \(path)", source: "ImageProcessor")
         #endif
         
-        let isVerified = await Task.detached {
+        let verifyResult = await Task.detached {
             GraphicsMagickHelper.verifyGraphicsMagick(
                 gmPath: path,
                 logHandler: { message in
@@ -493,15 +500,22 @@ class ImageProcessor: ObservableObject {
             )
         }.value
         
-        #if DEBUG
-        logger.logDebug("GraphicsMagick verification result: \(isVerified)", source: "ImageProcessor")
-        #endif
-        
-        return isVerified
+        switch verifyResult {
+        case .success:
+            #if DEBUG
+            logger.logDebug("GraphicsMagick verification succeeded", source: "ImageProcessor")
+            #endif
+            return .success(path)
+        case .failure(let error):
+            #if DEBUG
+            logger.logDebug("GraphicsMagick verification failed: \(error)", source: "ImageProcessor")
+            #endif
+            return .failure(error)
+        }
     }
     
     /// Create directory with error handling
-    private func createDirectory(at url: URL) -> Bool {
+    private func createDirectory(at url: URL) -> Result<Void, ProcessingError> {
         do {
             let canonicalURL = url.resolvingSymlinksInPath()
             try FileManager.default.createDirectory(
@@ -513,19 +527,13 @@ class ImageProcessor: ObservableObject {
             logger.logDebug("Created directory: \(canonicalURL.path)", source: "ImageProcessor")
             #endif
             
-            return true
+            return .success(())
         } catch {
-            let errorMessage = String(
-                format: NSLocalizedString("CannotCreateOutputDir", comment: ""),
-                error.localizedDescription
-            )
-            logger.logError(errorMessage, source: "ImageProcessor")
-            
             #if DEBUG
             logger.logDebug("Directory creation failed for \(url.path): \(error)", source: "ImageProcessor")
             #endif
             
-            return false
+            return .failure(.directoryCreationFailed(path: url.path, underlyingError: error))
         }
     }
     
@@ -533,7 +541,7 @@ class ImageProcessor: ObservableObject {
     private func createOutputDirectories(
         scanResults: [DirectoryScanResult],
         outputDir: URL
-    ) async -> Bool {
+    ) async -> Result<Void, ProcessingError> {
         let uniquePaths = Set(scanResults.map { result in
             outputDir
                 .appendingPathComponent(result.directoryURL.lastPathComponent)
@@ -547,12 +555,13 @@ class ImageProcessor: ObservableObject {
         #endif
         
         for path in uniquePaths {
-            guard createDirectory(at: URL(fileURLWithPath: path)) else {
-                return false
+            let result = createDirectory(at: URL(fileURLWithPath: path))
+            if case .failure(let error) = result {
+                return .failure(error)
             }
         }
         
-        return true
+        return .success(())
     }
     
     /// Send completion notification

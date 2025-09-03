@@ -8,14 +8,9 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import os.log
 
 /// Helper for efficient image I/O operations
 enum ImageIOHelper {
-    // MARK: - Properties
-    
-    private static let logger = OSLog(subsystem: "me2.comic.me2comic", category: "ImageIOHelper")
-    
     // MARK: - Constants
     
     private enum Constants {
@@ -25,36 +20,49 @@ enum ImageIOHelper {
     // MARK: - Public Methods
     
     /// Get pixel dimensions for single image
-    /// - Parameter imagePath: Absolute path to image file
-    /// - Returns: Tuple of (width, height) or nil if unavailable
-    static func getImageDimensions(imagePath: String) -> (width: Int, height: Int)? {
+    /// - Parameters:
+    ///   - imagePath: Absolute path to image file
+    ///   - logger: Optional logger for debugging
+    /// - Returns: Result with dimensions or error
+    static func getImageDimensions(
+        imagePath: String,
+        logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil
+    ) -> Result<(width: Int, height: Int), ProcessingError> {
         autoreleasepool {
             guard FileManager.default.fileExists(atPath: imagePath) else {
-                os_log("File not found: %{public}s", log: logger, type: .debug, imagePath)
-                return nil
+                #if DEBUG
+                logger?("File not found: \(imagePath)", .debug, "ImageIOHelper")
+                #endif
+                return .failure(.fileNotFound(path: imagePath))
             }
             
             let imageURL = URL(fileURLWithPath: imagePath) as CFURL
             guard let imageSource = CGImageSourceCreateWithURL(imageURL, nil) else {
-                os_log("Failed to create image source: %{public}s", log: logger, type: .error, imagePath)
-                return nil
+                #if DEBUG
+                logger?("Failed to create image source: \(imagePath)", .debug, "ImageIOHelper")
+                #endif
+                return .failure(.imageSourceCreationFailed(path: imagePath))
             }
             
             // Avoid caching when reading properties only
             let options = [kCGImageSourceShouldCache: false] as CFDictionary
             guard let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, options) as NSDictionary? else {
-                os_log("Failed to read properties: %{public}s", log: logger, type: .debug, imagePath)
-                return nil
+                #if DEBUG
+                logger?("Failed to read properties: \(imagePath)", .debug, "ImageIOHelper")
+                #endif
+                return .failure(.filePropertiesUnavailable(path: imagePath))
             }
             
             guard let width = properties[kCGImagePropertyPixelWidth as String] as? Int,
                   let height = properties[kCGImagePropertyPixelHeight as String] as? Int
             else {
-                os_log("Missing dimensions: %{public}s", log: logger, type: .debug, imagePath)
-                return nil
+                #if DEBUG
+                logger?("Missing dimensions: \(imagePath)", .debug, "ImageIOHelper")
+                #endif
+                return .failure(.imageDimensionsUnavailable(path: imagePath))
             }
             
-            return (width: width, height: height)
+            return .success((width: width, height: height))
         }
     }
     
@@ -62,10 +70,12 @@ enum ImageIOHelper {
     /// - Parameters:
     ///   - imagePaths: Array of absolute image paths
     ///   - asyncCancellationCheck: Async closure returning true to continue processing
+    ///   - logger: Optional logger for debugging
     /// - Returns: Dictionary mapping path to dimensions
     static func getBatchImageDimensionsAsync(
         imagePaths: [String],
-        asyncCancellationCheck: @escaping @Sendable () async -> Bool
+        asyncCancellationCheck: @escaping @Sendable () async -> Bool,
+        logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil
     ) async -> [String: (width: Int, height: Int)] {
         guard !imagePaths.isEmpty else { return [:] }
         
@@ -73,14 +83,16 @@ enum ImageIOHelper {
         if imagePaths.count < Constants.smallBatchThreshold {
             return await processSerially(
                 imagePaths: imagePaths,
-                cancellationCheck: asyncCancellationCheck
+                cancellationCheck: asyncCancellationCheck,
+                logger: logger
             )
         }
         
         // Use parallel processing for larger batches
         return await processInParallel(
             imagePaths: imagePaths,
-            cancellationCheck: asyncCancellationCheck
+            cancellationCheck: asyncCancellationCheck,
+            logger: logger
         )
     }
     
@@ -89,7 +101,8 @@ enum ImageIOHelper {
     /// Process images serially (for small batches)
     private static func processSerially(
         imagePaths: [String],
-        cancellationCheck: @escaping @Sendable () async -> Bool
+        cancellationCheck: @escaping @Sendable () async -> Bool,
+        logger: (@Sendable (String, LogLevel, String?) -> Void)?
     ) async -> [String: (width: Int, height: Int)] {
         await Task.detached(priority: .userInitiated) { @Sendable in
             let store = DimensionsStore()
@@ -98,10 +111,14 @@ enum ImageIOHelper {
                 guard !Task.isCancelled else { break }
                 guard await cancellationCheck() else { break }
                 
-                if let dimensions = getImageDimensions(imagePath: path) {
+                let result = getImageDimensions(imagePath: path, logger: logger)
+                switch result {
+                case .success(let dimensions):
                     await store.set(path, dimensions: dimensions)
-                } else {
-                    os_log("Failed to get dimensions: %{public}s", log: logger, type: .debug, path)
+                case .failure(let error):
+                    #if DEBUG
+                    logger?("Failed to get dimensions for \(path): \(error)", .debug, "ImageIOHelper")
+                    #endif
                 }
             }
             
@@ -112,7 +129,8 @@ enum ImageIOHelper {
     /// Process images in parallel (for large batches)
     private static func processInParallel(
         imagePaths: [String],
-        cancellationCheck: @escaping @Sendable () async -> Bool
+        cancellationCheck: @escaping @Sendable () async -> Bool,
+        logger: (@Sendable (String, LogLevel, String?) -> Void)?
     ) async -> [String: (width: Int, height: Int)] {
         await Task.detached(priority: .userInitiated) { @Sendable in
             let store = DimensionsStore()
@@ -132,10 +150,14 @@ enum ImageIOHelper {
                             guard !Task.isCancelled else { break }
                             guard await cancellationCheck() else { break }
                             
-                            if let dimensions = getImageDimensions(imagePath: path) {
+                            let result = getImageDimensions(imagePath: path, logger: logger)
+                            switch result {
+                            case .success(let dimensions):
                                 await store.set(path, dimensions: dimensions)
-                            } else {
-                                os_log("Failed to get dimensions: %{public}s", log: logger, type: .debug, path)
+                            case .failure(let error):
+                                #if DEBUG
+                                logger?("Failed to get dimensions for \(path): \(error)", .debug, "ImageIOHelper")
+                                #endif
                             }
                         }
                     }
