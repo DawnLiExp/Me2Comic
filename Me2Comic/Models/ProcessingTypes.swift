@@ -14,7 +14,7 @@ struct ProcessingParameters {
     let widthThreshold: Int
     let resizeHeight: Int
     let quality: Int
-    let threadCount: Int // Concurrent threads (0=auto, 1-6)
+    let threadCount: Int // Concurrent threads (0=auto, 1-physical CPU cores)
     let unsharpRadius: Float
     let unsharpSigma: Float
     let unsharpAmount: Float

@@ -13,12 +13,12 @@ class AutoParameterCalculator {
     // MARK: - Properties
     
     private let logger: ProcessingLogger
+    private let maxThreadCount: Int
     
     // MARK: - Constants
     
     private enum Constants {
         static let autoModeThreadCount = 0
-        static let maxThreadCount = 6
         static let defaultBatchSize = 40
         static let maxBatchSize = 1000
         static let highResolutionMinImages = 10 // Minimum images for high resolution optimization
@@ -28,9 +28,10 @@ class AutoParameterCalculator {
     
     init(logger: ProcessingLogger) {
         self.logger = logger
+        self.maxThreadCount = SystemInfoHelper.getMaxThreadCount()
         
         #if DEBUG
-        logger.logDebug("AutoParameterCalculator initialized", source: "AutoParameterCalculator")
+        logger.logDebug("AutoParameterCalculator initialized with max threads: \(maxThreadCount)", source: "AutoParameterCalculator")
         #endif
     }
     
@@ -62,7 +63,7 @@ class AutoParameterCalculator {
         
         // High resolution optimization: use maximum threads if conditions met
         if hasHighResolution, totalImages >= Constants.highResolutionMinImages {
-            let threadCount = Constants.maxThreadCount
+            let threadCount = maxThreadCount
             let batchSize = calculateBatchSizeForThreads(
                 totalImages: totalImages,
                 threadCount: threadCount
@@ -123,16 +124,16 @@ class AutoParameterCalculator {
                 #endif
                 return calculatedThreads
             case 50..<300:
-                let calculatedThreads = min(Constants.maxThreadCount, 3 + Int(ceil(Double(totalImageCount - 50) / 50.0)))
+                let calculatedThreads = min(maxThreadCount, 3 + Int(ceil(Double(totalImageCount - 50) / 50.0)))
                 #if DEBUG
                 logger.logDebug("Large workload (50-299 images): allocating \(calculatedThreads) threads", source: "AutoParameterCalculator")
                 #endif
                 return calculatedThreads
             default:
                 #if DEBUG
-                logger.logDebug("Very large workload (≥300 images): allocating maximum \(Constants.maxThreadCount) threads", source: "AutoParameterCalculator")
+                logger.logDebug("Very large workload (≥300 images): allocating maximum \(maxThreadCount) threads", source: "AutoParameterCalculator")
                 #endif
-                return Constants.maxThreadCount
+                return maxThreadCount
             }
         }()
         

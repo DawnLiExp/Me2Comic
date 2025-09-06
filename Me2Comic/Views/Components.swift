@@ -96,6 +96,7 @@ struct SettingsPanelView: View {
     @Binding var batchSize: String
     @Binding var useGrayColorspace: Bool
     let isProcessing: Bool
+    let maxThreadCount: Int // Add this parameter
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -115,7 +116,7 @@ struct SettingsPanelView: View {
                     .padding(.trailing, -14)
                 Picker("", selection: $threadCount) {
                     Text(NSLocalizedString("Auto", comment: "")).tag(0)
-                    ForEach(1 ... 6, id: \.self) { count in
+                    ForEach(1 ... maxThreadCount, id: \.self) { count in
                         Text("\(count)").tag(count)
                     }
                 }

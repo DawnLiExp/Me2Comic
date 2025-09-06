@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		FC0976862DC72DF900C307FD /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0976852DC72DF900C307FD /* Components.swift */; };
 		FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */; };
+		FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */; };
 		FC7950B02E6892DF00F891B3 /* ProcessingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */; };
 		FC7950B22E68B57F00F891B3 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */; };
 		FC7950B42E68B59900F891B3 /* FileSystemHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */; };
@@ -39,6 +40,7 @@
 /* Begin PBXFileReference section */
 		FC0976852DC72DF900C307FD /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImageProcessor.swift; sourceTree = "<group>"; };
+		FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInfoHelper.swift; sourceTree = "<group>"; };
 		FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingError.swift; sourceTree = "<group>"; };
 		FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphore.swift; sourceTree = "<group>"; };
 		FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemHelper.swift; sourceTree = "<group>"; };
@@ -132,6 +134,7 @@
 				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
 				FC7950B52E68C14600F891B3 /* PathCollisionManager.swift */,
 				FC7950B72E68C16100F891B3 /* ProcessOutputCollector.swift */,
+				FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -277,6 +280,7 @@
 				FCEAFA682E60DD11008575D6 /* ProcessingTypes.swift in Sources */,
 				FC7950BC2E68C17F00F891B3 /* GMCommandBuilder.swift in Sources */,
 				FCEAFA642E60DAAD008575D6 /* BatchTaskOrganizer.swift in Sources */,
+				FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */,
 				FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */,
 				FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */,
 				FC7950B62E68C14800F891B3 /* PathCollisionManager.swift in Sources */,

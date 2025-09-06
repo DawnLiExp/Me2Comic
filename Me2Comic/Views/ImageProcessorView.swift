@@ -39,6 +39,7 @@ struct ImageProcessorView: View {
     @State private var unsharpThreshold: String = "0.02"
     @State private var batchSize: String = "40"
     
+    private let maxThreadCount = SystemInfoHelper.getMaxThreadCount()
     @StateObject private var processor = ImageProcessor()
     private let notificationManager = NotificationManager()
     @State private var showProgressAfterCompletion: Bool = false
@@ -101,7 +102,8 @@ struct ImageProcessorView: View {
                         unsharpThreshold: $unsharpThreshold,
                         batchSize: $batchSize,
                         useGrayColorspace: $useGrayColorspace,
-                        isProcessing: processor.isProcessing
+                        isProcessing: processor.isProcessing,
+                        maxThreadCount: maxThreadCount // Add this parameter
                     )
                     
                     // Description for the processing parameters
