@@ -1,5 +1,5 @@
 //
-//  ImageDirectoryAnalyzer.swift
+//  DirectoryAnalyzer.swift
 //  Me2Comic
 //
 //  Created by Me2 on 2025/7/9.
@@ -10,7 +10,7 @@ import Foundation
 // MARK: - Image Directory Analyzer
 
 /// Analyzes image directories for processing categorization
-final class ImageDirectoryAnalyzer: Sendable {
+final class DirectoryAnalyzer: Sendable {
     // MARK: - Properties
     
     private let logHandler: @Sendable (String, LogLevel, String?) -> Void
@@ -61,7 +61,7 @@ final class ImageDirectoryAnalyzer: Sendable {
     /// - Returns: Array of scan results
     func analyzeAsync(inputDir: URL, widthThreshold: Int) async -> [DirectoryScanResult] {
         #if DEBUG
-        logHandler("Starting directory analysis for: \(inputDir.path)", .debug, "ImageDirectoryAnalyzer")
+        logHandler("Starting directory analysis for: \(inputDir.path)", .debug, "DirectoryAnalyzer")
         #endif
         
         let fileManager = FileManager.default
@@ -71,12 +71,12 @@ final class ImageDirectoryAnalyzer: Sendable {
         switch subdirectoriesResult {
         case .success(let subdirectories):
             guard !subdirectories.isEmpty else {
-                logHandler(NSLocalizedString("NoSubdirectories", comment: ""), .warning, "ImageDirectoryAnalyzer")
+                logHandler(NSLocalizedString("NoSubdirectories", comment: ""), .warning, "DirectoryAnalyzer")
                 return []
             }
             
             #if DEBUG
-            logHandler("Found \(subdirectories.count) subdirectories to analyze", .debug, "ImageDirectoryAnalyzer")
+            logHandler("Found \(subdirectories.count) subdirectories to analyze", .debug, "DirectoryAnalyzer")
             #endif
             
             return await analyzeSubdirectories(
@@ -85,7 +85,7 @@ final class ImageDirectoryAnalyzer: Sendable {
             )
             
         case .failure(let error):
-            logHandler(error.localizedDescription, .error, "ImageDirectoryAnalyzer")
+            logHandler(error.localizedDescription, .error, "DirectoryAnalyzer")
             return []
         }
     }
@@ -106,13 +106,13 @@ final class ImageDirectoryAnalyzer: Sendable {
             }
             
             #if DEBUG
-            logHandler("Retrieved \(subdirectories.count) subdirectories from \(directory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
+            logHandler("Retrieved \(subdirectories.count) subdirectories from \(directory.lastPathComponent)", .debug, "DirectoryAnalyzer")
             #endif
             
             return .success(subdirectories)
         } catch {
             #if DEBUG
-            logHandler("Failed to enumerate subdirectories: \(error)", .debug, "ImageDirectoryAnalyzer")
+            logHandler("Failed to enumerate subdirectories: \(error)", .debug, "DirectoryAnalyzer")
             #endif
             return .failure(.directoryReadFailed(path: directory.path, underlyingError: error))
         }
@@ -128,7 +128,7 @@ final class ImageDirectoryAnalyzer: Sendable {
         for subdirectory in subdirectories {
             guard await isProcessingCheck() else {
                 #if DEBUG
-                logHandler("Directory analysis cancelled", .debug, "ImageDirectoryAnalyzer")
+                logHandler("Directory analysis cancelled", .debug, "DirectoryAnalyzer")
                 #endif
                 return results
             }
@@ -139,13 +139,13 @@ final class ImageDirectoryAnalyzer: Sendable {
                 logHandler(
                     ProcessingError.noImagesFound(directory: subdirectory.lastPathComponent).localizedDescription,
                     .warning,
-                    "ImageDirectoryAnalyzer"
+                    "DirectoryAnalyzer"
                 )
                 continue
             }
             
             #if DEBUG
-            logHandler("Found \(imageFiles.count) images in \(subdirectory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
+            logHandler("Found \(imageFiles.count) images in \(subdirectory.lastPathComponent)", .debug, "DirectoryAnalyzer")
             #endif
             
             let category = await categorizeDirectory(
@@ -155,7 +155,7 @@ final class ImageDirectoryAnalyzer: Sendable {
             )
             
             #if DEBUG
-            logHandler("Categorized \(subdirectory.lastPathComponent) as \(category)", .debug, "ImageDirectoryAnalyzer")
+            logHandler("Categorized \(subdirectory.lastPathComponent) as \(category)", .debug, "DirectoryAnalyzer")
             #endif
             
             results.append(DirectoryScanResult(
@@ -178,7 +178,7 @@ final class ImageDirectoryAnalyzer: Sendable {
         let samplePaths = sampleImages.map { $0.path }
         
         #if DEBUG
-        logHandler("Sampling \(sampleImages.count) images from \(directoryName) for categorization", .debug, "ImageDirectoryAnalyzer")
+        logHandler("Sampling \(sampleImages.count) images from \(directoryName) for categorization", .debug, "DirectoryAnalyzer")
         #endif
         
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
@@ -191,7 +191,7 @@ final class ImageDirectoryAnalyzer: Sendable {
         for imageURL in sampleImages {
             guard await isProcessingCheck() else {
                 #if DEBUG
-                logHandler("Categorization cancelled for \(directoryName)", .debug, "ImageDirectoryAnalyzer")
+                logHandler("Categorization cancelled for \(directoryName)", .debug, "DirectoryAnalyzer")
                 #endif
                 return .isolated
             }
@@ -199,25 +199,25 @@ final class ImageDirectoryAnalyzer: Sendable {
             guard let dims = dimensions[imageURL.path] else {
                 // Conservative: treat as isolated if dimensions unavailable
                 #if DEBUG
-                logHandler("Missing dimensions for \(imageURL.lastPathComponent) in \(directoryName), treating as isolated", .debug, "ImageDirectoryAnalyzer")
+                logHandler("Missing dimensions for \(imageURL.lastPathComponent) in \(directoryName), treating as isolated", .debug, "DirectoryAnalyzer")
                 #endif
                 return .isolated
             }
             
             #if DEBUG
-            logHandler("Sample image \(imageURL.lastPathComponent): \(dims.width)x\(dims.height)", .debug, "ImageDirectoryAnalyzer")
+            logHandler("Sample image \(imageURL.lastPathComponent): \(dims.width)x\(dims.height)", .debug, "DirectoryAnalyzer")
             #endif
             
             if dims.width >= widthThreshold {
                 #if DEBUG
-                logHandler("\(directoryName) categorized as isolated (width \(dims.width) >= \(widthThreshold))", .debug, "ImageDirectoryAnalyzer")
+                logHandler("\(directoryName) categorized as isolated (width \(dims.width) >= \(widthThreshold))", .debug, "DirectoryAnalyzer")
                 #endif
                 return .isolated
             }
         }
         
         #if DEBUG
-        logHandler("\(directoryName) categorized as global batch (all samples < \(widthThreshold)px wide)", .debug, "ImageDirectoryAnalyzer")
+        logHandler("\(directoryName) categorized as global batch (all samples < \(widthThreshold)px wide)", .debug, "DirectoryAnalyzer")
         #endif
         
         return .globalBatch
@@ -234,7 +234,7 @@ final class ImageDirectoryAnalyzer: Sendable {
                 path: directory.path,
                 underlyingError: CocoaError(.fileReadUnknown)
             )
-            logHandler(error.localizedDescription, .error, "ImageDirectoryAnalyzer")
+            logHandler(error.localizedDescription, .error, "DirectoryAnalyzer")
             return []
         }
         
@@ -252,7 +252,7 @@ final class ImageDirectoryAnalyzer: Sendable {
         }
         
         #if DEBUG
-        logHandler("Enumerated \(imageFiles.count) supported image files in \(directory.lastPathComponent)", .debug, "ImageDirectoryAnalyzer")
+        logHandler("Enumerated \(imageFiles.count) supported image files in \(directory.lastPathComponent)", .debug, "DirectoryAnalyzer")
         #endif
         
         return imageFiles

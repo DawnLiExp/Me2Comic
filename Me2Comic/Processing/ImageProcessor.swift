@@ -137,7 +137,7 @@ class ImageProcessor: ObservableObject {
     private func processDirectoriesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         
-        let analyzer = ImageDirectoryAnalyzer(
+        let analyzer = DirectoryAnalyzer(
             logHandler: loggerClosure,
             isProcessingCheck: { @Sendable [weak self] in
                 guard let self = self else { return false }

@@ -1,5 +1,5 @@
 //
-//  ProcessingParametersValidator.swift
+//  ParametersValidator.swift
 //  Me2Comic
 //
 //  Created by Me2 on 2025/8/7.
