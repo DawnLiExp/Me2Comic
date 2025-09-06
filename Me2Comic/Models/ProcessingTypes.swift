@@ -38,4 +38,5 @@ struct DirectoryScanResult {
     let directoryURL: URL
     let imageFiles: [URL]
     let category: ProcessingCategory
+    let isHighResolution: Bool // High resolution images detected in sampling
 }

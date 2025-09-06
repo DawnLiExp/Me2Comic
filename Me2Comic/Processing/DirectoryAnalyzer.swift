@@ -21,6 +21,7 @@ final class DirectoryAnalyzer: Sendable {
     private enum Constants {
         static let supportedExtensions = Set(["jpg", "jpeg", "png", "webp", "bmp"])
         static let sampleSize = 5
+        static let highResolutionThreshold = 3000 // Pixel threshold for high resolution detection
     }
     
     // MARK: - Initialization
@@ -148,20 +149,21 @@ final class DirectoryAnalyzer: Sendable {
             logHandler("Found \(imageFiles.count) images in \(subdirectory.lastPathComponent)", .debug, "DirectoryAnalyzer")
             #endif
             
-            let category = await categorizeDirectory(
+            let (category, isHighResolution) = await categorizeDirectory(
                 imageFiles: imageFiles,
                 widthThreshold: widthThreshold,
                 directoryName: subdirectory.lastPathComponent
             )
             
             #if DEBUG
-            logHandler("Categorized \(subdirectory.lastPathComponent) as \(category)", .debug, "DirectoryAnalyzer")
+            logHandler("Categorized \(subdirectory.lastPathComponent) as \(category)\(isHighResolution ? " [High Resolution]" : "")", .debug, "DirectoryAnalyzer")
             #endif
             
             results.append(DirectoryScanResult(
                 directoryURL: subdirectory,
                 imageFiles: imageFiles,
-                category: category
+                category: category,
+                isHighResolution: isHighResolution
             ))
         }
         
@@ -173,7 +175,7 @@ final class DirectoryAnalyzer: Sendable {
         imageFiles: [URL],
         widthThreshold: Int,
         directoryName: String
-    ) async -> ProcessingCategory {
+    ) async -> (category: ProcessingCategory, isHighResolution: Bool) {
         let sampleImages = Array(imageFiles.prefix(Constants.sampleSize))
         let samplePaths = sampleImages.map { $0.path }
         
@@ -187,13 +189,16 @@ final class DirectoryAnalyzer: Sendable {
             logger: logHandler
         )
         
-        // Check if any sample exceeds width threshold
+        var exceedsThreshold = false
+        var isHighResolution = false
+        
+        // Check dimensions for categorization and high resolution detection
         for imageURL in sampleImages {
             guard await isProcessingCheck() else {
                 #if DEBUG
                 logHandler("Categorization cancelled for \(directoryName)", .debug, "DirectoryAnalyzer")
                 #endif
-                return .isolated
+                return (.isolated, false)
             }
             
             guard let dims = dimensions[imageURL.path] else {
@@ -201,26 +206,39 @@ final class DirectoryAnalyzer: Sendable {
                 #if DEBUG
                 logHandler("Missing dimensions for \(imageURL.lastPathComponent) in \(directoryName), treating as isolated", .debug, "DirectoryAnalyzer")
                 #endif
-                return .isolated
+                return (.isolated, false)
             }
             
             #if DEBUG
             logHandler("Sample image \(imageURL.lastPathComponent): \(dims.width)x\(dims.height)", .debug, "DirectoryAnalyzer")
             #endif
             
+            // Check for width threshold (existing logic)
             if dims.width >= widthThreshold {
+                exceedsThreshold = true
                 #if DEBUG
-                logHandler("\(directoryName) categorized as isolated (width \(dims.width) >= \(widthThreshold))", .debug, "DirectoryAnalyzer")
+                logHandler("\(directoryName) requires isolation (width \(dims.width) >= \(widthThreshold))", .debug, "DirectoryAnalyzer")
                 #endif
-                return .isolated
+            }
+            
+            // Check for high resolution
+            if dims.width >= Constants.highResolutionThreshold || dims.height >= Constants.highResolutionThreshold {
+                isHighResolution = true
+                #if DEBUG
+                logHandler("High resolution detected in \(directoryName): \(dims.width)x\(dims.height)", .debug, "DirectoryAnalyzer")
+                #endif
             }
         }
         
+        let category: ProcessingCategory = exceedsThreshold ? .isolated : .globalBatch
+        
         #if DEBUG
-        logHandler("\(directoryName) categorized as global batch (all samples < \(widthThreshold)px wide)", .debug, "DirectoryAnalyzer")
+        if !exceedsThreshold {
+            logHandler("\(directoryName) categorized as global batch (all samples < \(widthThreshold)px wide)", .debug, "DirectoryAnalyzer")
+        }
         #endif
         
-        return .globalBatch
+        return (category, isHighResolution)
     }
     
     /// Get image files from directory

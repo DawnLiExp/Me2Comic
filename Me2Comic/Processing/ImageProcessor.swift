@@ -168,17 +168,21 @@ class ImageProcessor: ObservableObject {
         logger.logDebug("Processing \(totalImages) total images across \(scanResults.count) directories", source: "ImageProcessor")
         #endif
         
+        // Check if any directory contains high resolution images
+        let hasHighResolution = scanResults.contains { $0.isHighResolution }
+        
         let globalBatchImages = scanResults
             .filter { $0.category == .globalBatch }
             .flatMap { $0.imageFiles }
         
         let (effectiveThreadCount, effectiveBatchSize) = autoCalculator.determineParameters(
             parameters: parameters,
-            totalImages: totalImages
+            totalImages: totalImages,
+            hasHighResolution: hasHighResolution
         )
         
         #if DEBUG
-        logger.logDebug("Effective parameters: threads=\(effectiveThreadCount), batchSize=\(effectiveBatchSize)", source: "ImageProcessor")
+        logger.logDebug("Effective parameters: threads=\(effectiveThreadCount), batchSize=\(effectiveBatchSize)\(hasHighResolution ? " [High Resolution Mode]" : "")", source: "ImageProcessor")
         #endif
         
         let createResult = FileSystemHelper.createOutputDirectories(

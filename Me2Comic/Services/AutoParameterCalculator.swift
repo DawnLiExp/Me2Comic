@@ -21,6 +21,7 @@ class AutoParameterCalculator {
         static let maxThreadCount = 6
         static let defaultBatchSize = 40
         static let maxBatchSize = 1000
+        static let highResolutionMinImages = 10 // Minimum images for high resolution optimization
     }
     
     // MARK: - Initialization
@@ -39,10 +40,12 @@ class AutoParameterCalculator {
     /// - Parameters:
     ///   - parameters: User-specified parameters
     ///   - totalImages: Total number of images to process
+    ///   - hasHighResolution: Whether high resolution images are detected
     /// - Returns: Tuple of effective thread count and batch size
     func determineParameters(
         parameters: ProcessingParameters,
-        totalImages: Int
+        totalImages: Int,
+        hasHighResolution: Bool = false
     ) -> (threadCount: Int, batchSize: Int) {
         guard parameters.threadCount == Constants.autoModeThreadCount else {
             #if DEBUG
@@ -54,9 +57,31 @@ class AutoParameterCalculator {
         logger.appendLog(NSLocalizedString("AutoModeEnabled", comment: ""))
         
         #if DEBUG
-        logger.logDebug("Auto mode enabled for \(totalImages) images", source: "AutoParameterCalculator")
+        logger.logDebug("Auto mode enabled for \(totalImages) images\(hasHighResolution ? " [High Resolution Detected]" : "")", source: "AutoParameterCalculator")
         #endif
         
+        // High resolution optimization: use maximum threads if conditions met
+        if hasHighResolution, totalImages >= Constants.highResolutionMinImages {
+            let threadCount = Constants.maxThreadCount
+            let batchSize = calculateBatchSizeForThreads(
+                totalImages: totalImages,
+                threadCount: threadCount
+            )
+            
+            logger.appendLog(String(
+                format: NSLocalizedString("AutoAllocatedParameters", comment: ""),
+                threadCount,
+                batchSize
+            ))
+            
+            #if DEBUG
+            logger.logDebug("High resolution optimization: threads=\(threadCount), batch=\(batchSize)", source: "AutoParameterCalculator")
+            #endif
+            
+            return (threadCount, batchSize)
+        }
+        
+        // Standard auto parameter calculation
         let autoParams = calculateAutoParameters(totalImageCount: totalImages)
         
         logger.appendLog(String(
@@ -73,6 +98,14 @@ class AutoParameterCalculator {
     }
     
     // MARK: - Private Methods
+    
+    /// Calculate batch size for given thread count
+    private func calculateBatchSizeForThreads(totalImages: Int, threadCount: Int) -> Int {
+        max(1, min(
+            Constants.maxBatchSize,
+            Int(ceil(Double(totalImages) / Double(threadCount)))
+        ))
+    }
     
     /// Calculate auto-allocated parameters based on image count
     private func calculateAutoParameters(totalImageCount: Int) -> (threadCount: Int, batchSize: Int) {
@@ -103,10 +136,10 @@ class AutoParameterCalculator {
             }
         }()
         
-        let batchSize = max(1, min(
-            Constants.maxBatchSize,
-            Int(ceil(Double(totalImageCount) / Double(threadCount)))
-        ))
+        let batchSize = calculateBatchSizeForThreads(
+            totalImages: totalImageCount,
+            threadCount: threadCount
+        )
         
         #if DEBUG
         logger.logDebug("Calculated batch size: \(batchSize) (images per thread: ~\(Double(totalImageCount) / Double(threadCount)))", source: "AutoParameterCalculator")
