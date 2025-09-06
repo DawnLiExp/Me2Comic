@@ -205,7 +205,19 @@ struct ImageProcessorView: View {
         widthThreshold = UserDefaults.standard.string(forKey: widthThresholdKey) ?? widthThreshold
         resizeHeight = UserDefaults.standard.string(forKey: resizeHeightKey) ?? resizeHeight
         quality = UserDefaults.standard.string(forKey: qualityKey) ?? quality
-        threadCount = UserDefaults.standard.integer(forKey: threadCountKey)
+        
+        // Load and validate thread count
+        let savedThreadCount = UserDefaults.standard.integer(forKey: threadCountKey)
+        if savedThreadCount == 0 {
+            threadCount = 0 // Auto mode
+        } else if savedThreadCount >= 1 && savedThreadCount <= maxThreadCount {
+            threadCount = savedThreadCount // Valid saved value
+        } else if savedThreadCount > maxThreadCount {
+            threadCount = maxThreadCount // Clamp to current machine's max
+        } else {
+            threadCount = 0 // Invalid value, default to auto
+        }
+        
         unsharpRadius = UserDefaults.standard.string(forKey: unsharpRadiusKey) ?? unsharpRadius
         unsharpSigma = UserDefaults.standard.string(forKey: unsharpSigmaKey) ?? unsharpSigma
         unsharpAmount = UserDefaults.standard.string(forKey: unsharpAmountKey) ?? unsharpAmount
