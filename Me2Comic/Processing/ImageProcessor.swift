@@ -208,7 +208,7 @@ class ImageProcessor: ObservableObject {
         )
     }
     
-    /// Process batches with controlled concurrency
+    /// Process batches with priority-based scheduling
     private func processBatches(
         scanResults: [DirectoryScanResult],
         globalBatchImages: [URL],
@@ -224,7 +224,14 @@ class ImageProcessor: ObservableObject {
             return
         }
         
-        let batchTasks = taskOrganizer.prepareBatchTasks(
+        // Initialize priority scheduler
+        let scheduler = PriorityTaskScheduler(
+            maxConcurrency: effectiveThreadCount,
+            logger: logger
+        )
+        
+        // Prepare prioritized tasks
+        let prioritizedTasks = await scheduler.preparePrioritizedTasks(
             scanResults: scanResults,
             globalBatchImages: globalBatchImages,
             outputDir: outputDir,
@@ -233,53 +240,77 @@ class ImageProcessor: ObservableObject {
             effectiveBatchSize: effectiveBatchSize
         )
         
-        guard !batchTasks.isEmpty else {
+        guard !prioritizedTasks.isEmpty else {
             #if DEBUG
-            logger.logDebug("No batch tasks generated", source: "ImageProcessor")
+            logger.logDebug("No tasks generated for processing", source: "ImageProcessor")
             #endif
             return
         }
         
-        #if DEBUG
-        logger.logDebug("Generated \(batchTasks.count) batch tasks for concurrent processing", source: "ImageProcessor")
-        #endif
+        // Log task distribution
+        logTaskDistribution(scanResults: scanResults, globalBatchImages: globalBatchImages)
         
         var globalProcessedCount = 0
         
+        // Process with dynamic task allocation
         await withTaskGroup(of: BatchResult.self) { group in
-            let semaphore = AsyncSemaphore(limit: effectiveThreadCount)
-            
-            for task in batchTasks {
-                guard !Task.isCancelled else { break }
-                
+            // Start worker threads
+            for threadId in 0 ..< effectiveThreadCount {
                 group.addTask { [weak self] in
                     guard let self = self else { return BatchResult.empty }
                     
-                    await semaphore.wait()
-                    defer { Task { await semaphore.signal() } }
+                    var localResults = BatchResult.empty
                     
-                    let shouldContinue = await MainActor.run {
-                        !Task.isCancelled && self.stateManager.isProcessing
+                    // Dynamic task fetching loop
+                    while !Task.isCancelled {
+                        // Get next priority task
+                        guard let prioritizedTask = await scheduler.getNextTask() else {
+                            // No more tasks available
+                            break
+                        }
+                        
+                        // Check if should continue
+                        let shouldContinue = await MainActor.run {
+                            !Task.isCancelled && self.stateManager.isProcessing
+                        }
+                        
+                        guard shouldContinue else {
+                            break
+                        }
+                        
+                        #if DEBUG
+                        await MainActor.run {
+                            self.logger.logDebug(
+                                "Thread \(threadId) processing task: priority=\(prioritizedTask.priority), " +
+                                    "images=\(prioritizedTask.images.count), isGlobal=\(prioritizedTask.isGlobal)",
+                                source: "ImageProcessor"
+                            )
+                        }
+                        #endif
+                        
+                        // Process the batch
+                        let (processed, failed) = await self.processBatch(
+                            images: prioritizedTask.images,
+                            outputDir: prioritizedTask.outputDir,
+                            parameters: parameters
+                        )
+
+                        // Mark task completed with priority info
+                        await scheduler.markTaskCompleted(priority: prioritizedTask.priority)
+                        
+                        // Accumulate results
+                        localResults = BatchResult(
+                            processed: localResults.processed + processed,
+                            failed: localResults.failed + failed,
+                            isGlobal: prioritizedTask.isGlobal || localResults.isGlobal
+                        )
                     }
                     
-                    guard shouldContinue else {
-                        return BatchResult.empty
-                    }
-                    
-                    let (processed, failed) = await self.processBatch(
-                        images: task.images,
-                        outputDir: task.outputDir,
-                        parameters: parameters
-                    )
-                    
-                    return BatchResult(
-                        processed: processed,
-                        failed: failed,
-                        isGlobal: task.isGlobal
-                    )
+                    return localResults
                 }
             }
             
+            // Collect results from all threads
             for await result in group {
                 guard !Task.isCancelled && stateManager.isProcessing else { break }
                 
@@ -291,10 +322,6 @@ class ImageProcessor: ObservableObject {
                 if result.isGlobal {
                     globalProcessedCount += result.processed
                 }
-                
-                #if DEBUG
-                logger.logDebug("Batch completed: processed=\(result.processed), failed=\(result.failed.count), isGlobal=\(result.isGlobal)", source: "ImageProcessor")
-                #endif
             }
         }
         
@@ -309,6 +336,26 @@ class ImageProcessor: ObservableObject {
             scanResults: scanResults,
             globalProcessedCount: globalProcessedCount
         )
+    }
+
+    // MARK: - Helper Methods
+        
+    /// Logs task distribution for isolated directories and global batches
+    private func logTaskDistribution(scanResults: [DirectoryScanResult], globalBatchImages: [URL]) {
+        // Log isolated directories first (higher priority)
+        for result in scanResults where result.category == .isolated {
+            let subName = result.directoryURL.lastPathComponent
+            let resolutionNote = result.isHighResolution ? " [High Resolution]" : ""
+            logger.appendLog(String(
+                format: NSLocalizedString("StartProcessingSubdir", comment: ""),
+                subName + resolutionNote
+            ))
+        }
+        
+        // Log global batch
+        if !globalBatchImages.isEmpty {
+            logger.appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+        }
     }
     
     /// Process single batch

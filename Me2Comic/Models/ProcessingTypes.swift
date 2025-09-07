@@ -40,3 +40,27 @@ struct DirectoryScanResult {
     let category: ProcessingCategory
     let isHighResolution: Bool // High resolution images detected in sampling
 }
+
+/// Task priority levels for scheduling
+enum TaskPriority: Int, Comparable {
+    case low = 0
+    case normal = 1
+    case high = 2
+    case critical = 3
+
+    static func < (lhs: TaskPriority, rhs: TaskPriority) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
+/// Enhanced batch task with priority
+struct PrioritizedBatchTask {
+    let images: [URL]
+    let outputDir: URL
+    let batchSize: Int
+    let isGlobal: Bool
+    let priority: TaskPriority
+    let estimatedCost: Int // Estimated processing cost based on resolution
+
+    var id: UUID = .init()
+}
