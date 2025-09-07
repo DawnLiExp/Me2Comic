@@ -208,7 +208,7 @@ class ImageProcessor: ObservableObject {
         )
     }
     
-    /// Process batches with controlled concurrency
+    /// Process batches with controlled concurrency and work-stealing
     private func processBatches(
         scanResults: [DirectoryScanResult],
         globalBatchImages: [URL],
@@ -244,42 +244,64 @@ class ImageProcessor: ObservableObject {
         logger.logDebug("Generated \(batchTasks.count) batch tasks for concurrent processing", source: "ImageProcessor")
         #endif
         
+        // Initialize task queue with priority sorting
+        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
+        let taskQueue = TaskQueue(logger: loggerClosure)
+        await taskQueue.initialize(with: batchTasks)
+        
         var globalProcessedCount = 0
         
         await withTaskGroup(of: BatchResult.self) { group in
-            let semaphore = AsyncSemaphore(limit: effectiveThreadCount)
-            
-            for task in batchTasks {
-                guard !Task.isCancelled else { break }
-                
+            // Start worker threads
+            for threadId in 0 ..< effectiveThreadCount {
                 group.addTask { [weak self] in
                     guard let self = self else { return BatchResult.empty }
                     
-                    await semaphore.wait()
-                    defer { Task { await semaphore.signal() } }
+                    var localResults = BatchResult.empty
                     
-                    let shouldContinue = await MainActor.run {
-                        !Task.isCancelled && self.stateManager.isProcessing
+                    // Work-stealing loop: keep processing until no tasks remain
+                    while !Task.isCancelled {
+                        // Check processing state
+                        let shouldContinue = await MainActor.run {
+                            self.stateManager.isProcessing
+                        }
+                        guard shouldContinue else { break }
+                        
+                        // Get next task from queue (work-stealing enabled)
+                        guard let task = await taskQueue.getNextTask(threadId: threadId) else {
+                            break // No more tasks available
+                        }
+                        
+                        // Process the task
+                        let (processed, failed) = await self.processBatch(
+                            images: task.images,
+                            outputDir: task.outputDir,
+                            parameters: parameters
+                        )
+                        
+                        // Mark task completed
+                        await taskQueue.markCompleted()
+                        
+                        // Accumulate results for this thread
+                        localResults = BatchResult(
+                            processed: localResults.processed + processed,
+                            failed: localResults.failed + failed,
+                            isGlobal: task.isGlobal || localResults.isGlobal
+                        )
+                        
+                        #if DEBUG
+                        let progress = await taskQueue.getProgress()
+                        await MainActor.run {
+                            self.logger.logDebug("Thread \(threadId) completed task: \(progress.completed)/\(progress.total) done, \(progress.remaining) remaining", source: "ImageProcessor")
+                        }
+                        #endif
                     }
                     
-                    guard shouldContinue else {
-                        return BatchResult.empty
-                    }
-                    
-                    let (processed, failed) = await self.processBatch(
-                        images: task.images,
-                        outputDir: task.outputDir,
-                        parameters: parameters
-                    )
-                    
-                    return BatchResult(
-                        processed: processed,
-                        failed: failed,
-                        isGlobal: task.isGlobal
-                    )
+                    return localResults
                 }
             }
             
+            // Collect results from all threads
             for await result in group {
                 guard !Task.isCancelled && stateManager.isProcessing else { break }
                 
@@ -293,10 +315,15 @@ class ImageProcessor: ObservableObject {
                 }
                 
                 #if DEBUG
-                logger.logDebug("Batch completed: processed=\(result.processed), failed=\(result.failed.count), isGlobal=\(result.isGlobal)", source: "ImageProcessor")
+                logger.logDebug("Worker thread completed: processed=\(result.processed), failed=\(result.failed.count)", source: "ImageProcessor")
                 #endif
             }
         }
+        
+        #if DEBUG
+        let stats = await taskQueue.getStatistics()
+        logger.logDebug("Work distribution: \(stats.distribution), steal operations: \(stats.stealCount)", source: "ImageProcessor")
+        #endif
         
         guard !Task.isCancelled && stateManager.isProcessing else {
             #if DEBUG

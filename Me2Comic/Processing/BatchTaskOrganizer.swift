@@ -80,7 +80,7 @@ class BatchTaskOrganizer {
                 subName
             ))
             
-            let batchSize = calculateBatchSize(
+            let batchSize = calculateIsolatedBatchSize( // Use specialized method
                 imageCount: result.imageFiles.count,
                 threadCount: effectiveThreadCount,
                 isAuto: parameters.threadCount == Constants.autoModeThreadCount,
@@ -208,7 +208,48 @@ class BatchTaskOrganizer {
         
         return calculatedSize
     }
-    
+
+    /// Calculate optimized batch size for isolated directories with work-stealing
+    private func calculateIsolatedBatchSize(
+        imageCount: Int,
+        threadCount: Int,
+        isAuto: Bool,
+        defaultSize: Int
+    ) -> Int {
+        guard isAuto else {
+            #if DEBUG
+            logger.logDebug("Manual batch size for isolated: \(defaultSize)", source: "BatchTaskOrganizer")
+            #endif
+            return max(1, defaultSize)
+        }
+        
+        let safeThreadCount = max(1, threadCount)
+        let safeImageCount = max(0, imageCount)
+        
+        guard safeImageCount > 0 else {
+            #if DEBUG
+            logger.logDebug("Image count is zero, returning batch size 1", source: "BatchTaskOrganizer")
+            #endif
+            return 1
+        }
+        
+        // For isolated directories with work-stealing, use smaller batches
+        // to improve load balancing and reduce orphan process impact
+        let targetBatchSize = 30 // Reduced from 40 for better granularity
+        let idealBatches = max(safeThreadCount, Int(ceil(Double(safeImageCount) / Double(targetBatchSize))))
+        
+        let calculatedSize = max(1, min(
+            Constants.maxBatchSize,
+            Int(ceil(Double(safeImageCount) / Double(idealBatches)))
+        ))
+        
+        #if DEBUG
+        logger.logDebug("Isolated batch size calculation: \(safeImageCount) images, \(safeThreadCount) threads -> \(calculatedSize) batch size", source: "BatchTaskOrganizer")
+        #endif
+        
+        return calculatedSize
+    }
+
     /// Calculate batch size for global processing
     private func calculateGlobalBatchSize(
         imageCount: Int,
