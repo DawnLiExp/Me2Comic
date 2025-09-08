@@ -9,7 +9,8 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
-/// UserDefault key for storing the last used output directory
+/// UserDefault keys for storing directories
+private let lastUsedInputDirKey = "lastUsedInputDirectory"
 private let lastUsedOutputDirKey = "lastUsedOutputDirectory"
 
 /// UserDefault keys for storing processing parameters
@@ -64,6 +65,7 @@ struct ImageProcessorView: View {
                     onDropAction: { url in
                         self.inputDirectory = url
                         processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
+                        saveInputDirectory(url: url)
                     }
                 )
                 .padding(.top, -11)
@@ -83,7 +85,6 @@ struct ImageProcessorView: View {
                     onDropAction: { url in
                         self.outputDirectory = url
                         processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
-                        // Save the newly selected output directory
                         saveOutputDirectory(url: url)
                     }
                 )
@@ -103,7 +104,7 @@ struct ImageProcessorView: View {
                         batchSize: $batchSize,
                         useGrayColorspace: $useGrayColorspace,
                         isProcessing: processor.isProcessing,
-                        maxThreadCount: maxThreadCount // Add this parameter
+                        maxThreadCount: maxThreadCount
                     )
                     
                     // Description for the processing parameters
@@ -168,9 +169,9 @@ struct ImageProcessorView: View {
         do {
             let granted = try await notificationManager.requestNotificationAuthorization()
             if granted {
-                // Log success via processor's interface
+                // Permission granted successfully
                 await MainActor.run {
-                    // No logging for successful permission grant to keep logs clean
+                    // Silent success
                 }
             } else {
                 await MainActor.run {
@@ -187,6 +188,20 @@ struct ImageProcessorView: View {
     
     /// Loads saved settings from UserDefaults
     private func loadSavedSettings() {
+        // Load last used input directory with validation
+        if let savedPath = UserDefaults.standard.string(forKey: lastUsedInputDirKey) {
+            let url = URL(fileURLWithPath: savedPath)
+            // Validate directory existence
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: savedPath, isDirectory: &isDirectory), isDirectory.boolValue {
+                inputDirectory = url
+                processor.appendLog(String(format: NSLocalizedString("LoadedLastInputDir", comment: ""), savedPath))
+            } else {
+                // Clean up invalid path
+                UserDefaults.standard.removeObject(forKey: lastUsedInputDirKey)
+            }
+        }
+        
         // Load last used output directory with validation
         if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
             let url = URL(fileURLWithPath: savedPath)
@@ -196,7 +211,7 @@ struct ImageProcessorView: View {
                 outputDirectory = url
                 processor.appendLog(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
             } else {
-                // Clean up invalid path without logging to keep startup clean
+                // Clean up invalid path
                 UserDefaults.standard.removeObject(forKey: lastUsedOutputDirKey)
             }
         }
@@ -240,8 +255,8 @@ struct ImageProcessorView: View {
         if result == .OK, let url = panel.url {
             inputDirectory = url
             processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
+            saveInputDirectory(url: url)
         }
-        // Don't log cancellation or other results to keep logs clean
     }
     
     /// Presents an NSOpenPanel to select an output directory
@@ -260,7 +275,17 @@ struct ImageProcessorView: View {
             processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
             saveOutputDirectory(url: url)
         }
-        // Don't log cancellation or other results to keep logs clean
+    }
+    
+    /// Save input directory
+    private func saveInputDirectory(url: URL) {
+        UserDefaults.standard.set(url.path, forKey: lastUsedInputDirKey)
+        
+        // Verify the save operation silently
+        if UserDefaults.standard.string(forKey: lastUsedInputDirKey) != url.path {
+            // Only log if there's an actual error
+            processor.appendLog("Failed to save input directory preference")
+        }
     }
     
     /// Save output directory
