@@ -80,7 +80,7 @@ class BatchTaskOrganizer {
                 subName
             ))
             
-            let batchSize = calculateIsolatedBatchSize( // Use specialized method
+            let batchSize = calculateIsolatedBatchSize(
                 imageCount: result.imageFiles.count,
                 threadCount: effectiveThreadCount,
                 isAuto: parameters.threadCount == Constants.autoModeThreadCount,
@@ -107,31 +107,67 @@ class BatchTaskOrganizer {
             }
         }
         
-        // Prepare global batch tasks
-        if !globalBatchImages.isEmpty {
+        // Separate high-resolution and normal-resolution global batch directories
+        let highResGlobalResults = scanResults.filter {
+            $0.category == .globalBatch && $0.isHighResolution
+        }
+        let normalGlobalResults = scanResults.filter {
+            $0.category == .globalBatch && !$0.isHighResolution
+        }
+        
+        // Process high-resolution global batch first
+        if !highResGlobalResults.isEmpty {
+            let highResImages = highResGlobalResults.flatMap { $0.imageFiles }
+            
+            #if DEBUG
+            logger.logDebug("High-resolution global batch: \(highResImages.count) images from \(highResGlobalResults.count) directories", source: "BatchTaskOrganizer")
+            #endif
+            
             logger.appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
             
-            let globalBatchSize = calculateGlobalBatchSize(
-                imageCount: globalBatchImages.count,
+            let highResBatchSize = calculateGlobalBatchSize(
+                imageCount: highResImages.count,
                 threadCount: effectiveThreadCount,
                 baseBatchSize: effectiveBatchSize
             )
             
-            #if DEBUG
-            logger.logDebug("Global batch: \(globalBatchImages.count) images, batch size \(globalBatchSize)", source: "BatchTaskOrganizer")
-            #endif
+            let highResBatches = splitIntoBatches(highResImages, batchSize: highResBatchSize)
             
-            let globalBatches = splitIntoBatches(globalBatchImages, batchSize: globalBatchSize)
-            
-            #if DEBUG
-            logger.logDebug("Split global images into \(globalBatches.count) batches", source: "BatchTaskOrganizer")
-            #endif
-            
-            for batch in globalBatches {
+            for batch in highResBatches {
                 tasks.append(BatchTask(
                     images: batch,
                     outputDir: outputDir,
-                    batchSize: globalBatchSize,
+                    batchSize: highResBatchSize,
+                    isGlobal: true
+                ))
+            }
+        }
+        
+        // Process normal-resolution global batch
+        if !normalGlobalResults.isEmpty {
+            let normalImages = normalGlobalResults.flatMap { $0.imageFiles }
+            
+            #if DEBUG
+            logger.logDebug("Normal-resolution global batch: \(normalImages.count) images from \(normalGlobalResults.count) directories", source: "BatchTaskOrganizer")
+            #endif
+            
+            if highResGlobalResults.isEmpty {
+                logger.appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+            }
+            
+            let normalBatchSize = calculateGlobalBatchSize(
+                imageCount: normalImages.count,
+                threadCount: effectiveThreadCount,
+                baseBatchSize: effectiveBatchSize
+            )
+            
+            let normalBatches = splitIntoBatches(normalImages, batchSize: normalBatchSize)
+            
+            for batch in normalBatches {
+                tasks.append(BatchTask(
+                    images: batch,
+                    outputDir: outputDir,
+                    batchSize: normalBatchSize,
                     isGlobal: true
                 ))
             }

@@ -243,11 +243,31 @@ class ImageProcessor: ObservableObject {
         #if DEBUG
         logger.logDebug("Generated \(batchTasks.count) batch tasks for concurrent processing", source: "ImageProcessor")
         #endif
-        
-        // Initialize task queue with priority sorting
+        // Track which tasks are high-resolution global batches
+        var highResGlobalIndices = Set<Int>()
+        var currentIndex = 0
+
+        // Mark isolated tasks first (they're added first in prepareBatchTasks)
+        for result in scanResults where result.category == .isolated {
+            let subBatchCount = Int(ceil(Double(result.imageFiles.count) / Double(effectiveBatchSize)))
+            currentIndex += subBatchCount
+        }
+
+        // Mark high-resolution global batch tasks
+        let highResGlobalResults = scanResults.filter {
+            $0.category == .globalBatch && $0.isHighResolution
+        }
+        if !highResGlobalResults.isEmpty {
+            let highResImageCount = highResGlobalResults.flatMap { $0.imageFiles }.count
+            let highResBatchCount = Int(ceil(Double(highResImageCount) / Double(effectiveBatchSize)))
+            for i in currentIndex ..< (currentIndex + highResBatchCount) {
+                highResGlobalIndices.insert(i)
+            }
+        }
+        // Initialize task queue with priority information
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         let taskQueue = TaskQueue(logger: loggerClosure)
-        await taskQueue.initialize(with: batchTasks)
+        await taskQueue.initialize(with: batchTasks, highResGlobalIndices: highResGlobalIndices)
         
         var globalProcessedCount = 0
         

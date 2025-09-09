@@ -10,7 +10,8 @@ import Foundation
 /// Priority levels for batch processing tasks
 enum TaskPriority: Int, Comparable {
     case high = 0 // Isolated directories (double-page, requires splitting)
-    case normal = 1 // Global batch (single-page)
+    case medium = 1 // High-resolution global batch
+    case normal = 2 // Normal-resolution global batch
     
     static func < (lhs: TaskPriority, rhs: TaskPriority) -> Bool {
         lhs.rawValue < rhs.rawValue
@@ -24,12 +25,14 @@ struct PrioritizedTask {
     let index: Int // Original index for stable sorting
     
     var estimatedCost: Int {
-        // Isolated tasks cost ~2.5x more processing time
+        // Adjusted weights based on processing complexity
         switch priority {
         case .high:
-            return task.images.count * 25 // 2.5x weight
+            return task.images.count * 25 // 2.5x weight for isolated (splitting)
+        case .medium:
+            return task.images.count * 20 // 2x weight for high-res global
         case .normal:
-            return task.images.count * 10 // 1x weight
+            return task.images.count * 10 // 1x weight for normal global
         }
     }
 }
@@ -57,9 +60,16 @@ actor TaskQueue {
     // MARK: - Task Management
     
     /// Initialize queue with prioritized tasks
-    func initialize(with tasks: [BatchTask]) {
+    func initialize(with tasks: [BatchTask], highResGlobalIndices: Set<Int> = []) {
         self.tasks = tasks.enumerated().map { index, task in
-            let priority: TaskPriority = task.isGlobal ? .normal : .high
+            let priority: TaskPriority
+            if !task.isGlobal {
+                priority = .high // Isolated directories
+            } else if highResGlobalIndices.contains(index) {
+                priority = .medium // High-resolution global batch
+            } else {
+                priority = .normal // Normal-resolution global batch
+            }
             return PrioritizedTask(task: task, priority: priority, index: index)
         }
         
@@ -80,9 +90,11 @@ actor TaskQueue {
         stealCount = 0
         
         #if DEBUG
-        let highPriorityCount = self.tasks.filter { $0.priority == .high }.count
+        let highCount = self.tasks.filter { $0.priority == .high }.count
+        let mediumCount = self.tasks.filter { $0.priority == .medium }.count
+        let normalCount = self.tasks.filter { $0.priority == .normal }.count
         let totalEstimatedCost = self.tasks.reduce(0) { $0 + $1.estimatedCost }
-        logger?("TaskQueue initialized: \(totalTasks) tasks (\(highPriorityCount) high priority), estimated cost: \(totalEstimatedCost)", .debug, "TaskQueue")
+        logger?("TaskQueue initialized: \(totalTasks) tasks (high:\(highCount), medium:\(mediumCount), normal:\(normalCount)), estimated cost: \(totalEstimatedCost)", .debug, "TaskQueue")
         #endif
     }
     
