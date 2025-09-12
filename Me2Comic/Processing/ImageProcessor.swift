@@ -431,9 +431,12 @@ class ImageProcessor: ObservableObject {
             // Add summary
             logger.log(String(
                 format: NSLocalizedString("TotalImagesProcessed", comment: ""),
-                processedCount,
-                duration
+                processedCount
             ), level: .info, source: "ImageProcessor")
+            
+            logger.log(duration, level: .info, source: "ImageProcessor")
+            
+            logger.log(NSLocalizedString("ProcessingComplete", comment: ""), level: .info, source: "ImageProcessor")
         }
         
         // Ensure all logs are processed before marking completion
