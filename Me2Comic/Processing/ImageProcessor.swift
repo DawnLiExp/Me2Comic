@@ -423,8 +423,12 @@ class ImageProcessor: ObservableObject {
                     format: NSLocalizedString("FailedFiles", comment: ""),
                     failedFiles.count
                 ), level: .error, source: "ImageProcessor")
-                for filePath in failedFiles {
-                    logger.log("  - \(filePath)", level: .error, source: "ImageProcessor")
+                for item in failedFiles.prefix(10) {
+                    logger.log("  - \(item)", level: .error, source: "ImageProcessor")
+                }
+                
+                if failedFiles.count > 10 {
+                    logger.log("... \(failedFiles.count - 10) more", level: .error, source: "ImageProcessor")
                 }
             }
             
