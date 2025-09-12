@@ -24,6 +24,7 @@ struct MainContentView: View {
     @Binding var unsharpAmount: String
     @Binding var unsharpThreshold: String
     @Binding var batchSize: String
+    @Binding var enableUnsharp: Bool
     let onProcess: () -> Void
 
     // New state: store measured heights of the two parameter views
@@ -128,8 +129,10 @@ struct MainContentView: View {
                     unsharpSigma: $unsharpSigma,
                     unsharpAmount: $unsharpAmount,
                     unsharpThreshold: $unsharpThreshold,
-                    batchSize: $batchSize
+                    batchSize: $batchSize,
+                    enableUnsharp: $enableUnsharp
                 )
+
                 .padding(.horizontal, 60)
                 // Measure Advanced area height
                 .background(
@@ -268,6 +271,8 @@ struct AdvancedParametersView: View {
     @Binding var unsharpAmount: String
     @Binding var unsharpThreshold: String
     @Binding var batchSize: String
+    @Binding var enableUnsharp: Bool
+    @State private var showUnsharpTip = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -280,35 +285,53 @@ struct AdvancedParametersView: View {
                     Text(NSLocalizedString("SharpeningSettings", comment: "锐化设置"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
+
+                    Button(action: { showUnsharpTip.toggle() }) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textMuted.opacity(0.5))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .popover(isPresented: $showUnsharpTip) {
+                        Text(NSLocalizedString("UnsharpDesc", comment: "锐化参数说明"))
+                            .padding()
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $enableUnsharp)
+                        .toggleStyle(MinimalToggleStyle())
                 }
                 
-                MinimalParameterField(
-                    label: "Radius",
-                    value: $unsharpRadius,
-                    unit: "",
-                    hint: NSLocalizedString("RadiusDesc", comment: "锐化半径，控制影响的区域大小")
-                )
-                
-                MinimalParameterField(
-                    label: "Sigma",
-                    value: $unsharpSigma,
-                    unit: "",
-                    hint: NSLocalizedString("SigmaDesc", comment: "锐化模糊半径，越大锐化效果越柔和")
-                )
-                
-                MinimalParameterField(
-                    label: "Amount",
-                    value: $unsharpAmount,
-                    unit: "",
-                    hint: NSLocalizedString("AmountDesc", comment: "锐化量，控制锐化效果的强度")
-                )
-                
-                MinimalParameterField(
-                    label: "Threshold",
-                    value: $unsharpThreshold,
-                    unit: "",
-                    hint: NSLocalizedString("ThreshDesc", comment: "锐化阈值，只对高于此值的边缘进行锐化")
-                )
+                if enableUnsharp {
+                    MinimalParameterField(
+                        label: "Radius",
+                        value: $unsharpRadius,
+                        unit: "",
+                        hint: NSLocalizedString("RadiusDesc", comment: "锐化半径，控制影响的区域大小")
+                    )
+                    
+                    MinimalParameterField(
+                        label: "Sigma",
+                        value: $unsharpSigma,
+                        unit: "",
+                        hint: NSLocalizedString("SigmaDesc", comment: "锐化模糊半径，越大锐化效果越柔和")
+                    )
+                    
+                    MinimalParameterField(
+                        label: "Amount",
+                        value: $unsharpAmount,
+                        unit: "",
+                        hint: NSLocalizedString("AmountDesc", comment: "锐化量，控制锐化效果的强度")
+                    )
+                    
+                    MinimalParameterField(
+                        label: "Threshold",
+                        value: $unsharpThreshold,
+                        unit: "",
+                        hint: NSLocalizedString("ThreshDesc", comment: "锐化阈值，只对高于此值的边缘进行锐化")
+                    )
+                }
             }
             
             Divider()

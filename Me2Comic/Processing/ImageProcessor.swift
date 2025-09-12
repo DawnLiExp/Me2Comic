@@ -116,8 +116,6 @@ class ImageProcessor: ObservableObject {
     
     /// Main async processing implementation
     private func processImagesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
-        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
-        
         guard gmReady else {
             logger.logError(NSLocalizedString("GMNotReady", comment: "GraphicsMagick is not ready. Please check installation."), source: "ImageProcessor")
             stateManager.stopProcessing()

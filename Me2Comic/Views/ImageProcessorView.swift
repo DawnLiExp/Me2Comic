@@ -44,6 +44,7 @@ struct ImageProcessorView: View {
     @State private var unsharpAmount = "0.7"
     @State private var unsharpThreshold = "0.02"
     @State private var batchSize = "40"
+    @State private var enableUnsharp = true
 
     // MARK: - Constants
 
@@ -112,6 +113,7 @@ struct ImageProcessorView: View {
                         unsharpAmount: $unsharpAmount,
                         unsharpThreshold: $unsharpThreshold,
                         batchSize: $batchSize,
+                        enableUnsharp: $enableUnsharp,
                         onProcess: {
                             startProcessing()
                         }
@@ -178,7 +180,7 @@ struct ImageProcessorView: View {
             threadCount: threadCount,
             unsharpRadius: unsharpRadiusFloat,
             unsharpSigma: unsharpSigmaFloat,
-            unsharpAmount: unsharpAmountFloat,
+            unsharpAmount: enableUnsharp ? unsharpAmountFloat : 0,
             unsharpThreshold: unsharpThresholdFloat,
             batchSize: batchSizeInt,
             useGrayColorspace: useGrayColorspace
