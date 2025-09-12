@@ -23,7 +23,7 @@ struct ImageProcessorView: View {
     @State private var inputDirectory: URL?
     @State private var outputDirectory: URL?
     @State private var selectedTab = "basic"
-    @State private var gmReady = true
+
     @State private var showLogs = true
     /// Prevents directory auto-save during initial load.
     @State private var isLoadingDirectories = false
@@ -58,12 +58,13 @@ struct ImageProcessorView: View {
         HStack(spacing: 0) {
             // Left Sidebar - Navigation and status display
             SidebarView(
-                gmReady: gmReady,
+                gmReady: $imageProcessor.gmReady,
                 isProcessing: imageProcessor.isProcessing,
                 selectedTab: $selectedTab,
                 showLogs: $showLogs,
                 logMessages: $imageProcessor.logMessages
             )
+
             .frame(width: 270)
 
             // Main Content Area - Parameter configuration and processing interface

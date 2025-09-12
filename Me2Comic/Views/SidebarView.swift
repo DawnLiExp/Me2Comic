@@ -16,7 +16,7 @@ struct SidebarView: View {
     // MARK: - Properties
 
     /// GraphicsMagick ready status.
-    let gmReady: Bool
+    @Binding var gmReady: Bool
     /// Whether processing is in progress.
     let isProcessing: Bool
     /// Currently selected tab.

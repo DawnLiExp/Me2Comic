@@ -30,6 +30,7 @@ class ImageProcessor: ObservableObject {
     @Published var currentProcessedImages = 0 { didSet { stateManager.currentProcessedImages = currentProcessedImages } }
     @Published var processingProgress = 0.0 { didSet { stateManager.processingProgress = processingProgress } }
     @Published var didFinishAllTasks = false { didSet { stateManager.didFinishAllTasks = didFinishAllTasks } }
+    @Published var gmReady = false
     
     // MARK: - Initialization
     
@@ -39,6 +40,11 @@ class ImageProcessor: ObservableObject {
         
         // Bind state changes
         setupBindings()
+        
+        // Verify GraphicsMagick on initialization
+        Task {
+            await verifyGraphicsMagickStatus()
+        }
         
         #if DEBUG
         logger.logDebug("ImageProcessor initialized", source: "ImageProcessor")
@@ -50,6 +56,23 @@ class ImageProcessor: ObservableObject {
     /// Appends log message (forwarded to logger)
     func appendLog(_ message: String) {
         logger.log(message, level: .info, source: "ImageProcessor")
+    }
+
+    /// Verifies GraphicsMagick installation status and updates gmReady property.
+    private func verifyGraphicsMagickStatus() async {
+        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
+        let result = await GraphicsMagickHelper.verifyGraphicsMagickAsync(logger: loggerClosure)
+        DispatchQueue.main.async {
+            switch result {
+            case .success(let path):
+                self.gmReady = true
+                self.gmPath = path
+                self.logger.log(NSLocalizedString("GMReady", comment: "GraphicsMagick is ready."), level: .info, source: "ImageProcessor")
+            case .failure(let error):
+                self.gmReady = false
+                self.logger.logError(error.localizedDescription, source: "ImageProcessor")
+            }
+        }
     }
     
     /// Stops all active processing
@@ -95,15 +118,8 @@ class ImageProcessor: ObservableObject {
     private func processImagesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         
-        let gmResult = await GraphicsMagickHelper.verifyGraphicsMagickAsync(logger: loggerClosure)
-        switch gmResult {
-        case .success(let path):
-            gmPath = path
-        case .failure(let error):
-            #if DEBUG
-            logger.logDebug("GraphicsMagick verification failed: \(error)", source: "ImageProcessor")
-            #endif
-            logger.logError(error.localizedDescription, source: "ImageProcessor")
+        guard gmReady else {
+            logger.logError(NSLocalizedString("GMNotReady", comment: "GraphicsMagick is not ready. Please check installation."), source: "ImageProcessor")
             stateManager.stopProcessing()
             return
         }

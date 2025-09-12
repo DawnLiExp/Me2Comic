@@ -104,6 +104,8 @@
 "GrayDisabled" = "Disabled";
 
 /* Log messages for GraphicsMagick and output directory errors */
+"GMReady" = "GraphicsMagick is ready";
+"GMNotReady" = "GraphicsMagick detection failed";
 "CannotReadOutput" = "Failed to parse the output of the command";
 "GraphicsMagickVersion" = "GraphicsMagick version: %@";
 "CannotCreateOutputDir" = "Error: Cannot create output directory: %@";

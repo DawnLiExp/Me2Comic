@@ -104,6 +104,8 @@
 "GrayDisabled" = "關閉";
 
 /* Log messages for GraphicsMagick and output directory errors */
+"GMReady" = "GraphicsMagick 已就緒";
+"GMNotReady" = "GraphicsMagick 檢測失敗";
 "CannotReadOutput" = "無法解析指令的輸出結果";
 "GraphicsMagickVersion" = "GraphicsMagick 版本：%@";
 "CannotCreateOutputDir" = "錯誤：無法建立輸出目錄：%@";

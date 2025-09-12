@@ -104,6 +104,8 @@
 "GrayDisabled" = "無効";
 
 /* Log messages for GraphicsMagick and output directory errors */
+"GMReady" = "GraphicsMagick は準備完了です";
+"GMNotReady" = "GraphicsMagick の検出に失敗しました";
 "CannotReadOutput" = "コマンドの出力結果を解析できませんでした";
 "GraphicsMagickVersion" = "GraphicsMagickバージョン:%@";
 "CannotCreateOutputDir" = "エラー:出力ディレクトリ作成失敗：%@";

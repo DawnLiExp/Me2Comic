@@ -15,6 +15,8 @@ enum ProcessingError: Error, Sendable {
     case graphicsMagickNotFound
     /// GraphicsMagick verification failed
     case graphicsMagickVerificationFailed(details: String)
+    /// GraphicsMagick is not ready (e.g., not found or verification failed at app start)
+    case graphicsMagickNotReady
     /// GraphicsMagick command execution failed
     case graphicsMagickExecutionFailed(exitCode: Int32, stderr: String?)
     
@@ -66,6 +68,9 @@ extension ProcessingError: LocalizedError {
         switch self {
         case .graphicsMagickNotFound:
             return NSLocalizedString("GMNotFoundViaWhich", comment: "")
+            
+        case .graphicsMagickNotReady:
+            return NSLocalizedString("GMNotReady", comment: "")
             
         case .graphicsMagickVerificationFailed(let details):
             return String(format: NSLocalizedString("GMExecutionFailed", comment: ""), details)
