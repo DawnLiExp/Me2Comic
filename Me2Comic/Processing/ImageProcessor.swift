@@ -436,6 +436,9 @@ class ImageProcessor: ObservableObject {
             ), level: .info, source: "ImageProcessor")
         }
         
+        // Ensure all logs are processed before marking completion
+        await logger.flushLogs()
+        
         Task {
             try? await notificationManager.sendCompletionNotification(
                 processedCount: processedCount,
@@ -444,9 +447,8 @@ class ImageProcessor: ObservableObject {
             )
         }
         
-        stateManager.stopProcessing()
-        
-        stateManager.markTasksFinished()
+        // Mark tasks as finished with extended delay to show 100% progress
+        stateManager.markTasksFinished(withDelay: 700_000_000)
     }
     
     // MARK: - Helper Methods

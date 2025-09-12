@@ -109,16 +109,22 @@ class ProcessingStateManager: ObservableObject {
     
     /// Mark all tasks as finished with delay
     /// - Parameter delay: Delay in nanoseconds before resetting state
-    func markTasksFinished(withDelay delay: UInt64 = 500_000_000) {
+    func markTasksFinished(withDelay delay: UInt64 = 1_500_000_000) {
+        // Ensure 100% progress display without triggering didSet loops
+        if processingProgress < 1.0 {
+            processingProgress = 1.0
+            currentProcessedImages = totalImagesToProcess
+        }
         didFinishAllTasks = true
         
         Task {
+            // Wait for a short duration to allow UI to update to 100%
             try? await Task.sleep(nanoseconds: delay)
-            guard isProcessing else {
-                didFinishAllTasks = false
-                return
+            
+            // Only reset UI if still in processing state (not manually stopped)
+            if isProcessing {
+                resetUIState()
             }
-            resetUIState()
             didFinishAllTasks = false
         }
     }

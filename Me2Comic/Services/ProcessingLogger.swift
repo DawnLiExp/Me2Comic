@@ -191,6 +191,12 @@ class ProcessingLogger: ObservableObject, LoggingProtocol {
         }
     }
     
+    /// Flush pending logs to ensure all messages are processed
+    func flushLogs() async {
+        // Allow a brief moment for any pending log messages to be processed
+        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+    }
+    
     // MARK: - Private Methods
     
     /// Configure async log streams for ordered message delivery
