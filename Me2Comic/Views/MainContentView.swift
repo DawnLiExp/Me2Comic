@@ -381,6 +381,7 @@ struct MinimalParameterField: View {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(Color.bgSecondary.opacity(0.5))
                     )
+                    .focusable(false) // Prevent automatic focus
                 
                 if !unit.isEmpty {
                     Text(unit)
