@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		FC00E6772E6D74D700C3ABB2 /* TaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */; };
-		FC0976862DC72DF900C307FD /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0976852DC72DF900C307FD /* Components.swift */; };
 		FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */; };
 		FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */; };
 		FC7950B02E6892DF00F891B3 /* ProcessingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */; };
@@ -24,8 +23,14 @@
 		FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB9B0C72DBDFD4500110511 /* Me2ComicApp.swift */; };
 		FCB9B0CA2DBDFD4500110511 /* ImageProcessorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB9B0C92DBDFD4500110511 /* ImageProcessorView.swift */; };
 		FCB9B0CC2DBDFD4700110511 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCB9B0CB2DBDFD4700110511 /* Assets.xcassets */; };
-		FCD13BC62E431DC8003A8023 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD13BC52E431DC6003A8023 /* Extensions.swift */; };
 		FCD13BC82E431E0F003A8023 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD13BC72E431E0D003A8023 /* AboutView.swift */; };
+		FCD6E2DA2E7300F0006E3B1E /* ColorExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */; };
+		FCD6E2DC2E730358006E3B1E /* DirectorySelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2DB2E730356006E3B1E /* DirectorySelectorView.swift */; };
+		FCD6E2E02E7303C8006E3B1E /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2DF2E7303C6006E3B1E /* SidebarView.swift */; };
+		FCD6E2E22E73057E006E3B1E /* MainContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2E12E73057D006E3B1E /* MainContentView.swift */; };
+		FCD6E2E42E7305AB006E3B1E /* ProcessButtonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2E32E7305A8006E3B1E /* ProcessButtonView.swift */; };
+		FCD6E2E62E7305C7006E3B1E /* LogPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */; };
+		FCD6E2E82E730608006E3B1E /* ProcessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2E72E730606006E3B1E /* ProcessingView.swift */; };
 		FCDCAEA62E4389EF00216C1D /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */; };
 		FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */; };
 		FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */; };
@@ -40,7 +45,6 @@
 
 /* Begin PBXFileReference section */
 		FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueue.swift; sourceTree = "<group>"; };
-		FC0976852DC72DF900C307FD /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImageProcessor.swift; sourceTree = "<group>"; };
 		FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInfoHelper.swift; sourceTree = "<group>"; };
 		FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingError.swift; sourceTree = "<group>"; };
@@ -60,8 +64,14 @@
 		FCB9B0C92DBDFD4500110511 /* ImageProcessorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessorView.swift; sourceTree = "<group>"; };
 		FCB9B0CB2DBDFD4700110511 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FCB9B0D02DBDFD4700110511 /* Me2Comic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Me2Comic.entitlements; sourceTree = "<group>"; };
-		FCD13BC52E431DC6003A8023 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		FCD13BC72E431E0D003A8023 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensions.swift; sourceTree = "<group>"; };
+		FCD6E2DB2E730356006E3B1E /* DirectorySelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySelectorView.swift; sourceTree = "<group>"; };
+		FCD6E2DF2E7303C6006E3B1E /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		FCD6E2E12E73057D006E3B1E /* MainContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentView.swift; sourceTree = "<group>"; };
+		FCD6E2E32E7305A8006E3B1E /* ProcessButtonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessButtonView.swift; sourceTree = "<group>"; };
+		FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPanelView.swift; sourceTree = "<group>"; };
+		FCD6E2E72E730606006E3B1E /* ProcessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingView.swift; sourceTree = "<group>"; };
 		FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingStateManager.swift; sourceTree = "<group>"; };
 		FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingLogger.swift; sourceTree = "<group>"; };
@@ -118,12 +128,12 @@
 		FC0D171F2E6AB35A00353B5F /* Processing */ = {
 			isa = PBXGroup;
 			children = (
-				FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */,
 				FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */,
 				FCEAFA632E60DAAB008575D6 /* BatchTaskOrganizer.swift */,
 				FCFCBCE72E24D92C00312F32 /* DirectoryAnalyzer.swift */,
 				FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */,
 				FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */,
+				FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */,
 			);
 			path = Processing;
 			sourceTree = "<group>";
@@ -132,7 +142,6 @@
 			isa = PBXGroup;
 			children = (
 				FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */,
-				FCD13BC52E431DC6003A8023 /* Extensions.swift */,
 				FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */,
 				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
 				FC7950B52E68C14600F891B3 /* PathCollisionManager.swift */,
@@ -204,8 +213,14 @@
 			isa = PBXGroup;
 			children = (
 				FCD13BC72E431E0D003A8023 /* AboutView.swift */,
-				FC0976852DC72DF900C307FD /* Components.swift */,
+				FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */,
+				FCD6E2DB2E730356006E3B1E /* DirectorySelectorView.swift */,
 				FCB9B0C92DBDFD4500110511 /* ImageProcessorView.swift */,
+				FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */,
+				FCD6E2E12E73057D006E3B1E /* MainContentView.swift */,
+				FCD6E2E32E7305A8006E3B1E /* ProcessButtonView.swift */,
+				FCD6E2E72E730606006E3B1E /* ProcessingView.swift */,
+				FCD6E2DF2E7303C6006E3B1E /* SidebarView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -279,31 +294,36 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 				FC7950B82E68C16300F891B3 /* ProcessOutputCollector.swift in Sources */,
+				FCD6E2DA2E7300F0006E3B1E /* ColorExtensions.swift in Sources */,
+				FCD6E2E62E7305C7006E3B1E /* LogPanelView.swift in Sources */,
 				FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */,
 				FCEAFA682E60DD11008575D6 /* ProcessingTypes.swift in Sources */,
+				FCD6E2E42E7305AB006E3B1E /* ProcessButtonView.swift in Sources */,
 				FC7950BC2E68C17F00F891B3 /* GMCommandBuilder.swift in Sources */,
 				FCEAFA642E60DAAD008575D6 /* BatchTaskOrganizer.swift in Sources */,
 				FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */,
 				FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */,
+				FCD6E2E02E7303C8006E3B1E /* SidebarView.swift in Sources */,
 				FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */,
 				FC7950B62E68C14800F891B3 /* PathCollisionManager.swift in Sources */,
 				FCA94A172E43C43A00CC23BC /* ParametersValidator.swift in Sources */,
-				FCD13BC62E431DC8003A8023 /* Extensions.swift in Sources */,
 				FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */,
 				FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */,
+				FCD6E2DC2E730358006E3B1E /* DirectorySelectorView.swift in Sources */,
 				FCDCAEA62E4389EF00216C1D /* NotificationManager.swift in Sources */,
 				FC00E6772E6D74D700C3ABB2 /* TaskQueue.swift in Sources */,
 				FC7950B42E68B59900F891B3 /* FileSystemHelper.swift in Sources */,
+				FCD6E2E82E730608006E3B1E /* ProcessingView.swift in Sources */,
 				FC7950BA2E68C16E00F891B3 /* GMProcessExecutor.swift in Sources */,
 				FCD13BC82E431E0F003A8023 /* AboutView.swift in Sources */,
 				FC7950B02E6892DF00F891B3 /* ProcessingError.swift in Sources */,
 				FCB9B0CA2DBDFD4500110511 /* ImageProcessorView.swift in Sources */,
-				FC0976862DC72DF900C307FD /* Components.swift in Sources */,
 				FCEAFA662E60DACE008575D6 /* AutoParameterCalculator.swift in Sources */,
 				FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */,
 				FC7950B22E68B57F00F891B3 /* AsyncSemaphore.swift in Sources */,
 				FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */,
 				FCFCBCE92E24D92C00312F32 /* DirectoryAnalyzer.swift in Sources */,
+				FCD6E2E22E73057E006E3B1E /* MainContentView.swift in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */
@@ -471,7 +491,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 0.9.5;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = me2.comic.me2comic;
@@ -510,7 +530,7 @@
 					"@executable_path/../Frameworks",
 				);
 				LLVM_LTO = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 0.9.5;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = me2.comic.me2comic;

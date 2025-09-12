@@ -11,16 +11,29 @@
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";
 "BuildVersionDefault" = "ミュシャ";
+"Ready" = "準備完了";
+"Detecting" = "検出中...";
+"BasicSettings" = "基本設定";
+"AdvancedParameters" = "詳細設定";
+"ClearLogsCount" = "ログを消去 (%d)";
+"ShowLogs" = "ログを表示";
 
-"Input Directory" = "入力ディレクトリ:%@";
-"Output Directory" = "出力ディレクトリ:%@";
-"Input Directory Placeholder" = "（処理対象フォルダは同じ階層に配置されている必要があります）";
-"Output Directory Placeholder" = "（元のディレクトリ名に対応した出力先が自動で生成されます）";
+/* Main Content */
+"Input Directory" = "入力ディレクトリ:";
+"Output Directory" = "出力ディレクトリ:";
+"InputNotSelected" = "入力ディレクトリを選択";
+"OutputNotSelected" = "出力ディレクトリを選択";
+"Input Directory Placeholder" = "画像サブフォルダを含むディレクトリを選択します。アプリケーションは第一階層のすべてのサブフォルダ内の画像ファイルを自動的に処理します";
+"Output Directory Placeholder" = "処理結果の保存場所を選択します。出力は入力ディレクトリと同じフォルダ構造を維持します";
+"BasicParameters" = "基本設定";
+"SharpeningSettings" = "シャープ";
+"ImagesPerBatch" = "枚";
+"StartProcessing" = "処理を開始";
 
 /* Parameter input titles */
-"WidthUnder" = "幅閾値（px）:";
-"ResizeHeight" = "リサイズ高（px）:";
-"OutputQuality" = "出力品質（％）:";
+"WidthUnder" = "幅閾値:";
+"ResizeHeight" = "リサイズ高:";
+"OutputQuality" = "出力品質:";
 "UnsharpRadius" = "アンシャープ半径:";
 "UnsharpSigma" = "アンシャープσ:";
 "UnsharpAmount" = "アンシャープ強度:";
@@ -28,6 +41,7 @@
 "BatchSize" = "バッチごとの画像数：";
 "ThreadCount" = "並列スレッド数:";
 "GrayColorspace" = "グレースケール変換:";
+"pxUnit" = "px";
 
 /* Parameter description section */
 "ParamDesc" = "パラメータ:";
@@ -138,3 +152,12 @@
 
 /* Progress bar strings */
 "ProcessingProgressText" = "%d%% (%d/%d)";
+
+/* Log panel */
+"ProcessingLogs" = "処理ログ";
+"LogsCount" = "%d 件";
+"AutoScroll" = "自動スクロール";
+
+/* ProcessingView */
+"ProcessingStatus" = "処理中...";
+"Stop" = "停止";

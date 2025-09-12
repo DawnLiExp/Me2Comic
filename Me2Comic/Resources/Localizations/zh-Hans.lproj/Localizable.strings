@@ -11,28 +11,42 @@
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";
 "BuildVersionDefault" = "穆夏";
+"Ready" = "准备就绪";
+"Detecting" = "检测中...";
+"BasicSettings" = "基础设置";
+"AdvancedParameters" = "高级设置";
+"ClearLogsCount" = "清理日志 (%d)";
+"ShowLogs" = "显示日志";
 
-"Input Directory" = "输入目录：%@";
-"Output Directory" = "输出目录：%@";
-"Input Directory Placeholder" = "（待处理文件夹都放到同一级目录下）";
-"Output Directory Placeholder" = "（会自动按原目录名称建立对应目录）";
+/* Main Content */
+"Input Directory" = "输入目录：";
+"Output Directory" = "输出目录：";
+"InputNotSelected" = "未选择输入目录";
+"OutputNotSelected" = "未选择输出目录";
+"Input Directory Placeholder" = "选择包含图片子文件夹的目录，程序将自动处理该目录下所有第一层级子文件夹内的图片文件";
+"Output Directory Placeholder" = "选择处理结果的保存位置，输出将保持与输入目录一致的文件结构";
+"BasicParameters" = "基础参数";
+"SharpeningSettings" = "锐化设置";
+"ImagesPerBatch" = "张";
+"StartProcessing" = "开始处理";
 
 /* Parameter input titles */
-"WidthUnder" = "宽度小于（像素）：";
-"ResizeHeight" = "Resize 高度（像素）：";
-"OutputQuality" = "输出质量（%）：";
+"WidthUnder" = "宽度阀值：";
+"ResizeHeight" = "转换高度：";
+"OutputQuality" = "输出质量：";
 "UnsharpRadius" = "Unsharp Radius：";
 "UnsharpSigma" = "Unsharp Sigma：";
 "UnsharpAmount" = "Unsharp Amount：";
 "UnsharpThreshold" = "Unsharp Threshold：";
 "BatchSize" = "每批图像数（张）：";
 "ThreadCount" = "并发线程数：";
-"GrayColorspace" = "灰度色彩空间（黑白）：";
+"GrayColorspace" = "灰度色彩空间：";
+"pxUnit" = "像素";
 
 /* Parameter description section */
 "ParamDesc" = "参数说明：";
 "UnderWidth" = "宽度阈值：";
-"ResizeH" = "Resize高度：";
+"ResizeH" = "转换高度：";
 "Quality" = "输出质量：";
 "Unsharp" = "Unsharp：";
 "Radius" = "Radius：";
@@ -45,7 +59,7 @@
 
 /* Parameter descriptions */
 "UnderWidthDesc" = "宽度小于此值时直接转换，否则均分裁切为左右两部分";
-"ResizeHDesc" = "按屏幕高像素设置，例如Kindle Paperwhite 5屏幕分辨率为1236x1648，（锁定高度按比例缩放）";
+"ResizeHDesc" = "按使用设备屏幕高像素设置，例如Kindle Paperwhite 5屏幕分辨率为1236x1648，（锁定高度按比例缩放）";
 "QualityDesc" = "JPG压缩质量（1-100），值越高质量越好但文件越大";
 "UnsharpDesc" = "优化图片细节表现，例如提升墨水屏图片显示效果。Amount=0时会禁用所有Unsharp参数。默认值：1.5×1.0+0.7+0.02";
 "RadiusDesc" = "锐化半径，控制影响的区域大小";
@@ -138,3 +152,12 @@
 
 /* Progress bar strings */
 "ProcessingProgressText" = "%d%% (%d/%d)";
+
+/* Log panel */
+"ProcessingLogs" = "处理日志";
+"LogsCount" = "%d 条";
+"AutoScroll" = "自动滚动";
+
+/* ProcessingView */
+"ProcessingStatus" = "正在处理...";
+"Stop" = "停止";

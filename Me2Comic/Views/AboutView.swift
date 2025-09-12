@@ -35,19 +35,19 @@ struct AboutView: View {
 
             Text("Me2Comic")
                 .font(.title)
-                .foregroundColor(.textPrimary)
+                .foregroundColor(Color.textMuted)
 
             Text("Version \(appVersion) (Build \(buildVersion))")
-                .foregroundColor(.textSecondary)
+                .foregroundColor(Color.textMuted)
 
             Text("© 2025 Me2")
-                .foregroundColor(.textSecondary)
+                .foregroundColor(Color.textMuted)
 
             Spacer().frame(height: 20)
 
             HStack(spacing: 5) {
                 Text(NSLocalizedString("Select Language", comment: ""))
-                    .foregroundColor(.textPrimary)
+                    .foregroundColor(Color.textMuted)
                 Picker("", selection: $selectedLanguage) {
                     Text("简体中文").tag("zh-Hans")
                     Text("繁體中文").tag("zh-Hant")
@@ -57,7 +57,7 @@ struct AboutView: View {
                 .pickerStyle(.menu)
                 .frame(width: 100)
                 .offset(x: -5)
-                .onChange(of: selectedLanguage) { newValue in
+                .onChange(of: selectedLanguage) { _, newValue in
                     UserDefaults.standard.set(newValue, forKey: "SelectedLanguage")
                     UserDefaults.standard.set([newValue], forKey: "AppleLanguages")
                 }
@@ -67,6 +67,6 @@ struct AboutView: View {
         }
         .padding()
         .frame(width: 290, height: 340)
-        .background(.backgroundPrimary)
+        .background(Color.bgTertiary)
     }
 }

@@ -83,7 +83,7 @@ protocol LoggingProtocol: Sendable {
 class ProcessingLogger: ObservableObject, LoggingProtocol {
     // MARK: - Properties
     
-    @Published var logMessages: [String] = []
+    @Published var logMessages: [LogEntry] = []
     private var logContinuation: AsyncStream<LogEntry>.Continuation?
     private var debugLogContinuation: AsyncStream<LogEntry>.Continuation?
     
@@ -202,7 +202,8 @@ class ProcessingLogger: ObservableObject, LoggingProtocol {
         Task {
             for await entry in uiStream {
                 if entry.level.isUserVisible {
-                    logMessages.append(entry.displayMessage)
+                    logMessages.append(entry)
+
                     if logMessages.count > Constants.maxLogMessages {
                         logMessages.removeFirst(logMessages.count - Constants.maxLogMessages)
                     }

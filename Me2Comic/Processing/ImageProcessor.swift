@@ -15,7 +15,7 @@ class ImageProcessor: ObservableObject {
     
     private let notificationManager = NotificationManager()
     private let stateManager = ProcessingStateManager()
-    private let logger = ProcessingLogger()
+    let logger = ProcessingLogger()
     private let taskOrganizer: BatchTaskOrganizer
     private let autoCalculator: AutoParameterCalculator
     
@@ -25,7 +25,7 @@ class ImageProcessor: ObservableObject {
     // MARK: - Published State (Forwarded from components)
     
     @Published var isProcessing = false { didSet { stateManager.isProcessing = isProcessing } }
-    @Published var logMessages: [String] = [] { didSet { logger.logMessages = logMessages } }
+    @Published var logMessages: [LogEntry] = [] { didSet { logger.logMessages = logMessages } }
     @Published var totalImagesToProcess = 0 { didSet { stateManager.totalImagesToProcess = totalImagesToProcess } }
     @Published var currentProcessedImages = 0 { didSet { stateManager.currentProcessedImages = currentProcessedImages } }
     @Published var processingProgress = 0.0 { didSet { stateManager.processingProgress = processingProgress } }
@@ -49,7 +49,7 @@ class ImageProcessor: ObservableObject {
     
     /// Appends log message (forwarded to logger)
     func appendLog(_ message: String) {
-        logger.appendLog(message)
+        logger.log(message, level: .info, source: "ImageProcessor")
     }
     
     /// Stops all active processing
@@ -61,8 +61,8 @@ class ImageProcessor: ObservableObject {
         activeProcessingTask?.cancel()
         activeProcessingTask = nil
         
-        logger.appendLog(NSLocalizedString("ProcessingStopRequested", comment: ""))
-        logger.appendLog(NSLocalizedString("ProcessingStopped", comment: ""))
+        logger.log(NSLocalizedString("ProcessingStopRequested", comment: ""), level: .info, source: "ImageProcessor")
+        logger.log(NSLocalizedString("ProcessingStopped", comment: ""), level: .info, source: "ImageProcessor")
         
         stateManager.stopProcessing()
     }
@@ -162,7 +162,7 @@ class ImageProcessor: ObservableObject {
         
         let totalImages = scanResults.reduce(0) { $0 + $1.imageFiles.count }
         stateManager.setTotalImages(totalImages)
-        logger.appendLog(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), totalImages))
+        logger.log(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), totalImages), level: .info, source: "ImageProcessor")
         
         #if DEBUG
         logger.logDebug("Processing \(totalImages) total images across \(scanResults.count) directories", source: "ImageProcessor")
@@ -398,62 +398,53 @@ class ImageProcessor: ObservableObject {
         logger.logDebug("Processing completion: processed=\(processedCount), failed=\(failedFiles.count), duration=\(elapsed)s", source: "ImageProcessor")
         #endif
         
-        var completionLogs: [String] = []
-        
         if processedCount > 0 {
             // Add per-directory results
             scanResults
                 .filter { $0.category == .isolated }
                 .forEach { result in
-                    completionLogs.append(String(
+                    logger.log(String(
                         format: NSLocalizedString("ProcessedSubdir", comment: ""),
                         result.directoryURL.lastPathComponent
-                    ))
+                    ), level: .info, source: "ImageProcessor")
                 }
             
             // Add global batch results
             if globalProcessedCount > 0 {
-                completionLogs.append(String(
+                logger.log(String(
                     format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
                     globalProcessedCount
-                ))
+                ), level: .info, source: "ImageProcessor")
             }
             
             // Add failure summary
             if !failedFiles.isEmpty {
-                completionLogs.append(String(
+                logger.log(String(
                     format: NSLocalizedString("FailedFiles", comment: ""),
                     failedFiles.count
-                ))
-                
-                for item in failedFiles.prefix(10) {
-                    completionLogs.append("- \(item)")
-                }
-                
-                if failedFiles.count > 10 {
-                    completionLogs.append("... \(failedFiles.count - 10) more")
+                ), level: .error, source: "ImageProcessor")
+                for filePath in failedFiles {
+                    logger.log("  - \(filePath)", level: .error, source: "ImageProcessor")
                 }
             }
             
             // Add summary
-            completionLogs.append(String(
+            logger.log(String(
                 format: NSLocalizedString("TotalImagesProcessed", comment: ""),
-                processedCount
-            ))
-            completionLogs.append(duration)
+                processedCount,
+                duration
+            ), level: .info, source: "ImageProcessor")
         }
         
-        completionLogs.append(NSLocalizedString("ProcessingComplete", comment: ""))
-        logger.appendLogsBatch(completionLogs)
-        
-        // Send notification
-        if processedCount > 0 {
+        Task {
             try? await notificationManager.sendCompletionNotification(
                 processedCount: processedCount,
                 failedCount: failedFiles.count,
                 duration: duration
             )
         }
+        
+        stateManager.stopProcessing()
         
         stateManager.markTasksFinished()
     }

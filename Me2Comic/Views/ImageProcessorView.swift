@@ -7,395 +7,286 @@
 
 import AppKit
 import SwiftUI
-import UserNotifications
 
-/// UserDefault keys for storing directories
-private let lastUsedInputDirKey = "lastUsedInputDirectory"
-private let lastUsedOutputDirKey = "lastUsedOutputDirectory"
+// MARK: - Main View
 
-/// UserDefault keys for storing processing parameters
-private let widthThresholdKey = "widthThreshold"
-private let resizeHeightKey = "resizeHeight"
-private let qualityKey = "quality"
-private let threadCountKey = "threadCount"
-private let unsharpRadiusKey = "unsharpRadius"
-private let unsharpSigmaKey = "unsharpSigma"
-private let unsharpAmountKey = "unsharpAmount"
-private let unsharpThresholdKey = "unsharpThreshold"
-private let batchSizeKey = "batchSize"
-private let useGrayColorspaceKey = "useGrayColorspace"
-
-/// Main user interface for the image processing application
+/// The main view of the image processor.
+/// Manages the overall layout, state coordination, and user interaction.
 struct ImageProcessorView: View {
+    // MARK: - Dependencies
+
+    /// The image processor instance that manages the backend processing logic.
+    @StateObject private var imageProcessor = ImageProcessor()
+
+    // MARK: - UI State
+
     @State private var inputDirectory: URL?
     @State private var outputDirectory: URL?
-    @State private var widthThreshold: String = "3000"
-    @State private var resizeHeight: String = "1648"
-    @State private var quality: String = "85"
-    @State private var threadCount: Int = 0
-    @State private var unsharpRadius: String = "1.5"
-    @State private var useGrayColorspace: Bool = true
-    @State private var unsharpSigma: String = "1"
-    @State private var unsharpAmount: String = "0.7"
-    @State private var unsharpThreshold: String = "0.02"
-    @State private var batchSize: String = "40"
-    
-    private let maxThreadCount = SystemInfoHelper.getMaxThreadCount()
-    @StateObject private var processor = ImageProcessor()
-    private let notificationManager = NotificationManager()
-    @State private var showProgressAfterCompletion: Bool = false
-    
+    @State private var selectedTab = "basic"
+    @State private var gmReady = true
+    @State private var showLogs = true
+    /// Prevents directory auto-save during initial load.
+    @State private var isLoadingDirectories = false
+
+    // MARK: - Basic Parameters
+
+    @State private var widthThreshold = "3000"
+    @State private var resizeHeight = "1648"
+    @State private var quality = "85"
+    /// 0 = auto-detect
+    @State private var threadCount = 0
+    @State private var useGrayColorspace = true
+
+    // MARK: - Advanced Parameters
+
+    @State private var unsharpRadius = "1.5"
+    @State private var unsharpSigma = "1"
+    @State private var unsharpAmount = "0.7"
+    @State private var unsharpThreshold = "0.02"
+    @State private var batchSize = "40"
+
+    // MARK: - Constants
+
+    private enum UserDefaultsKeys {
+        static let lastInputDirectory = "Me2Comic.lastInputDirectory"
+        static let lastOutputDirectory = "Me2Comic.lastOutputDirectory"
+    }
+
+    // MARK: - View Layout
+
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            LeftPanelView() // Left panel of the UI
-            
-            GradientDividerView() // Visual divider between panels
-            
-            VStack(spacing: 20) {
-                Spacer().frame(height: 5)
-                
-                // Input Directory Selection Button
-                DirectoryButtonView(
-                    title: String(format: NSLocalizedString("Input Directory", comment: ""),
-                                  inputDirectory?.path ?? NSLocalizedString("Input Directory Placeholder", comment: "")),
-                    action: { selectInputDirectory() },
-                    isProcessing: processor.isProcessing,
-                    openAction: nil,
-                    showOpenButton: false,
-                    onDropAction: { url in
-                        self.inputDirectory = url
-                        processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
-                        saveInputDirectory(url: url)
-                    }
-                )
-                .padding(.top, -11)
-                
-                // Output Directory Selection Button
-                DirectoryButtonView(
-                    title: String(format: NSLocalizedString("Output Directory", comment: ""),
-                                  outputDirectory?.path ?? NSLocalizedString("Output Directory Placeholder", comment: "")),
-                    action: { selectOutputDirectory() },
-                    isProcessing: processor.isProcessing,
-                    openAction: {
-                        if let url = outputDirectory {
-                            NSWorkspace.shared.open(url)
+        HStack(spacing: 0) {
+            // Left Sidebar - Navigation and status display
+            SidebarView(
+                gmReady: gmReady,
+                isProcessing: imageProcessor.isProcessing,
+                selectedTab: $selectedTab,
+                showLogs: $showLogs,
+                logMessages: $imageProcessor.logMessages
+            )
+            .frame(width: 270)
+
+            // Main Content Area - Parameter configuration and processing interface
+            ZStack {
+                // Background Layer
+                Color.bgPrimary
+                    .ignoresSafeArea()
+
+                // Decorative Element - Gradient glow effect
+                GeometryReader { geo in
+                    RadialGradient(
+                        colors: [Color.accentGreen.opacity(0.05), Color.clear],
+                        center: .center,
+                        startRadius: 100,
+                        endRadius: 500
+                    )
+                    .position(x: geo.size.width * 0.7, y: geo.size.height * 0.3)
+                    .blur(radius: 50)
+                }
+
+                // Content Switch - Processing view or parameter configuration view
+                if imageProcessor.isProcessing {
+                    ProcessingView(
+                        progress: imageProcessor.processingProgress,
+                        processedCount: imageProcessor.currentProcessedImages,
+                        totalCount: imageProcessor.totalImagesToProcess,
+                        onStop: {
+                            withAnimation {
+                                imageProcessor.stopProcessing()
+                            }
                         }
-                    },
-                    showOpenButton: true,
-                    onDropAction: { url in
-                        self.outputDirectory = url
-                        processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
-                        saveOutputDirectory(url: url)
-                    }
-                )
-                .padding(.bottom, 10)
-                
-                // Panel for image processing parameters
-                HStack(alignment: .top, spacing: 18) {
-                    SettingsPanelView(
+                    )
+                } else {
+                    MainContentView(
+                        inputDirectory: $inputDirectory,
+                        outputDirectory: $outputDirectory,
+                        selectedTab: selectedTab,
                         widthThreshold: $widthThreshold,
                         resizeHeight: $resizeHeight,
                         quality: $quality,
                         threadCount: $threadCount,
+                        useGrayColorspace: $useGrayColorspace,
                         unsharpRadius: $unsharpRadius,
                         unsharpSigma: $unsharpSigma,
                         unsharpAmount: $unsharpAmount,
                         unsharpThreshold: $unsharpThreshold,
                         batchSize: $batchSize,
-                        useGrayColorspace: $useGrayColorspace,
-                        isProcessing: processor.isProcessing,
-                        maxThreadCount: maxThreadCount
+                        onProcess: {
+                            startProcessing()
+                        }
                     )
-                    
-                    // Description for the processing parameters
-                    ParameterDescriptionView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.trailing, -3)
                 }
-                .padding(.horizontal, 4)
-                .fixedSize(horizontal: false, vertical: true)
-                .background(.panelBackground)
-                
-                // Action button to start or stop processing
-                ActionButtonView(isProcessing: processor.isProcessing) {
-                    if processor.isProcessing {
-                        processor.stopProcessing()
-                    } else {
-                        processImages()
-                    }
-                }
-                .disabled(!processor.isProcessing && (inputDirectory == nil || outputDirectory == nil))
-                
-                // Progress display when processing
-                if (processor.isProcessing || showProgressAfterCompletion) && processor.totalImagesToProcess > 0 {
-                    ProgressDisplayView(processor: processor)
-                        .padding(.horizontal, 4)
-                        .padding(.top, -10)
-                        .padding(.bottom, -10)
-                }
-                
-                // Log console for displaying messages and progress
-                DecoratedView(content: LogTextView(processor: processor))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.bottom, 18)
-                    .padding(.trailing, 1)
             }
-            .padding(.horizontal, 15)
-        }
-        .frame(minWidth: 994, minHeight: 735)
-        .background(.panelBackground)
-        .onChange(of: processor.didFinishAllTasks) { finished in
-            if finished {
-                showProgressAfterCompletion = true
-            } else {
-                showProgressAfterCompletion = false
+
+            // Right Log Panel - Optional display
+            if showLogs {
+                LogPanelMinimal(logMessages: $imageProcessor.logMessages)
+                    .frame(width: 350)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .onChange(of: processor.isProcessing) { isProcessing in
-            if isProcessing {
-                showProgressAfterCompletion = false
-            }
-        }
+        .frame(minWidth: showLogs ? 1050 : 687, minHeight: 676)
+        .background(Color.bgPrimary)
         .onAppear {
-            Task {
-                await setupNotifications()
-            }
-            loadSavedSettings()
+            loadSavedDirectories()
         }
-    }
-    
-    /// Sets up notification permissions
-    private func setupNotifications() async {
-        do {
-            let granted = try await notificationManager.requestNotificationAuthorization()
-            if granted {
-                // Permission granted successfully
-                await MainActor.run {
-                    // Silent success
-                }
-            } else {
-                await MainActor.run {
-                    processor.appendLog(NSLocalizedString("NotificationPermissionNotGranted", comment: ""))
-                }
+        .onChange(of: inputDirectory) {
+            if !isLoadingDirectories {
+                saveDirectoryToUserDefaults(inputDirectory, key: UserDefaultsKeys.lastInputDirectory)
             }
-        } catch {
-            await MainActor.run {
-                let errorMessage = String(format: NSLocalizedString("NotificationPermissionFailed", comment: ""), error.localizedDescription)
-                processor.appendLog(errorMessage)
+        }
+        .onChange(of: outputDirectory) {
+            if !isLoadingDirectories {
+                saveDirectoryToUserDefaults(outputDirectory, key: UserDefaultsKeys.lastOutputDirectory)
             }
         }
     }
-    
-    /// Loads saved settings from UserDefaults
-    private func loadSavedSettings() {
-        // Load last used input directory with validation
-        if let savedPath = UserDefaults.standard.string(forKey: lastUsedInputDirKey) {
-            let url = URL(fileURLWithPath: savedPath)
-            // Validate directory existence
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: savedPath, isDirectory: &isDirectory), isDirectory.boolValue {
-                inputDirectory = url
-                processor.appendLog(String(format: NSLocalizedString("LoadedLastInputDir", comment: ""), savedPath))
-            } else {
-                // Clean up invalid path
-                UserDefaults.standard.removeObject(forKey: lastUsedInputDirKey)
-            }
+
+    // MARK: - Processing Logic
+
+    /// Starts the image processing.
+    /// Validates parameters and initiates the image processing workflow.
+    private func startProcessing() {
+        // Validate directory selection
+        guard let inputDir = inputDirectory,
+              let outputDir = outputDirectory
+        else {
+            imageProcessor.logger.logError(NSLocalizedString("NoInputOrOutputDir", comment: "Error: Input or output directory not selected"))
+            return
         }
-        
-        // Load last used output directory with validation
-        if let savedPath = UserDefaults.standard.string(forKey: lastUsedOutputDirKey) {
-            let url = URL(fileURLWithPath: savedPath)
-            // Validate directory existence
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: savedPath, isDirectory: &isDirectory), isDirectory.boolValue {
-                outputDirectory = url
-                processor.appendLog(String(format: NSLocalizedString("LoadedLastOutputDir", comment: ""), savedPath))
-            } else {
-                // Clean up invalid path
-                UserDefaults.standard.removeObject(forKey: lastUsedOutputDirKey)
-            }
+
+        // Validate and convert parameters
+        guard let widthThresholdInt = Int(widthThreshold),
+              let resizeHeightInt = Int(resizeHeight),
+              let qualityInt = Int(quality),
+              let unsharpRadiusFloat = Float(unsharpRadius),
+              let unsharpSigmaFloat = Float(unsharpSigma),
+              let unsharpAmountFloat = Float(unsharpAmount),
+              let unsharpThresholdFloat = Float(unsharpThreshold),
+              let batchSizeInt = Int(batchSize)
+        else {
+            imageProcessor.logger.logError(NSLocalizedString("InvalidParameters", comment: "Invalid parameter format"))
+            return
         }
-        
-        // Load saved parameters with fallback values
-        widthThreshold = UserDefaults.standard.string(forKey: widthThresholdKey) ?? widthThreshold
-        resizeHeight = UserDefaults.standard.string(forKey: resizeHeightKey) ?? resizeHeight
-        quality = UserDefaults.standard.string(forKey: qualityKey) ?? quality
-        
-        // Load and validate thread count
-        let savedThreadCount = UserDefaults.standard.integer(forKey: threadCountKey)
-        if savedThreadCount == 0 {
-            threadCount = 0 // Auto mode
-        } else if savedThreadCount >= 1 && savedThreadCount <= maxThreadCount {
-            threadCount = savedThreadCount // Valid saved value
-        } else if savedThreadCount > maxThreadCount {
-            threadCount = maxThreadCount // Clamp to current machine's max
-        } else {
-            threadCount = 0 // Invalid value, default to auto
-        }
-        
-        unsharpRadius = UserDefaults.standard.string(forKey: unsharpRadiusKey) ?? unsharpRadius
-        unsharpSigma = UserDefaults.standard.string(forKey: unsharpSigmaKey) ?? unsharpSigma
-        unsharpAmount = UserDefaults.standard.string(forKey: unsharpAmountKey) ?? unsharpAmount
-        unsharpThreshold = UserDefaults.standard.string(forKey: unsharpThresholdKey) ?? unsharpThreshold
-        batchSize = UserDefaults.standard.string(forKey: batchSizeKey) ?? batchSize
-        useGrayColorspace = UserDefaults.standard.bool(forKey: useGrayColorspaceKey)
-    }
-    
-    /// Presents an NSOpenPanel to select an input directory
-    private func selectInputDirectory() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.title = NSLocalizedString("Input Directory", comment: "")
-        panel.prompt = NSLocalizedString("Select", comment: "")
-        
-        let result = panel.runModal()
-        
-        if result == .OK, let url = panel.url {
-            inputDirectory = url
-            processor.appendLog(String(format: NSLocalizedString("SelectedInputDir", comment: ""), url.path))
-            saveInputDirectory(url: url)
-        }
-    }
-    
-    /// Presents an NSOpenPanel to select an output directory
-    private func selectOutputDirectory() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.title = NSLocalizedString("Output Directory", comment: "")
-        panel.prompt = NSLocalizedString("Select", comment: "")
-        
-        let result = panel.runModal()
-        
-        if result == .OK, let url = panel.url {
-            outputDirectory = url
-            processor.appendLog(String(format: NSLocalizedString("SelectedOutputDir", comment: ""), url.path))
-            saveOutputDirectory(url: url)
-        }
-    }
-    
-    /// Save input directory
-    private func saveInputDirectory(url: URL) {
-        UserDefaults.standard.set(url.path, forKey: lastUsedInputDirKey)
-        
-        // Verify the save operation silently
-        if UserDefaults.standard.string(forKey: lastUsedInputDirKey) != url.path {
-            // Only log if there's an actual error
-            processor.appendLog("Failed to save input directory preference")
-        }
-    }
-    
-    /// Save output directory
-    private func saveOutputDirectory(url: URL) {
-        UserDefaults.standard.set(url.path, forKey: lastUsedOutputDirKey)
-        
-        // Verify the save operation silently
-        if UserDefaults.standard.string(forKey: lastUsedOutputDirKey) != url.path {
-            // Only log if there's an actual error
-            processor.appendLog("Failed to save output directory preference")
-        }
-    }
-    
-    /// Initiates the image processing operation
-    private func processImages() {
-        // Save current parameters before processing
-        saveCurrentParameters()
-        
-        do {
-            // Validate and create parameters
-            let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
-                inputDirectory: inputDirectory,
-                outputDirectory: outputDirectory,
-                widthThreshold: widthThreshold,
-                resizeHeight: resizeHeight,
-                quality: quality,
-                threadCount: threadCount,
-                unsharpRadius: unsharpRadius,
-                unsharpSigma: unsharpSigma,
-                unsharpAmount: unsharpAmount,
-                unsharpThreshold: unsharpThreshold,
-                batchSize: batchSize,
-                useGrayColorspace: useGrayColorspace
-            )
-            
-            // Start processing (now using async internally)
-            processor.processImages(
-                inputDir: inputDirectory!,
-                outputDir: outputDirectory!,
+
+        // Build processing parameters
+        let parameters = ProcessingParameters(
+            widthThreshold: widthThresholdInt,
+            resizeHeight: resizeHeightInt,
+            quality: qualityInt,
+            threadCount: threadCount,
+            unsharpRadius: unsharpRadiusFloat,
+            unsharpSigma: unsharpSigmaFloat,
+            unsharpAmount: unsharpAmountFloat,
+            unsharpThreshold: unsharpThresholdFloat,
+            batchSize: batchSizeInt,
+            useGrayColorspace: useGrayColorspace
+        )
+
+        // Start the processing workflow
+        withAnimation(.spring()) {
+            imageProcessor.processImages(
+                inputDir: inputDir,
+                outputDir: outputDir,
                 parameters: parameters
             )
-        } catch let error as ProcessingError {
-            processor.appendLog(error.localizedDescription)
-        } catch {
-            let processingError = ProcessingError.invalidParameter(
-                parameter: "validation",
-                reason: error.localizedDescription
+        }
+    }
+
+    // MARK: - Directory Persistence
+
+    /// Saves a directory URL to UserDefaults
+    private func saveDirectoryToUserDefaults(_ url: URL?, key: String) {
+        if let url = url {
+            UserDefaults.standard.set(url, forKey: key)
+            #if DEBUG
+            imageProcessor.logger.logDebug("Successfully saved directory for key: \(key), path: \(url.path)", source: "ImageProcessorView")
+            #endif
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+            #if DEBUG
+            imageProcessor.logger.logDebug("Removed directory for key: \(key)", source: "ImageProcessorView")
+            #endif
+        }
+    }
+
+    /// Loads a directory URL from UserDefaults
+    private func loadDirectoryFromUserDefaults(key: String) -> URL? {
+        guard let savedURL = UserDefaults.standard.url(forKey: key) else {
+            #if DEBUG
+            imageProcessor.logger.logDebug("No saved directory found for key: \(key)", source: "ImageProcessorView")
+            #endif
+            return nil
+        }
+
+        // Verify directory still exists
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: savedURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            #if DEBUG
+            imageProcessor.logger.logDebug("Saved directory no longer exists: \(savedURL.path)", source: "ImageProcessorView")
+            #endif
+            // Remove invalid directory
+            UserDefaults.standard.removeObject(forKey: key)
+            return nil
+        }
+
+        #if DEBUG
+        imageProcessor.logger.logDebug("Successfully loaded directory for key: \(key), path: \(savedURL.path)", source: "ImageProcessorView")
+        #endif
+
+        return savedURL
+    }
+
+    /// Loads saved directories from UserDefaults on app launch
+    private func loadSavedDirectories() {
+        #if DEBUG
+        imageProcessor.logger.logDebug("Starting to load saved directories", source: "ImageProcessorView")
+        #endif
+
+        // Prevent onChange from triggering saves during initial load
+        isLoadingDirectories = true
+
+        // Load input directory
+        if let savedInputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastInputDirectory) {
+            inputDirectory = savedInputDir
+            let msg = String(
+                format: NSLocalizedString("LoadedLastInputDir", comment: ""),
+                savedInputDir.path
             )
-            processor.appendLog(processingError.localizedDescription)
+            imageProcessor.logger.log(msg, level: .info)
+
+            #if DEBUG
+            imageProcessor.logger.logDebug("Successfully loaded input directory: \(savedInputDir.path)", source: "ImageProcessorView")
+            #endif
+        } else {
+            #if DEBUG
+            imageProcessor.logger.logDebug("No saved input directory found", source: "ImageProcessorView")
+            #endif
         }
-    }
-    
-    /// Saves current parameters to UserDefaults
-    private func saveCurrentParameters() {
-        let parameters = [
-            (widthThreshold, widthThresholdKey),
-            (resizeHeight, resizeHeightKey),
-            (quality, qualityKey),
-            (unsharpRadius, unsharpRadiusKey),
-            (unsharpSigma, unsharpSigmaKey),
-            (unsharpAmount, unsharpAmountKey),
-            (unsharpThreshold, unsharpThresholdKey),
-            (batchSize, batchSizeKey)
-        ]
-        
-        for (value, key) in parameters {
-            UserDefaults.standard.set(value, forKey: key)
+
+        // Load output directory
+        if let savedOutputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastOutputDirectory) {
+            outputDirectory = savedOutputDir
+            let msg = String(
+                format: NSLocalizedString("LoadedLastOutputDir", comment: ""),
+                savedOutputDir.path
+            )
+            imageProcessor.logger.log(msg, level: .info)
+
+            #if DEBUG
+            imageProcessor.logger.logDebug("Successfully loaded output directory: \(savedOutputDir.path)", source: "ImageProcessorView")
+            #endif
+        } else {
+            #if DEBUG
+            imageProcessor.logger.logDebug("No saved output directory found", source: "ImageProcessorView")
+            #endif
         }
-        
-        UserDefaults.standard.set(threadCount, forKey: threadCountKey)
-        UserDefaults.standard.set(useGrayColorspace, forKey: useGrayColorspaceKey)
-        
-        // Force synchronization silently - only log if it fails
-        if !UserDefaults.standard.synchronize() {
-            processor.appendLog("Warning: Settings may not have been saved properly")
-        }
-    }
-    
-    /// NSViewRepresentable wrapper for NSTextView to display log messages
-    struct LogTextView: NSViewRepresentable {
-        @ObservedObject var processor: ImageProcessor
-        
-        func makeNSView(context: Context) -> NSScrollView {
-            let scrollView = NSTextView.scrollableTextView()
-            let textView = scrollView.documentView as! NSTextView
-            textView.isEditable = false
-            textView.isSelectable = true
-            textView.backgroundColor = .clear
-            textView.textColor = NSColor(.textSecondary)
-            textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-            textView.textContainerInset = NSSize(width: 0, height: 0)
-            scrollView.borderType = .noBorder
-            textView.string = processor.logMessages.joined(separator: "\n")
-            textView.scrollToEndOfDocument(nil)
-            return scrollView
-        }
-        
-        func updateNSView(_ nsView: NSScrollView, context: Context) {
-            guard let textView = nsView.documentView as? NSTextView else { return }
-            let newText = processor.logMessages.joined(separator: "\n")
-            if textView.string != newText {
-                textView.string = newText
-                textView.scrollToEndOfDocument(nil)
-            }
-        }
-    }
-    
-    struct ImageProcessorView_Previews: PreviewProvider {
-        static var previews: some View {
-            ImageProcessorView()
-        }
+
+        // Re-enable saving for future changes
+        isLoadingDirectories = false
+
+        #if DEBUG
+        imageProcessor.logger.logDebug("Finished loading saved directories", source: "ImageProcessorView")
+        #endif
     }
 }

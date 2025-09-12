@@ -11,16 +11,29 @@
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";
 "BuildVersionDefault" = "穆夏";
+"Ready" = "準備就緒";
+"Detecting" = "檢測中...";
+"BasicSettings" = "基礎設定";
+"AdvancedParameters" = "進階設定";
+"ClearLogsCount" = "清理日誌 (%d)";
+"ShowLogs" = "顯示日誌";
 
-"Input Directory" = "輸入目錄: %@";
-"Output Directory" = "輸出目錄: %@";
-"Input Directory Placeholder" = "（待處理資料夾都放到同一層目錄下）";
-"Output Directory Placeholder" = "（會自動按原目錄名稱建立對應目錄）";
+/* Main Content */
+"Input Directory" = "輸入目錄: ";
+"Output Directory" = "輸出目錄: ";
+"InputNotSelected" = "未選擇輸入目錄";
+"OutputNotSelected" = "未選擇輸出目錄";
+"Input Directory Placeholder" = "選擇包含圖片子資料夾的目錄，程式將自動處理該目錄下所有第一層級子資料夾內的圖片檔案";
+"Output Directory Placeholder" = "選擇處理結果的儲存位置，輸出將保持與輸入目錄一致的檔案結構";
+"BasicParameters" = "基礎參數";
+"SharpeningSettings" = "銳化設定";
+"ImagesPerBatch" = "張";
+"StartProcessing" = "開始處理";
 
 /* Parameter input titles */
-"WidthUnder" = "寬度小於（像素）：";
-"ResizeHeight" = "Resize 高度（像素）：";
-"OutputQuality" = "輸出品質（%）：";
+"WidthUnder" = "寬度小於：";
+"ResizeHeight" = "转换高度：";
+"OutputQuality" = "輸出品質：";
 "UnsharpRadius" = "Unsharp Radius：";
 "UnsharpSigma" = "Unsharp Sigma：";
 "UnsharpAmount" = "Unsharp Amount：";
@@ -28,11 +41,12 @@
 "BatchSize" = "每批影像數（張）：";
 "ThreadCount" = "並行執行緒數：";
 "GrayColorspace" = "灰階色彩空間（黑白）：";
+"pxUnit" = "像素";
 
 /* Parameter description section */
 "ParamDesc" = "參數說明：";
 "UnderWidth" = "寬度閾值：";
-"ResizeH" = "Resize高度：";
+"ResizeH" = "轉換高度：";
 "Quality" = "輸出品質：";
 "Unsharp" = "Unsharp：";
 "Radius" = "Radius：";
@@ -45,7 +59,7 @@
 
 /* Parameter descriptions */
 "UnderWidthDesc" = "寬度小於此值時直接轉換，否則均分裁切為左右兩部分";
-"ResizeHDesc" = "按螢幕高像素設置，例如Kindle Paperwhite 5螢幕解析度為1236x1648，（鎖定高度按比例縮放）";
+"ResizeHDesc" = "按使用設備螢幕高像素設置，例如Kindle Paperwhite 5螢幕解析度為1236x1648，（鎖定高度按比例縮放）";
 "QualityDesc" = "JPG壓縮品質（1-100），值越高品質越好但檔案越大";
 "UnsharpDesc" = "調整圖片細節表現（如提升墨水屏顯示效果），Amount=0時停用所有Unsharp參數，預設值為1.5×1.0+0.7+0.02";
 "RadiusDesc" = "銳化半徑，控制影響的區域大小";
@@ -138,3 +152,12 @@
 
 /* Progress bar strings */
 "ProcessingProgressText" = "%d%% (%d/%d)";
+
+/* Log panel */
+"ProcessingLogs" = "處理日誌";
+"LogsCount" = "%d 條";
+"AutoScroll" = "自動滾動";
+
+/* ProcessingView */
+"ProcessingStatus" = "正在處理...";
+"Stop" = "停止";

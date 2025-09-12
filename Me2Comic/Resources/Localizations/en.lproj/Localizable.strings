@@ -11,16 +11,29 @@
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";
 "BuildVersionDefault" = "Mucha";
+"Ready" = "Ready";
+"Detecting" = "Detecting...";
+"BasicSettings" = "Basic Settings";
+"AdvancedParameters" = "Advanced Settings";
+"ClearLogsCount" = "Clear Logs (%d)";
+"ShowLogs" = "Show Logs";
 
-"Input Directory" = "Input Directory: %@";
-"Output Directory" = "Output Directory: %@";
-"Input Directory Placeholder" = "(Folders to be processed should reside in the same parent directory)";
-"Output Directory Placeholder" = "(Folders will be auto-created using original names)";
+/* Main Content */
+"Input Directory" = "Input Directory:";
+"Output Directory" = "Output Directory:";
+"InputNotSelected" = "Select input directory";
+"OutputNotSelected" = "Select output directory";
+"Input Directory Placeholder" = "Select a directory containing image subfolders. The application will automatically process image files in all first-level subfolders";
+"Output Directory Placeholder" = "Select the save location for processed results. Output will maintain the same folder structure as the input directory";
+"BasicParameters" = "Basic";
+"SharpeningSettings" = "Sharpening";
+"ImagesPerBatch" = "img";
+"StartProcessing" = "Start Processing";
 
 /* Parameter input titles */
-"WidthUnder" = "Width Under (px):";
-"ResizeHeight" = "Resize Height (px):";
-"OutputQuality" = "Output Quality (%):";
+"WidthUnder" = "Width Under:";
+"ResizeHeight" = "Resize Height:";
+"OutputQuality" = "Output Quality:";
 "UnsharpRadius" = "Unsharp Radius:";
 "UnsharpSigma" = "Unsharp Sigma:";
 "UnsharpAmount" = "Unsharp Amount:";
@@ -28,6 +41,7 @@
 "BatchSize" = "Images per batch:";
 "ThreadCount" = "Thread Count:";
 "GrayColorspace" = "Grayscale Mode:";
+"pxUnit" = "px";
 
 /* Parameter description section */
 "ParamDesc" = "Parameter Description:";
@@ -138,3 +152,12 @@
 
 /* Progress bar strings */
 "ProcessingProgressText" = "%d%% (%d/%d)";
+
+/* Log panel */
+"ProcessingLogs" = "Processing Logs";
+"LogsCount" = "%d entries";
+"AutoScroll" = "Auto Scroll";
+
+/* ProcessingView */
+"ProcessingStatus" = "Processing...";
+"Stop" = "Stop";
