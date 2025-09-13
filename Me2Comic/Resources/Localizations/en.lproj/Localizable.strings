@@ -42,6 +42,7 @@
 "ThreadCount" = "Thread Count:";
 "GrayColorspace" = "Grayscale Mode:";
 "pxUnit" = "px";
+"ThreadsCount" = "%d Threads";
 
 /* Parameter description section */
 "ParamDesc" = "Parameter Description:";

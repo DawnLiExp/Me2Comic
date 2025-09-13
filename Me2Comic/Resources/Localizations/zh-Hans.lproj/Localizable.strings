@@ -42,6 +42,7 @@
 "ThreadCount" = "并发线程数：";
 "GrayColorspace" = "灰度色彩空间：";
 "pxUnit" = "像素";
+"ThreadsCount" = "%d 线程";
 
 /* Parameter description section */
 "ParamDesc" = "参数说明：";

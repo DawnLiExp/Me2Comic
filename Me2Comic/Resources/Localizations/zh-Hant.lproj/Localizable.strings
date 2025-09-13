@@ -42,6 +42,7 @@
 "ThreadCount" = "並行執行緒數：";
 "GrayColorspace" = "灰階色彩空間（黑白）：";
 "pxUnit" = "像素";
+"ThreadsCount" = "%d 執行緒";
 
 /* Parameter description section */
 "ParamDesc" = "參數說明：";

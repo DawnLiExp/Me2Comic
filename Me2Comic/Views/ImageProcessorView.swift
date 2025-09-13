@@ -30,6 +30,11 @@ struct ImageProcessorView: View {
     /// Prevents parameter auto-save during initial load
     @State private var isLoadingParameters = false
 
+    // MARK: - System Info
+
+    /// Maximum thread count based on physical CPU cores
+    private let maxThreadCount = SystemInfoHelper.getMaxThreadCount()
+
     // MARK: - Basic Parameters
 
     @State private var widthThreshold = "3000"
@@ -121,6 +126,7 @@ struct ImageProcessorView: View {
                         resizeHeight: $resizeHeight,
                         quality: $quality,
                         threadCount: $threadCount,
+                        maxThreadCount: maxThreadCount,
                         useGrayColorspace: $useGrayColorspace,
                         unsharpRadius: $unsharpRadius,
                         unsharpSigma: $unsharpSigma,
@@ -147,7 +153,6 @@ struct ImageProcessorView: View {
         .onAppear {
             loadSavedDirectories()
             loadSavedParameters()
-            adjustThreadCountIfNeeded()
         }
         .onChange(of: inputDirectory) {
             if !isLoadingDirectories {
@@ -245,7 +250,22 @@ struct ImageProcessorView: View {
         widthThreshold = defaults.string(forKey: UserDefaultsKeys.widthThreshold) ?? "3000"
         resizeHeight = defaults.string(forKey: UserDefaultsKeys.resizeHeight) ?? "1648"
         quality = defaults.string(forKey: UserDefaultsKeys.quality) ?? "85"
-        threadCount = defaults.integer(forKey: UserDefaultsKeys.threadCount)
+
+        // Load and validate thread count
+        let savedThreadCount = defaults.integer(forKey: UserDefaultsKeys.threadCount)
+        if savedThreadCount == 0 {
+            threadCount = 0 // Auto mode
+        } else if savedThreadCount >= 1 && savedThreadCount <= maxThreadCount {
+            threadCount = savedThreadCount // Valid saved value
+        } else if savedThreadCount > maxThreadCount {
+            threadCount = maxThreadCount // Clamp to current machine's max
+            #if DEBUG
+            imageProcessor.logger.logDebug("Thread count clamped from \(savedThreadCount) to \(maxThreadCount)", source: "ImageProcessorView")
+            #endif
+        } else {
+            threadCount = 0 // Invalid value, default to auto
+        }
+
         useGrayColorspace = defaults.object(forKey: UserDefaultsKeys.useGrayColorspace) as? Bool ?? true
         unsharpRadius = defaults.string(forKey: UserDefaultsKeys.unsharpRadius) ?? "1.5"
         unsharpSigma = defaults.string(forKey: UserDefaultsKeys.unsharpSigma) ?? "1"
@@ -259,24 +279,6 @@ struct ImageProcessorView: View {
         #if DEBUG
         imageProcessor.logger.logDebug("Parameters loaded from UserDefaults", source: "ImageProcessorView")
         #endif
-    }
-
-    /// Adjust thread count based on system CPU cores if needed
-    private func adjustThreadCountIfNeeded() {
-        // If thread count is 0 (auto) or exceeds system cores, adjust it
-        if threadCount == 0 {
-            return // Keep auto mode
-        }
-
-        let cpuCores = SystemInfoHelper.getPhysicalCPUCores()
-        if threadCount > cpuCores {
-            threadCount = cpuCores
-            imageProcessor.logger.log(
-                String(format: NSLocalizedString("ThreadCount", comment: ""), cpuCores),
-                level: .info,
-                source: "ImageProcessorView"
-            )
-        }
     }
 
     // MARK: - Directory Persistence

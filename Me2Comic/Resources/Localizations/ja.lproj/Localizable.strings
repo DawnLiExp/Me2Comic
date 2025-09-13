@@ -42,6 +42,7 @@
 "ThreadCount" = "並列スレッド数:";
 "GrayColorspace" = "グレースケール変換:";
 "pxUnit" = "px";
+"ThreadsCount" = "%d スレッド";
 
 /* Parameter description section */
 "ParamDesc" = "パラメータ:";

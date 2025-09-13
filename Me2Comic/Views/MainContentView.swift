@@ -18,6 +18,7 @@ struct MainContentView: View {
     @Binding var resizeHeight: String
     @Binding var quality: String
     @Binding var threadCount: Int
+    let maxThreadCount: Int
     @Binding var useGrayColorspace: Bool
     @Binding var unsharpRadius: String
     @Binding var unsharpSigma: String
@@ -132,6 +133,7 @@ struct MainContentView: View {
                     resizeHeight: $resizeHeight,
                     quality: $quality,
                     threadCount: $threadCount,
+                    maxThreadCount: maxThreadCount,
                     useGrayColorspace: $useGrayColorspace
                 )
                 .padding(.horizontal, 60)
@@ -209,6 +211,7 @@ struct BasicParametersView: View {
     @Binding var resizeHeight: String
     @Binding var quality: String
     @Binding var threadCount: Int
+    let maxThreadCount: Int
     @Binding var useGrayColorspace: Bool
     
     var body: some View {
@@ -262,7 +265,7 @@ struct BasicParametersView: View {
                     Slider(value: Binding(
                         get: { Double(threadCount) },
                         set: { threadCount = Int($0) }
-                    ), in: 0 ... 8, step: 1)
+                    ), in: 0 ... Double(maxThreadCount), step: 1)
                         .accentColor(.accentGreen)
                 }
             
