@@ -27,18 +27,22 @@ struct MainContentView: View {
     @Binding var batchSize: String
     @Binding var enableUnsharp: Bool
     let onProcess: () -> Void
+    let onDirectorySelect: () -> Void
 
-    // New state: store measured heights of the two parameter views
+    // MARK: - UI State
+        
+    /// Heights of parameter view components for layout calculations
     @State private var basicParamsHeight: CGFloat = 0
     @State private var advancedParamsHeight: CGFloat = 0
     @State private var showInputTip = false
     @State private var showOutputTip = false
     @State private var isShowInFinderHovered = false
-    // Adjustable extra height (if you want additional fixed space between the two modes)
-    // For example: set to 8 or 12 to fine-tune visual spacing
+    
+    // MARK: - Layout Constants
+    
+    /// Extra padding for parameter area spacing adjustment
     private let parameterAreaExtraPadding: CGFloat = 0
-
-    // Minimum height fallback value to avoid momentary jumps at initial 0
+    /// Minimum height for parameter area to prevent layout jumps
     private let parameterAreaMinHeight: CGFloat = 220
 
     var body: some View {
@@ -69,7 +73,10 @@ struct MainContentView: View {
                     path: inputDirectory?.path,
                     icon: "folder",
                     accentColor: .accentGreen,
-                    onSelect: { inputDirectory = $0 }
+                    onSelect: {
+                        onDirectorySelect() // Notify parent
+                        inputDirectory = $0
+                    }
                 )
                     
                 HStack(spacing: 4) {
@@ -118,7 +125,10 @@ struct MainContentView: View {
                     path: outputDirectory?.path,
                     icon: "folder.badge.plus",
                     accentColor: .accentOrange,
-                    onSelect: { outputDirectory = $0 }
+                    onSelect: {
+                        onDirectorySelect() // Notify parent
+                        outputDirectory = $0
+                    }
                 )
             }
             .padding(.horizontal, 60)

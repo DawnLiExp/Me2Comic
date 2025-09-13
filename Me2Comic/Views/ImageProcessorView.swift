@@ -29,6 +29,8 @@ struct ImageProcessorView: View {
     @State private var isLoadingDirectories = false
     /// Prevents parameter auto-save during initial load
     @State private var isLoadingParameters = false
+    /// Tracks if directory selection is from user action (not loading from saved state)
+    @State private var isUserSelection = false
 
     // MARK: - System Info
 
@@ -136,6 +138,13 @@ struct ImageProcessorView: View {
                         enableUnsharp: $enableUnsharp,
                         onProcess: {
                             startProcessing()
+                        },
+                        onDirectorySelect: {
+                            isUserSelection = true
+                            // Reset flag after a short delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isUserSelection = false
+                            }
                         }
                     )
                 }
@@ -158,8 +167,8 @@ struct ImageProcessorView: View {
             if !isLoadingDirectories {
                 saveDirectoryToUserDefaults(inputDirectory, key: UserDefaultsKeys.lastInputDirectory)
 
-                // Log directory selection
-                if let url = inputDirectory {
+                // Only log if this is a user selection (not loading from saved)
+                if isUserSelection, let url = inputDirectory {
                     let msg = String(
                         format: NSLocalizedString("SelectedInputDir", comment: ""),
                         url.path
@@ -172,8 +181,8 @@ struct ImageProcessorView: View {
             if !isLoadingDirectories {
                 saveDirectoryToUserDefaults(outputDirectory, key: UserDefaultsKeys.lastOutputDirectory)
 
-                // Log directory selection
-                if let url = outputDirectory {
+                // Only log if this is a user selection (not loading from saved)
+                if isUserSelection, let url = outputDirectory {
                     let msg = String(
                         format: NSLocalizedString("SelectedOutputDir", comment: ""),
                         url.path
