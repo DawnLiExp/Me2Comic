@@ -81,7 +81,6 @@ struct MinimalDirectorySelector: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = NSLocalizedString("Open", comment: "打开")
         
         if panel.runModal() == .OK, let url = panel.url {
             onSelect(url)

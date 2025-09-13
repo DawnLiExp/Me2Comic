@@ -73,7 +73,6 @@
 /* Log messages for directory selection */
 "SelectedInputDir" = "已選擇輸入目錄：%@";
 "SelectedOutputDir" = "已選擇輸出目錄：%@";
-"Open" = "開啟";
 "LoadedLastOutputDir" = "已載入上次使用的輸出目錄: %@";
 "LoadedLastInputDir" = "已載入上次使用的輸入目錄: %@";
 

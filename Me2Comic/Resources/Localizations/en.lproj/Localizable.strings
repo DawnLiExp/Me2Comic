@@ -73,7 +73,6 @@
 /* Log messages for directory selection */
 "SelectedInputDir" = "Selected input directory: %@";
 "SelectedOutputDir" = "Selected output directory: %@";
-"Open" = "Open";
 "LoadedLastOutputDir" = "Loaded last used output directory: %@";
 "LoadedLastInputDir" = "Loaded last used input directory: %@";
 

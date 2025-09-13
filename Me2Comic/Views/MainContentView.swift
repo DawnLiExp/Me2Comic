@@ -32,6 +32,7 @@ struct MainContentView: View {
     @State private var advancedParamsHeight: CGFloat = 0
     @State private var showInputTip = false
     @State private var showOutputTip = false
+    @State private var isShowInFinderHovered = false
     // Adjustable extra height (if you want additional fixed space between the two modes)
     // For example: set to 8 or 12 to fine-tune visual spacing
     private let parameterAreaExtraPadding: CGFloat = 0
@@ -84,6 +85,28 @@ struct MainContentView: View {
                     .popover(isPresented: $showOutputTip) {
                         Text(NSLocalizedString("Output Directory Placeholder", comment: "处理后的图片保存位置"))
                             .padding()
+                    }
+                    
+                    Spacer()
+                    
+                    // Show in Finder button
+                    if outputDirectory != nil {
+                        Button(action: showOutputInFinder) {
+                            Image(systemName: "magnifyingglass.circle")
+                                .font(.system(size: 16))
+                                .foregroundColor(isShowInFinderHovered ? .accentOrange : .textMuted)
+                                .padding(.leading, 4)
+                                .padding(.trailing, 12)
+                                .padding(.vertical, 4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .onHover { hovering in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isShowInFinderHovered = hovering
+                            }
+                        }
+                        .transition(.opacity.combined(with: .scale))
+                        .animation(.spring(response: 0.3), value: outputDirectory != nil)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -169,6 +192,14 @@ struct MainContentView: View {
             .padding(.bottom, 18) // Retain bottom spacing
         }
     }
+    
+    // MARK: - Private Methods
+    
+    /// Opens the output directory in Finder
+    private func showOutputInFinder() {
+        guard let url = outputDirectory else { return }
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
+    }
 }
 
 // MARK: - BasicParametersView
@@ -197,7 +228,7 @@ struct BasicParametersView: View {
                     label: NSLocalizedString("WidthUnder", comment: "宽度阀值"),
                     value: $widthThreshold,
                     unit: NSLocalizedString("pxUnit", comment: "px"),
-                    hint: NSLocalizedString("UnderWidthDesc", comment: "宽度小于此值时直接转换，否则均分裁切为左右两部分")
+                    hint: NSLocalizedString("UnderWidthDesc", comment: "宽度小于此值时直接转换，否则先分裂切为左右两部分")
                 )
             
                 MinimalParameterField(

@@ -142,7 +142,7 @@ struct ImageProcessorView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .frame(minWidth: showLogs ? 1050 : 687, minHeight: 676)
+        .frame(minWidth: showLogs ? 1050 : 685, minHeight: 685)
         .background(Color.bgPrimary)
         .onAppear {
             loadSavedDirectories()
