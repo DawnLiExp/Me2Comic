@@ -72,12 +72,35 @@ struct LogPanelMinimal: View {
                 .buttonStyle(PlainButtonStyle())
                 
                 Spacer()
+                
+                // Copy All button
+                Button(action: copyAllLogs) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 12))
+                        Text(NSLocalizedString("CopyAll", comment: "复制全部"))
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(.textMuted)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(logMessages.isEmpty)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(Color.bgTertiary.opacity(0.3))
         }
         .background(Color.bgSecondary)
+    }
+    
+    // Copy all logs to clipboard
+    private func copyAllLogs() {
+        let logText = logMessages
+            .map { $0.displayMessage }
+            .joined(separator: "\n")
+        
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(logText, forType: .string)
     }
 }
 
@@ -87,6 +110,7 @@ struct LogPanelMinimal: View {
 struct LogRow: View {
     let entry: LogEntry
     let index: Int
+    @State private var isHovered = false
     
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -106,6 +130,15 @@ struct LogRow: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 4)
+        .background(isHovered ? Color.bgTertiary.opacity(0.6) : Color.clear)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .contextMenu {
+            Button(action: { copyToClipboard(entry.displayMessage) }) {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+        }
     }
     
     private func iconName(for level: LogLevel) -> String {
@@ -126,5 +159,10 @@ struct LogRow: View {
         case .error: return .errorRed
         case .debug: return .textMuted
         }
+    }
+    
+    private func copyToClipboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 }

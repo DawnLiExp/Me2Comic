@@ -159,6 +159,7 @@
 "ProcessingLogs" = "処理ログ";
 "LogsCount" = "%d 件";
 "AutoScroll" = "自動スクロール";
+"CopyAll" = "すべてコピー";
 
 /* ProcessingView */
 "ProcessingStatus" = "処理中...";

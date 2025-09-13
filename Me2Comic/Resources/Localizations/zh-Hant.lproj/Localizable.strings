@@ -159,6 +159,7 @@
 "ProcessingLogs" = "處理日誌";
 "LogsCount" = "%d 條";
 "AutoScroll" = "自動滾動";
+"CopyAll" = "複製全部";
 
 /* ProcessingView */
 "ProcessingStatus" = "正在處理...";
