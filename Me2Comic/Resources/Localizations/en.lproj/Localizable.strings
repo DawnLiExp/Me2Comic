@@ -159,6 +159,7 @@
 "ProcessingLogs" = "Processing Logs";
 "LogsCount" = "%d entries";
 "AutoScroll" = "Auto Scroll";
+"CopyAll" = "CopyAll";
 
 /* ProcessingView */
 "ProcessingStatus" = "Processing...";
