@@ -27,6 +27,8 @@ struct ImageProcessorView: View {
     @State private var showLogs = true
     /// Prevents directory auto-save during initial load.
     @State private var isLoadingDirectories = false
+    /// Prevents parameter auto-save during initial load
+    @State private var isLoadingParameters = false
 
     // MARK: - Basic Parameters
 
@@ -51,6 +53,19 @@ struct ImageProcessorView: View {
     private enum UserDefaultsKeys {
         static let lastInputDirectory = "Me2Comic.lastInputDirectory"
         static let lastOutputDirectory = "Me2Comic.lastOutputDirectory"
+
+        // Parameter keys
+        static let widthThreshold = "Me2Comic.widthThreshold"
+        static let resizeHeight = "Me2Comic.resizeHeight"
+        static let quality = "Me2Comic.quality"
+        static let threadCount = "Me2Comic.threadCount"
+        static let useGrayColorspace = "Me2Comic.useGrayColorspace"
+        static let unsharpRadius = "Me2Comic.unsharpRadius"
+        static let unsharpSigma = "Me2Comic.unsharpSigma"
+        static let unsharpAmount = "Me2Comic.unsharpAmount"
+        static let unsharpThreshold = "Me2Comic.unsharpThreshold"
+        static let batchSize = "Me2Comic.batchSize"
+        static let enableUnsharp = "Me2Comic.enableUnsharp"
     }
 
     // MARK: - View Layout
@@ -65,7 +80,6 @@ struct ImageProcessorView: View {
                 showLogs: $showLogs,
                 logMessages: $imageProcessor.logMessages
             )
-
             .frame(width: 270)
 
             // Main Content Area - Parameter configuration and processing interface
@@ -132,6 +146,8 @@ struct ImageProcessorView: View {
         .background(Color.bgPrimary)
         .onAppear {
             loadSavedDirectories()
+            loadSavedParameters()
+            adjustThreadCountIfNeeded()
         }
         .onChange(of: inputDirectory) {
             if !isLoadingDirectories {
@@ -143,6 +159,18 @@ struct ImageProcessorView: View {
                 saveDirectoryToUserDefaults(outputDirectory, key: UserDefaultsKeys.lastOutputDirectory)
             }
         }
+        // Parameter persistence
+        .onChange(of: widthThreshold) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: resizeHeight) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: quality) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: threadCount) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: useGrayColorspace) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: unsharpRadius) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: unsharpSigma) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: unsharpAmount) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: unsharpThreshold) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: batchSize) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: enableUnsharp) { if !isLoadingParameters { saveParameters() } }
     }
 
     // MARK: - Processing Logic
@@ -150,48 +178,103 @@ struct ImageProcessorView: View {
     /// Starts the image processing.
     /// Validates parameters and initiates the image processing workflow.
     private func startProcessing() {
-        // Validate directory selection
-        guard let inputDir = inputDirectory,
-              let outputDir = outputDirectory
-        else {
-            imageProcessor.logger.logError(NSLocalizedString("NoInputOrOutputDir", comment: "Error: Input or output directory not selected"))
-            return
+        // Use ProcessingParametersValidator for validation
+        do {
+            let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
+                inputDirectory: inputDirectory,
+                outputDirectory: outputDirectory,
+                widthThreshold: widthThreshold,
+                resizeHeight: resizeHeight,
+                quality: quality,
+                threadCount: threadCount,
+                unsharpRadius: unsharpRadius,
+                unsharpSigma: unsharpSigma,
+                unsharpAmount: enableUnsharp ? unsharpAmount : "0",
+                unsharpThreshold: unsharpThreshold,
+                batchSize: batchSize,
+                useGrayColorspace: useGrayColorspace
+            )
+
+            // Start the processing workflow
+            withAnimation(.spring()) {
+                imageProcessor.processImages(
+                    inputDir: inputDirectory!,
+                    outputDir: outputDirectory!,
+                    parameters: parameters
+                )
+            }
+        } catch {
+            // Log validation error
+            imageProcessor.logger.logError(error.localizedDescription, source: "ImageProcessorView")
+        }
+    }
+
+    // MARK: - Parameter Persistence
+
+    /// Save all parameters to UserDefaults
+    private func saveParameters() {
+        let defaults = UserDefaults.standard
+
+        defaults.set(widthThreshold, forKey: UserDefaultsKeys.widthThreshold)
+        defaults.set(resizeHeight, forKey: UserDefaultsKeys.resizeHeight)
+        defaults.set(quality, forKey: UserDefaultsKeys.quality)
+        defaults.set(threadCount, forKey: UserDefaultsKeys.threadCount)
+        defaults.set(useGrayColorspace, forKey: UserDefaultsKeys.useGrayColorspace)
+        defaults.set(unsharpRadius, forKey: UserDefaultsKeys.unsharpRadius)
+        defaults.set(unsharpSigma, forKey: UserDefaultsKeys.unsharpSigma)
+        defaults.set(unsharpAmount, forKey: UserDefaultsKeys.unsharpAmount)
+        defaults.set(unsharpThreshold, forKey: UserDefaultsKeys.unsharpThreshold)
+        defaults.set(batchSize, forKey: UserDefaultsKeys.batchSize)
+        defaults.set(enableUnsharp, forKey: UserDefaultsKeys.enableUnsharp)
+
+        #if DEBUG
+        imageProcessor.logger.logDebug("Parameters saved to UserDefaults", source: "ImageProcessorView")
+        #endif
+    }
+
+    /// Load saved parameters from UserDefaults
+    private func loadSavedParameters() {
+        #if DEBUG
+        imageProcessor.logger.logDebug("Loading saved parameters", source: "ImageProcessorView")
+        #endif
+
+        isLoadingParameters = true
+        let defaults = UserDefaults.standard
+
+        // Load with defaults if not present
+        widthThreshold = defaults.string(forKey: UserDefaultsKeys.widthThreshold) ?? "3000"
+        resizeHeight = defaults.string(forKey: UserDefaultsKeys.resizeHeight) ?? "1648"
+        quality = defaults.string(forKey: UserDefaultsKeys.quality) ?? "85"
+        threadCount = defaults.integer(forKey: UserDefaultsKeys.threadCount)
+        useGrayColorspace = defaults.object(forKey: UserDefaultsKeys.useGrayColorspace) as? Bool ?? true
+        unsharpRadius = defaults.string(forKey: UserDefaultsKeys.unsharpRadius) ?? "1.5"
+        unsharpSigma = defaults.string(forKey: UserDefaultsKeys.unsharpSigma) ?? "1"
+        unsharpAmount = defaults.string(forKey: UserDefaultsKeys.unsharpAmount) ?? "0.7"
+        unsharpThreshold = defaults.string(forKey: UserDefaultsKeys.unsharpThreshold) ?? "0.02"
+        batchSize = defaults.string(forKey: UserDefaultsKeys.batchSize) ?? "40"
+        enableUnsharp = defaults.object(forKey: UserDefaultsKeys.enableUnsharp) as? Bool ?? true
+
+        isLoadingParameters = false
+
+        #if DEBUG
+        imageProcessor.logger.logDebug("Parameters loaded from UserDefaults", source: "ImageProcessorView")
+        #endif
+    }
+
+    /// Adjust thread count based on system CPU cores if needed
+    private func adjustThreadCountIfNeeded() {
+        // If thread count is 0 (auto) or exceeds system cores, adjust it
+        if threadCount == 0 {
+            return // Keep auto mode
         }
 
-        // Validate and convert parameters
-        guard let widthThresholdInt = Int(widthThreshold),
-              let resizeHeightInt = Int(resizeHeight),
-              let qualityInt = Int(quality),
-              let unsharpRadiusFloat = Float(unsharpRadius),
-              let unsharpSigmaFloat = Float(unsharpSigma),
-              let unsharpAmountFloat = Float(unsharpAmount),
-              let unsharpThresholdFloat = Float(unsharpThreshold),
-              let batchSizeInt = Int(batchSize)
-        else {
-            imageProcessor.logger.logError(NSLocalizedString("InvalidParameters", comment: "Invalid parameter format"))
-            return
-        }
-
-        // Build processing parameters
-        let parameters = ProcessingParameters(
-            widthThreshold: widthThresholdInt,
-            resizeHeight: resizeHeightInt,
-            quality: qualityInt,
-            threadCount: threadCount,
-            unsharpRadius: unsharpRadiusFloat,
-            unsharpSigma: unsharpSigmaFloat,
-            unsharpAmount: enableUnsharp ? unsharpAmountFloat : 0,
-            unsharpThreshold: unsharpThresholdFloat,
-            batchSize: batchSizeInt,
-            useGrayColorspace: useGrayColorspace
-        )
-
-        // Start the processing workflow
-        withAnimation(.spring()) {
-            imageProcessor.processImages(
-                inputDir: inputDir,
-                outputDir: outputDir,
-                parameters: parameters
+        let cpuCores = SystemInfoHelper.getPhysicalCPUCores()
+        if threadCount > cpuCores {
+            threadCount = cpuCores
+            imageProcessor.logger.log(
+                String(format: NSLocalizedString("ThreadCount", comment: ""), cpuCores),
+                level: .info,
+                source: "ImageProcessorView"
             )
         }
     }
