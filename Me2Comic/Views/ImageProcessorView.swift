@@ -157,13 +157,32 @@ struct ImageProcessorView: View {
         .onChange(of: inputDirectory) {
             if !isLoadingDirectories {
                 saveDirectoryToUserDefaults(inputDirectory, key: UserDefaultsKeys.lastInputDirectory)
+
+                // Log directory selection
+                if let url = inputDirectory {
+                    let msg = String(
+                        format: NSLocalizedString("SelectedInputDir", comment: ""),
+                        url.path
+                    )
+                    imageProcessor.logger.log(msg, level: .success, source: "ImageProcessorView")
+                }
             }
         }
         .onChange(of: outputDirectory) {
             if !isLoadingDirectories {
                 saveDirectoryToUserDefaults(outputDirectory, key: UserDefaultsKeys.lastOutputDirectory)
+
+                // Log directory selection
+                if let url = outputDirectory {
+                    let msg = String(
+                        format: NSLocalizedString("SelectedOutputDir", comment: ""),
+                        url.path
+                    )
+                    imageProcessor.logger.log(msg, level: .success, source: "ImageProcessorView")
+                }
             }
         }
+
         // Parameter persistence
         .onChange(of: widthThreshold) { if !isLoadingParameters { saveParameters() } }
         .onChange(of: resizeHeight) { if !isLoadingParameters { saveParameters() } }
