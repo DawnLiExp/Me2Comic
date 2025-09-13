@@ -13,13 +13,15 @@ import Foundation
 enum LogLevel: Int, CaseIterable, Sendable {
     case debug = 0
     case info = 1
-    case warning = 2
-    case error = 3
+    case success = 2
+    case warning = 3
+    case error = 4
     
     var prefix: String {
         switch self {
         case .debug: return "[DEBUG]"
         case .info: return "[INFO]"
+        case .success: return "[SUCCESS]"
         case .warning: return "[WARN]"
         case .error: return "[ERROR]"
         }
@@ -28,7 +30,7 @@ enum LogLevel: Int, CaseIterable, Sendable {
     var isUserVisible: Bool {
         switch self {
         case .debug: return false
-        case .info, .warning, .error: return true
+        case .info, .success, .warning, .error: return true // ← 添加了.success
         }
     }
 }
@@ -143,6 +145,11 @@ class ProcessingLogger: ObservableObject, LoggingProtocol {
         log(message, level: .error, source: source)
     }
     
+    /// Success logging
+    func logSuccess(_ message: String, source: String? = nil) {
+        log(message, level: .success, source: source)
+    }
+
     /// Log processing start parameters
     func logStartParameters(_ parameters: ProcessingParameters) {
         let grayStatus = NSLocalizedString(

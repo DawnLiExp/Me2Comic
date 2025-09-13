@@ -341,7 +341,7 @@ struct ImageProcessorView: View {
                 format: NSLocalizedString("LoadedLastInputDir", comment: ""),
                 savedInputDir.path
             )
-            imageProcessor.logger.log(msg, level: .info)
+            imageProcessor.logger.log(msg, level: .success)
 
             #if DEBUG
             imageProcessor.logger.logDebug("Successfully loaded input directory: \(savedInputDir.path)", source: "ImageProcessorView")
@@ -359,7 +359,7 @@ struct ImageProcessorView: View {
                 format: NSLocalizedString("LoadedLastOutputDir", comment: ""),
                 savedOutputDir.path
             )
-            imageProcessor.logger.log(msg, level: .info)
+            imageProcessor.logger.log(msg, level: .success)
 
             #if DEBUG
             imageProcessor.logger.logDebug("Successfully loaded output directory: \(savedOutputDir.path)", source: "ImageProcessorView")

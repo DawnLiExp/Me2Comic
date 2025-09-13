@@ -111,6 +111,7 @@ struct LogRow: View {
     private func iconName(for level: LogLevel) -> String {
         switch level {
         case .info: return "info.circle.fill"
+        case .success: return "checkmark.circle.fill"
         case .warning: return "exclamationmark.triangle.fill"
         case .error: return "xmark.circle.fill"
         case .debug: return "ant.fill"
@@ -120,6 +121,7 @@ struct LogRow: View {
     private func color(for level: LogLevel) -> Color {
         switch level {
         case .info: return .textMuted
+        case .success: return .successGreen
         case .warning: return .warningOrange
         case .error: return .errorRed
         case .debug: return .textMuted
