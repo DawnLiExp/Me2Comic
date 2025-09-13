@@ -17,6 +17,8 @@
 		FC7950B82E68C16300F891B3 /* ProcessOutputCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950B72E68C16100F891B3 /* ProcessOutputCollector.swift */; };
 		FC7950BA2E68C16E00F891B3 /* GMProcessExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950B92E68C16C00F891B3 /* GMProcessExecutor.swift */; };
 		FC7950BC2E68C17F00F891B3 /* GMCommandBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950BB2E68C17D00F891B3 /* GMCommandBuilder.swift */; };
+		FC9051052E75A1580007EB2D /* CPUMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9051042E75A1530007EB2D /* CPUMonitor.swift */; };
+		FC9051072E75A16C0007EB2D /* CPUUsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9051062E75A16A0007EB2D /* CPUUsageChartView.swift */; };
 		FC9092EC2DFEC37700867319 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9092EB2DFEC37700867319 /* ImageIO.framework */; };
 		FCA94A172E43C43A00CC23BC /* ParametersValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA94A162E43C43600CC23BC /* ParametersValidator.swift */; };
 		FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */; };
@@ -55,6 +57,8 @@
 		FC7950B92E68C16C00F891B3 /* GMProcessExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GMProcessExecutor.swift; sourceTree = "<group>"; };
 		FC7950BB2E68C17D00F891B3 /* GMCommandBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GMCommandBuilder.swift; sourceTree = "<group>"; };
 		FC8BA09D2DCB7E1B007582B9 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		FC9051042E75A1530007EB2D /* CPUMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUMonitor.swift; sourceTree = "<group>"; };
+		FC9051062E75A16A0007EB2D /* CPUUsageChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUUsageChartView.swift; sourceTree = "<group>"; };
 		FC9092EB2DFEC37700867319 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
 		FC96492D2DCA646B00DAB31A /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		FCA94A162E43C43600CC23BC /* ParametersValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParametersValidator.swift; sourceTree = "<group>"; };
@@ -142,6 +146,7 @@
 			isa = PBXGroup;
 			children = (
 				FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */,
+				FC9051042E75A1530007EB2D /* CPUMonitor.swift */,
 				FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */,
 				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
 				FC7950B52E68C14600F891B3 /* PathCollisionManager.swift */,
@@ -214,6 +219,7 @@
 			children = (
 				FCD13BC72E431E0D003A8023 /* AboutView.swift */,
 				FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */,
+				FC9051062E75A16A0007EB2D /* CPUUsageChartView.swift */,
 				FCD6E2DB2E730356006E3B1E /* DirectorySelectorView.swift */,
 				FCB9B0C92DBDFD4500110511 /* ImageProcessorView.swift */,
 				FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */,
@@ -320,10 +326,12 @@
 				FCB9B0CA2DBDFD4500110511 /* ImageProcessorView.swift in Sources */,
 				FCEAFA662E60DACE008575D6 /* AutoParameterCalculator.swift in Sources */,
 				FCED85302DD1B89500E299D1 /* ImageProcessor.swift in Sources */,
+				FC9051052E75A1580007EB2D /* CPUMonitor.swift in Sources */,
 				FC7950B22E68B57F00F891B3 /* AsyncSemaphore.swift in Sources */,
 				FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */,
 				FCFCBCE92E24D92C00312F32 /* DirectoryAnalyzer.swift in Sources */,
 				FCD6E2E22E73057E006E3B1E /* MainContentView.swift in Sources */,
+				FC9051072E75A16C0007EB2D /* CPUUsageChartView.swift in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */

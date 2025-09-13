@@ -77,7 +77,10 @@ struct SidebarView: View {
             }
             .padding(.vertical, 20)
             .padding(.horizontal, 12)
-            
+            // CPU Usage Monitor
+            CPUUsageChartView()
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
             Spacer()
             
             Divider()
