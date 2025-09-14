@@ -1,4 +1,3 @@
-
 //
 //  Me2ComicApp.swift
 //  Me2Comic
@@ -32,8 +31,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindow: NSWindow?
     private let notificationManager = NotificationManager()
 
+    @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+        // Apply theme-appropriate appearance
+        applyThemeAppearance()
 
         // Request notification authorization asynchronously
         Task {
@@ -56,6 +57,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.delegate = self
         }
 
+        // Ensure app window comes to foreground after relaunch
+        NSApp.activate(ignoringOtherApps: true)
+
         // Register global keyboard shortcut (Cmd+W to quit)
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.modifierFlags.contains(.command),
@@ -65,6 +69,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
             return event
+        }
+    }
+
+    /// Apply the appropriate system appearance based on current theme
+    @MainActor
+    private func applyThemeAppearance() {
+        let theme = ThemeManager.shared.currentTheme
+
+        switch theme {
+        case .greenDark:
+            // Dark purple theme - use dark appearance
+            NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+        case .macOSDark:
+            // Light sage theme - use light appearance
+            NSApplication.shared.appearance = NSAppearance(named: .aqua)
         }
     }
 
