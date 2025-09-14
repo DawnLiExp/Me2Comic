@@ -6,15 +6,21 @@
   
 */
 
-"Select Language" = "选择语言";
-"Select Theme" = "选择主题";
-"ThemeDeepGreen" = "深绿";
-"ThemeMacOSDark" = "macOS 暗色";
+// Theme Names
+"ThemeGreenDark" = "Midnight Blue";
+"ThemeMacOSDark" = "Warm Sand";
+
+// Settings Headers
+"LanguageSettings" = "语言设置：";
+"ThemeSettings" = "主题设置：";
+
+// Restart Alerts
 "RestartRequired" = "需要重启";
+"RestartRequiredLanguage" = "应用需要重启以应用语言更改。";
+"RestartRequiredTheme" = "应用需要重启以应用主题更改。";
+"RestartRequiredBoth" = "应用需要重启以应用语言和主题更改。";
 "RestartNow" = "立即重启";
-"RestartLater" = "稍后";
-"RestartThemeMessage" = "主题更改将在重启应用后生效。";
-"RestartLanguageMessage" = "语言更改将在重启应用后生效。";
+"Later" = "稍后";
 
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";

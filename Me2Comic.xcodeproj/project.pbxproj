@@ -10,6 +10,7 @@
 		FC00E6772E6D74D700C3ABB2 /* TaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */; };
 		FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */; };
 		FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */; };
+		FC74A4E62E75F49200EC1D39 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC74A4E52E75F49000EC1D39 /* VisualEffectView.swift */; };
 		FC7950B02E6892DF00F891B3 /* ProcessingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */; };
 		FC7950B22E68B57F00F891B3 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */; };
 		FC7950B42E68B59900F891B3 /* FileSystemHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */; };
@@ -48,6 +49,7 @@
 		FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueue.swift; sourceTree = "<group>"; };
 		FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImageProcessor.swift; sourceTree = "<group>"; };
 		FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInfoHelper.swift; sourceTree = "<group>"; };
+		FC74A4E52E75F49000EC1D39 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
 		FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingError.swift; sourceTree = "<group>"; };
 		FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphore.swift; sourceTree = "<group>"; };
 		FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemHelper.swift; sourceTree = "<group>"; };
@@ -123,6 +125,7 @@
 				FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */,
 				FCA94A162E43C43600CC23BC /* ParametersValidator.swift */,
 				FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */,
+				FC9051082E75E50B0007EB2D /* ThemeManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -214,7 +217,7 @@
 		FCF6FDC42DF08BBA00572AC1 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				FC9051082E75E50B0007EB2D /* ThemeManager.swift */,
+				FC74A4E52E75F49000EC1D39 /* VisualEffectView.swift */,
 				FCD13BC72E431E0D003A8023 /* AboutView.swift */,
 				FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */,
 				FCD6E2DB2E730356006E3B1E /* DirectorySelectorView.swift */,
@@ -313,6 +316,7 @@
 				FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */,
 				FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */,
 				FCD6E2DC2E730358006E3B1E /* DirectorySelectorView.swift in Sources */,
+				FC74A4E62E75F49200EC1D39 /* VisualEffectView.swift in Sources */,
 				FCDCAEA62E4389EF00216C1D /* NotificationManager.swift in Sources */,
 				FC00E6772E6D74D700C3ABB2 /* TaskQueue.swift in Sources */,
 				FC7950B42E68B59900F891B3 /* FileSystemHelper.swift in Sources */,

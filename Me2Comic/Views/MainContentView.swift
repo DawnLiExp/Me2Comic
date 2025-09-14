@@ -223,7 +223,7 @@ struct BasicParametersView: View {
     @Binding var threadCount: Int
     let maxThreadCount: Int
     @Binding var useGrayColorspace: Bool
-    
+    @State private var showGrayTip = false
     var body: some View {
         VStack(spacing: 20) {
             // Basic Parameter Group
@@ -281,14 +281,28 @@ struct BasicParametersView: View {
             
                 // Grayscale Toggle
                 HStack {
-                    MinimalParameterField(
-                        label: NSLocalizedString("GrayColorspace", comment: "灰度色彩空间（黑白）："),
-                        value: .constant(""), // Value is not directly used for Toggle, so a constant empty string is fine
-                        unit: "",
-                        hint: NSLocalizedString("GrayDesc", comment: "on=转换至灰度空间（8-bit），off=保留原始色彩空间")
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
+                    HStack(spacing: 6) {
+                        Text(NSLocalizedString("GrayColorspace", comment: "灰度色彩空间（黑白）："))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.textLight)
+                        
+                        Button(action: { showGrayTip.toggle() }) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 10))
+                                .foregroundColor(.textMuted.opacity(0.5))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .popover(isPresented: $showGrayTip) {
+                            Text(NSLocalizedString("GrayDesc", comment: "on=转换至灰度空间（8-bit），off=保留原始色彩空间"))
+                                .font(.system(size: 11))
+                                .foregroundColor(.textLight)
+                                .padding(10)
+                                .background(Color.bgTertiary)
+                        }
+                    }
+                    
+                    Spacer()
+
                     Toggle("", isOn: $useGrayColorspace)
                         .toggleStyle(MinimalToggleStyle())
                 }

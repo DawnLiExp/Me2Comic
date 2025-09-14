@@ -6,15 +6,21 @@
   
 */
 
-"Select Language" = "言語を選択";
-"Select Theme" = "テーマを選択";
-"ThemeDeepGreen" = "ディープグリーン";
-"ThemeMacOSDark" = "macOS ダーク";
-"RestartRequired" = "再起動が必要";
+// Theme Names
+"ThemeGreenDark" = "Midnight Blue";
+"ThemeMacOSDark" = "Warm Sand";
+
+// Settings Headers
+"LanguageSettings" = "言語設定：";
+"ThemeSettings" = "テーマ設定：";
+
+// Restart Alerts
+"RestartRequired" = "再起動が必要です";
+"RestartRequiredLanguage" = "言語の変更を適用するには、アプリの再起動が必要です。";
+"RestartRequiredTheme" = "テーマの変更を適用するには、アプリの再起動が必要です。";
+"RestartRequiredBoth" = "言語とテーマの変更を適用するには、アプリの再起動が必要です。";
 "RestartNow" = "今すぐ再起動";
-"RestartLater" = "後で";
-"RestartThemeMessage" = "テーマの変更はアプリを再起動した後に有効になります。";
-"RestartLanguageMessage" = "言語の変更はアプリを再起動した後に有効になります。";
+"Later" = "後で";
 
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";
