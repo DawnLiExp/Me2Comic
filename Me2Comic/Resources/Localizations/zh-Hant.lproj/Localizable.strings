@@ -6,7 +6,15 @@
   
 */
 
-"Select Language" = "選擇語言：";
+"Select Language" = "選擇語言";
+"Select Theme" = "選擇主題";
+"ThemeDeepGreen" = "深綠";
+"ThemeMacOSDark" = "macOS 暗色";
+"RestartRequired" = "需要重啟";
+"RestartNow" = "立即重啟";
+"RestartLater" = "稍後";
+"RestartThemeMessage" = "主題更改將在重啟應用後生效。";
+"RestartLanguageMessage" = "語言更改將在重啟應用後生效。";
 
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";

@@ -8,10 +8,15 @@
 import AppKit
 import SwiftUI
 
-/// View displaying app info and language selection
+/// View displaying app info, language selection, and theme selection
 struct AboutView: View {
+    @StateObject private var themeManager = ThemeManager.shared
+    @State private var showRestartAlert = false
+    @State private var showLanguageRestartAlert = false
+    
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     private let buildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? NSLocalizedString("BuildVersionDefault", comment: "")
+    
     // Language selection state
     @State private var selectedLanguage: String = {
         if let savedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") {
@@ -45,10 +50,21 @@ struct AboutView: View {
 
             Spacer().frame(height: 20)
 
+            // Language Selection
             HStack(spacing: 5) {
                 Text(NSLocalizedString("Select Language", comment: ""))
                     .foregroundColor(Color.textMuted)
-                Picker("", selection: $selectedLanguage) {
+                Picker("", selection: Binding(
+                    get: { selectedLanguage },
+                    set: { newValue in
+                        if newValue != selectedLanguage {
+                            selectedLanguage = newValue
+                            UserDefaults.standard.set(newValue, forKey: "SelectedLanguage")
+                            UserDefaults.standard.set([newValue], forKey: "AppleLanguages")
+                            showLanguageRestartAlert = true
+                        }
+                    }
+                )) {
                     Text("简体中文").tag("zh-Hans")
                     Text("繁體中文").tag("zh-Hant")
                     Text("English").tag("en")
@@ -57,16 +73,64 @@ struct AboutView: View {
                 .pickerStyle(.menu)
                 .frame(width: 100)
                 .offset(x: -5)
-                .onChange(of: selectedLanguage) { _, newValue in
-                    UserDefaults.standard.set(newValue, forKey: "SelectedLanguage")
-                    UserDefaults.standard.set([newValue], forKey: "AppleLanguages")
+            }
+            
+            // Theme Selection
+            HStack(spacing: 5) {
+                Text(NSLocalizedString("Select Theme", comment: ""))
+                    .foregroundColor(Color.textMuted)
+                Picker("", selection: Binding(
+                    get: { themeManager.currentThemeType },
+                    set: { newValue in
+                        if newValue != themeManager.currentThemeType {
+                            themeManager.currentThemeType = newValue
+                            showRestartAlert = true
+                        }
+                    }
+                )) {
+                    ForEach(ThemeManager.ThemeType.allCases, id: \.self) { theme in
+                        Text(theme.displayName).tag(theme)
+                    }
                 }
+                .pickerStyle(.menu)
+                .frame(width: 100)
+                .offset(x: -5)
             }
 
             Spacer()
         }
         .padding()
-        .frame(width: 290, height: 340)
+        .frame(width: 290, height: 380)
         .background(Color.bgTertiary)
+        .alert(NSLocalizedString("RestartRequired", comment: ""), isPresented: $showRestartAlert) {
+            Button(NSLocalizedString("RestartNow", comment: ""), role: .destructive) {
+                restartApp()
+            }
+            Button(NSLocalizedString("RestartLater", comment: ""), role: .cancel) { }
+        } message: {
+            Text(NSLocalizedString("RestartThemeMessage", comment: ""))
+        }
+        .alert(NSLocalizedString("RestartRequired", comment: ""), isPresented: $showLanguageRestartAlert) {
+            Button(NSLocalizedString("RestartNow", comment: ""), role: .destructive) {
+                restartApp()
+            }
+            Button(NSLocalizedString("RestartLater", comment: ""), role: .cancel) { }
+        } message: {
+            Text(NSLocalizedString("RestartLanguageMessage", comment: ""))
+        }
+    }
+    
+    private func restartApp() {
+        // Save any pending data
+        UserDefaults.standard.synchronize()
+        
+        // Restart the app
+        let url = URL(fileURLWithPath: Bundle.main.resourcePath!)
+        let path = url.deletingLastPathComponent().deletingLastPathComponent().absoluteString
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = [path]
+        task.launch()
+        exit(0)
     }
 }

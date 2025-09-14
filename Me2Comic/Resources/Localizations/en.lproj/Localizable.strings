@@ -6,7 +6,15 @@
   
 */
 
-"Select Language" = "Language:";
+"Select Language" = "Select Language";
+"Select Theme" = "Select Theme";
+"ThemeDeepGreen" = "Deep Green";
+"ThemeMacOSDark" = "macOS Dark";
+"RestartRequired" = "Restart Required";
+"RestartNow" = "Restart Now";
+"RestartLater" = "Later";
+"RestartThemeMessage" = "The theme change will take effect after restarting the app.";
+"RestartLanguageMessage" = "The language change will take effect after restarting the app.";
 
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";

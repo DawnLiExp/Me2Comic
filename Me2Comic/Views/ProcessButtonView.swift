@@ -33,7 +33,7 @@ struct ProcessButton: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(
                         enabled ?
-                            (isPressed ? Color.accentGreen.opacity(0.8) : (isHovered ? Color.accentGreen.opacity(0.9) : Color.accentGreen))
+                            (isPressed ? Color.accentGreen.opacity(0.7) : (isHovered ? Color.accentGreen.opacity(0.9) : Color.accentGreen.opacity(0.8)))
                             : Color.bgTertiary.opacity(0.5)
                     )
             )

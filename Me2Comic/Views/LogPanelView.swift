@@ -154,9 +154,9 @@ struct LogRow: View {
     private func color(for level: LogLevel) -> Color {
         switch level {
         case .info: return .textMuted
-        case .success: return .successGreen
-        case .warning: return .warningOrange
-        case .error: return .errorRed
+        case .success:return Color.successGreen.opacity(0.85)
+        case .warning: return Color.warningOrange.opacity(0.85)
+        case .error:  return Color.errorRed.opacity(0.85)
         case .debug: return .textMuted
         }
     }

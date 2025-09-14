@@ -6,7 +6,15 @@
   
 */
 
-"Select Language" = "言語選択:";
+"Select Language" = "言語を選択";
+"Select Theme" = "テーマを選択";
+"ThemeDeepGreen" = "ディープグリーン";
+"ThemeMacOSDark" = "macOS ダーク";
+"RestartRequired" = "再起動が必要";
+"RestartNow" = "今すぐ再起動";
+"RestartLater" = "後で";
+"RestartThemeMessage" = "テーマの変更はアプリを再起動した後に有効になります。";
+"RestartLanguageMessage" = "言語の変更はアプリを再起動した後に有効になります。";
 
 /* Left panel build version */
 "BuildVersionLabel" = "Build %@";

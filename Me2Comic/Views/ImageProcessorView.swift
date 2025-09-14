@@ -17,6 +17,8 @@ struct ImageProcessorView: View {
 
     /// The image processor instance that manages the backend processing logic.
     @StateObject private var imageProcessor = ImageProcessor()
+    /// Theme manager for color scheme
+        @StateObject private var themeManager = ThemeManager.shared
 
     // MARK: - UI State
 
