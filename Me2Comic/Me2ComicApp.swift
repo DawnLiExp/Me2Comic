@@ -31,6 +31,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Apply pending changes if exists
+        applyPendingChanges()
+        
+        // Apply theme appearance
         applyThemeAppearance()
 
         Task {
@@ -63,12 +67,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
     }
+    
+    @MainActor
+    private func applyPendingChanges() {
+        let defaults = UserDefaults.standard
+        
+        // Apply pending theme if exists
+        if let pendingThemeRaw = defaults.string(forKey: "Me2Comic.pendingTheme"),
+           let pendingTheme = AppTheme(rawValue: pendingThemeRaw) {
+            _ = ThemeManager.shared.setTheme(pendingTheme)
+            defaults.set(pendingTheme.rawValue, forKey: "Me2Comic.selectedTheme")
+            defaults.removeObject(forKey: "Me2Comic.pendingTheme")
+        }
+        
+        // Apply pending language if exists
+        if let pendingLang = defaults.string(forKey: "Me2Comic.pendingLanguage") {
+            defaults.set([pendingLang], forKey: "AppleLanguages")
+            defaults.set(pendingLang, forKey: "SelectedLanguage")
+            defaults.removeObject(forKey: "Me2Comic.pendingLanguage")
+        }
+    }
 
     @MainActor
     private func applyThemeAppearance() {
         let theme = ThemeManager.shared.currentTheme
-
-        // Apply system appearance based on theme type
+        
+        // Set system appearance to match theme type
+        // This ensures system controls (pickers, buttons, etc.) match the theme
         NSApplication.shared.appearance = theme.isLightTheme
             ? NSAppearance(named: .aqua)
             : NSAppearance(named: .darkAqua)
