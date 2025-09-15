@@ -18,7 +18,7 @@ struct ImageProcessorView: View {
     /// The image processor instance that manages the backend processing logic.
     @StateObject private var imageProcessor = ImageProcessor()
     /// Theme manager for color scheme
-        @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var themeManager = ThemeManager.shared
 
     // MARK: - UI State
 
@@ -159,8 +159,8 @@ struct ImageProcessorView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .frame(minWidth: showLogs ? 1050 : 685, minHeight: 685)
-        .background(Color.bgPrimary)
+        .frame(minWidth: showLogs ? 1050 : 680, minHeight: 680)
+        // .background(Color.bgPrimary)  // Temporary comment for UI testing
         .onAppear {
             loadSavedDirectories()
             loadSavedParameters()

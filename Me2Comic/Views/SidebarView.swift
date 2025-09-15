@@ -30,104 +30,115 @@ struct SidebarView: View {
     private let buildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? NSLocalizedString("BuildVersionDefault", comment: "")
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Logo Area
-            VStack(spacing: 16) {
-                Image(nsImage: NSImage(named: NSImage.Name("AppIcon")) ?? NSImage())
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 80, height: 80)
+        ZStack {
+            // Visual effect background
+            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                .ignoresSafeArea()
+            
+            // Theme color overlay
+            Color.bgSecondary
+                .opacity(0.3)
+                .ignoresSafeArea()
+            
+            // Content
+            VStack(spacing: 0) {
+                // Logo Area
+                VStack(spacing: 16) {
+                    Image(nsImage: NSImage(named: NSImage.Name("AppIcon")) ?? NSImage())
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)
 
-                VStack(spacing: 4) {
-                    Text("Me2Comic")
-                        .font(.system(size: 22, weight: .light, design: .rounded))
-                        .foregroundColor(.textLight)
-                    
-                    Text("Version \(appVersion) (Build \(buildVersion))")
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundColor(.textMuted)
-                        .tracking(1)
-                }
-            }
-            .padding(.vertical, 30)
-            
-            // Status Indicator
-            StatusIndicator(gmReady: gmReady)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-            
-            Divider()
-                .background(Color.textMuted.opacity(0.2))
-            
-            // Navigation Menu
-            VStack(spacing: 4) {
-                NavigationItem(
-                    icon: "square.grid.2x2",
-                    title: NSLocalizedString("BasicSettings", comment: "基础设置"),
-                    isSelected: selectedTab == "basic",
-                    action: { selectedTab = "basic" }
-                )
-                
-                NavigationItem(
-                    icon: "slider.horizontal.3",
-                    title: NSLocalizedString("AdvancedParameters", comment: "高级参数"),
-                    isSelected: selectedTab == "advanced",
-                    action: { selectedTab = "advanced" }
-                )
-            }
-            .padding(.vertical, 20)
-            .padding(.horizontal, 12)
-            
-            Spacer()
-            
-            Divider()
-                .background(Color.textMuted.opacity(0.2))
-            
-            // Bottom Controls
-            VStack(spacing: 12) {
-                // Log Toggle
-                HStack {
-                    Image(systemName: showLogs ? "doc.text" : "doc.text.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.textMuted)
-                    
-                    Text(NSLocalizedString("ShowLogs", comment: "显示日志"))
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(.textMuted)
-                    
-                    Spacer()
-                    
-                    Toggle("", isOn: $showLogs)
-                        .toggleStyle(MinimalToggleStyle())
-                }
-                .padding(.horizontal, 20)
-                
-                // Clear Logs Button
-                if !logMessages.isEmpty {
-                    Button(action: {
-                        withAnimation {
-                            logMessages.removeAll()
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "trash")
-                                .font(.system(size: 12))
-                            Text(String(format: NSLocalizedString("ClearLogsCount", comment: "清理日志 (%d)"), logMessages.count))
-                                .font(.system(size: 12, weight: .regular))
-                        }
-                        .foregroundColor(.textMuted)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.bgTertiary.opacity(0.3))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    VStack(spacing: 4) {
+                        Text("Me2Comic")
+                            .font(.system(size: 22, weight: .light, design: .rounded))
+                            .foregroundColor(.textLight)
+                        
+                        Text("Version \(appVersion) (Build \(buildVersion))")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(.textMuted)
+                            .tracking(1)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 20)
                 }
+                .padding(.vertical, 30)
+                
+                // Status Indicator
+                StatusIndicator(gmReady: gmReady)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                
+                Divider()
+                    .background(Color.textMuted.opacity(0.2))
+                
+                // Navigation Menu
+                VStack(spacing: 4) {
+                    NavigationItem(
+                        icon: "square.grid.2x2",
+                        title: NSLocalizedString("BasicSettings", comment: "基础设置"),
+                        isSelected: selectedTab == "basic",
+                        action: { selectedTab = "basic" }
+                    )
+                    
+                    NavigationItem(
+                        icon: "slider.horizontal.3",
+                        title: NSLocalizedString("AdvancedParameters", comment: "高级参数"),
+                        isSelected: selectedTab == "advanced",
+                        action: { selectedTab = "advanced" }
+                    )
+                }
+                .padding(.vertical, 20)
+                .padding(.horizontal, 12)
+                
+                Spacer()
+                
+                Divider()
+                    .background(Color.textMuted.opacity(0.2))
+                
+                // Bottom Controls
+                VStack(spacing: 12) {
+                    // Log Toggle
+                    HStack {
+                        Image(systemName: showLogs ? "doc.text" : "doc.text.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textMuted)
+                        
+                        Text(NSLocalizedString("ShowLogs", comment: "显示日志"))
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.textMuted)
+                        
+                        Spacer()
+                        
+                        Toggle("", isOn: $showLogs)
+                            .toggleStyle(MinimalToggleStyle())
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Clear Logs Button
+                    if !logMessages.isEmpty {
+                        Button(action: {
+                            withAnimation {
+                                logMessages.removeAll()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12))
+                                Text(String(format: NSLocalizedString("ClearLogsCount", comment: "清理日志 (%d)"), logMessages.count))
+                                    .font(.system(size: 12, weight: .regular))
+                            }
+                            .foregroundColor(.textMuted)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.bgTertiary.opacity(0.3)) // 使用主题色
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 20)
+                    }
+                }
+                .padding(.vertical, 20)
             }
-            .padding(.vertical, 20)
         }
-        .background(Color.bgSecondary)
     }
 }
 
@@ -169,11 +180,11 @@ struct StatusIndicator: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.bgTertiary.opacity(0.3))
+                .fill(Color.bgTertiary.opacity(0.2))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(
-                            gmReady ? Color.successGreen.opacity(0.2) : Color.warningOrange.opacity(0.2),
+                            gmReady ? Color.successGreen.opacity(0.3) : Color.warningOrange.opacity(0.3),
                             lineWidth: 1
                         )
                 )
@@ -215,7 +226,7 @@ struct NavigationItem: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.accentGreen.opacity(0.1) : (isHovered ? Color.bgTertiary.opacity(0.3) : Color.clear))
+                    .fill(isSelected ? Color.accentGreen.opacity(0.15) : (isHovered ? Color.bgTertiary.opacity(0.2) : Color.clear))
             )
         }
         .buttonStyle(PlainButtonStyle())

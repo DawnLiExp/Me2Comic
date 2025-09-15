@@ -147,11 +147,13 @@
 			isa = PBXGroup;
 			children = (
 				FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */,
+				FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */,
 				FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */,
 				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
 				FC7950B52E68C14600F891B3 /* PathCollisionManager.swift */,
 				FC7950B72E68C16100F891B3 /* ProcessOutputCollector.swift */,
 				FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */,
+				FC74A4E52E75F49000EC1D39 /* VisualEffectView.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -217,9 +219,7 @@
 		FCF6FDC42DF08BBA00572AC1 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				FC74A4E52E75F49000EC1D39 /* VisualEffectView.swift */,
 				FCD13BC72E431E0D003A8023 /* AboutView.swift */,
-				FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */,
 				FCD6E2DB2E730356006E3B1E /* DirectorySelectorView.swift */,
 				FCB9B0C92DBDFD4500110511 /* ImageProcessorView.swift */,
 				FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */,
