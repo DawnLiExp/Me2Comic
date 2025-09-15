@@ -7,8 +7,10 @@
 */
 
 // Theme Names
-"ThemeGreenDark" = "Midnight Blue";
-"ThemeMacOSDark" = "Warm Sand";
+"ThemeMidnightBlue" = "Midnight Blue";
+"ThemeWarmSand" = "Warm Sand";
+"ThemeForestShadow" = "Forest Shadow";
+"ThemeMacOsDark" = "macOS Dark";
 
 // Settings Headers
 "LanguageSettings" = "Language:";

@@ -7,167 +7,225 @@
 
 import SwiftUI
 
-/// Available application themes
+// MARK: - Theme Definition
+
 enum AppTheme: String, CaseIterable {
-    case greenDark
-    case macOSDark
+    case midnightBlue
+    case warmSand
+    case forestShadow
+    case macOsDark
     
     var displayName: String {
         switch self {
-        case .greenDark:
-            return NSLocalizedString("ThemeGreenDark", comment: "Green Dark Theme")
-        case .macOSDark:
-            return NSLocalizedString("ThemeMacOSDark", comment: "macOS Dark Theme")
+        case .midnightBlue:
+            return NSLocalizedString("ThemeMidnightBlue", comment: "")
+        case .warmSand:
+            return NSLocalizedString("ThemeWarmSand", comment: "")
+        case .forestShadow:
+            return NSLocalizedString("ThemeForestShadow", comment: "")
+        case .macOsDark:
+            return NSLocalizedString("ThemeMacOsDark", comment: "")
         }
     }
     
-    /// Whether this is a light theme
     var isLightTheme: Bool {
         switch self {
-        case .greenDark:
-            return false
-        case .macOSDark:
+        case .warmSand:
             return true
+        case .midnightBlue, .forestShadow, .macOsDark:
+            return false
         }
     }
 }
 
-/// Theme manager for handling theme switching and persistence
+// MARK: - Theme Manager
+
 @MainActor
 final class ThemeManager: ObservableObject {
-    // MARK: - Singleton
-
     static let shared = ThemeManager()
     
-    // MARK: - Properties
-
     @Published private(set) var currentTheme: AppTheme
     
-    // MARK: - Constants
-
     private enum UserDefaultsKeys {
         static let selectedTheme = "Me2Comic.selectedTheme"
         static let pendingTheme = "Me2Comic.pendingTheme"
     }
     
-    // MARK: - Initialization
-
     private init() {
+        // Migrate old theme identifiers
+        if let savedTheme = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedTheme) {
+            let migratedTheme: String
+            switch savedTheme {
+            case "greenDark":
+                migratedTheme = "midnightBlue"
+            case "macOSDark":
+                migratedTheme = "warmSand"
+            default:
+                migratedTheme = savedTheme
+            }
+            
+            if migratedTheme != savedTheme {
+                UserDefaults.standard.set(migratedTheme, forKey: UserDefaultsKeys.selectedTheme)
+            }
+        }
+        
         // Check for pending theme first (from restart)
         if let pendingTheme = UserDefaults.standard.string(forKey: UserDefaultsKeys.pendingTheme),
            let theme = AppTheme(rawValue: pendingTheme)
         {
-            // Apply pending theme and clear it
             self.currentTheme = theme
             UserDefaults.standard.set(theme.rawValue, forKey: UserDefaultsKeys.selectedTheme)
             UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.pendingTheme)
         }
-        // Otherwise load saved theme or use default
+        // Load saved theme or use default
         else if let savedTheme = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedTheme),
                 let theme = AppTheme(rawValue: savedTheme)
         {
             self.currentTheme = theme
         } else {
-            self.currentTheme = .greenDark
+            self.currentTheme = .midnightBlue
         }
     }
     
-    // MARK: - Public Methods
-    
-    /// Set the application theme
-    /// - Parameter theme: The theme to apply
-    /// - Returns: Whether a restart is required
     func setTheme(_ theme: AppTheme) -> Bool {
         guard theme != currentTheme else { return false }
-        
-        // Save the theme for next launch
         UserDefaults.standard.set(theme.rawValue, forKey: UserDefaultsKeys.selectedTheme)
-        // Don't update currentTheme here to avoid partial application
         return true
     }
     
-    /// Get color for a specific semantic color based on current theme
     func color(for colorType: SemanticColor) -> Color {
         switch currentTheme {
-        case .greenDark:
-            return colorType.greenDarkColor
-        case .macOSDark:
-            return colorType.macOSDarkColor
+        case .midnightBlue:
+            return colorType.midnightBlueColor
+        case .warmSand:
+            return colorType.warmSandColor
+        case .forestShadow:
+            return colorType.forestShadowColor
+        case .macOsDark:
+            return colorType.macOsDarkColor
         }
     }
 }
 
-/// Semantic color types used throughout the app
+// MARK: - Semantic Colors
+
 enum SemanticColor {
-    // Backgrounds
     case bgPrimary
     case bgSecondary
     case bgTertiary
-    
-    // Accents
     case accentPrimary
     case accentSecondary
-    
-    // Text
     case textLight
     case textMuted
-    
-    // Status
     case successGreen
     case warningOrange
     case errorRed
     
-    // MARK: - Midnight Blue Theme
-
-    var greenDarkColor: Color {
+    // MARK: Midnight Blue Theme
+    
+    var midnightBlueColor: Color {
         switch self {
         case .bgPrimary:
-            return Color(hex: "#1A1D26") // 深蓝灰基础背景
+            return Color(hex: "#1A1D26")
         case .bgSecondary:
-            return Color(hex: "#222834") // 稍亮的蓝灰
+            return Color(hex: "#222834")
         case .bgTertiary:
-            return Color(hex: "#2A3142") // 卡片/面板背景
+            return Color(hex: "#2A3142")
         case .accentPrimary:
-            return Color(hex: "#5E7CE2") // 柔和蓝紫色
+            return Color(hex: "#5E7CE2")
         case .accentSecondary:
-            return Color(hex: "#F97B8B") // 珊瑚粉色
+            return Color(hex: "#F97B8B")
         case .textLight:
-            return Color(hex: "#E8ECEF") // 柔和白色文本
+            return Color(hex: "#E8ECEF")
         case .textMuted:
-            return Color(hex: "#8B92A5") // 柔和灰蓝文本
+            return Color(hex: "#8B92A5")
         case .successGreen:
-            return Color(hex: "#6BCB77") // 柔和绿色
+            return Color(hex: "#6BCB77")
         case .warningOrange:
-            return Color(hex: "#FFB344") // 暖橙色
+            return Color(hex: "#FFB344")
         case .errorRed:
-            return Color(hex: "#FF6B6B") // 柔和红色
+            return Color(hex: "#FF6B6B")
         }
     }
-        
-    // MARK: - Warm Sand Theme
-
-    var macOSDarkColor: Color {
+    
+    // MARK: Warm Sand Theme
+    
+    var warmSandColor: Color {
         switch self {
         case .bgPrimary:
-            return Color(hex: "#F5F2ED") // 暖米色背景
+            return Color(hex: "#F5F2ED")
         case .bgSecondary:
-            return Color(hex: "#FFFFFF") // 纯白卡片
+            return Color(hex: "#FFFFFF")
         case .bgTertiary:
-            return Color(hex: "#FAF8F5") // 浅米色层级
+            return Color(hex: "#FAF8F5")
         case .accentPrimary:
-            return Color(hex: "#4A5D7A") // 深蓝灰强调
+            return Color(hex: "#4A5D7A")
         case .accentSecondary:
-            return Color(hex: "#E67E5B") // 陶土橙
+            return Color(hex: "#E67E5B")
         case .textLight:
-            return Color(hex: "#2C3E50") // 深色主文本
+            return Color(hex: "#2C3E50")
         case .textMuted:
-            return Color(hex: "#7F8C9A") // 中灰色次要文本
+            return Color(hex: "#7F8C9A")
         case .successGreen:
-            return Color(hex: "#52B788") // 自然绿
+            return Color(hex: "#52B788")
         case .warningOrange:
-            return Color(hex: "#F4A261") // 琥珀色
+            return Color(hex: "#F4A261")
         case .errorRed:
-            return Color(hex: "#E76F71") // 珊瑚红
+            return Color(hex: "#E76F71")
+        }
+    }
+    
+    // MARK: Forest Shadow Theme
+    
+    var forestShadowColor: Color {
+        switch self {
+        case .bgPrimary:
+            return Color(hex: "#0D140F")
+        case .bgSecondary:
+            return Color(hex: "#141F17")
+        case .bgTertiary:
+            return Color(hex: "#1F2921")
+        case .accentPrimary:
+            return Color(hex: "#33CC66")
+        case .accentSecondary:
+            return Color(hex: "#FF9933")
+        case .textLight:
+            return Color(hex: "#EBEDEA")
+        case .textMuted:
+            return Color(hex: "#99A694")
+        case .successGreen:
+            return Color(hex: "#4DB366")
+        case .warningOrange:
+            return Color(hex: "#FF9926")
+        case .errorRed:
+            return Color(hex: "#F24D40")
+        }
+    }
+    
+    // MARK: macOS Dark Theme
+    
+    var macOsDarkColor: Color {
+        switch self {
+        case .bgPrimary:
+            return Color(hex: "#1E1E1E")
+        case .bgSecondary:
+            return Color(hex: "#2C2C2C")
+        case .bgTertiary:
+            return Color(hex: "#3A3A3A")
+        case .accentPrimary:
+            return Color(hex: "#007AFF")
+        case .accentSecondary:
+            return Color(hex: "#FF9500")
+        case .textLight:
+            return Color(hex: "#FFFFFF")
+        case .textMuted:
+            return Color(hex: "#8E8E93")
+        case .successGreen:
+            return Color(hex: "#34C759")
+        case .warningOrange:
+            return Color(hex: "#FF9500")
+        case .errorRed:
+            return Color(hex: "#FF3B30")
         }
     }
 }
