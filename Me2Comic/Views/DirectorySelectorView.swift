@@ -99,7 +99,7 @@ struct MinimalDirectorySelector: View {
                         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
                            isDirectory.boolValue
                         {
-                            DispatchQueue.main.async {
+                            Task { @MainActor in
                                 onSelect(url)
                             }
                         }

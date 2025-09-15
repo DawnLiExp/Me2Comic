@@ -183,6 +183,7 @@ struct AboutView: View {
         }
     }
 
+    @MainActor
     private func restartApplication() async {
         if let pending = pendingTheme {
             _ = themeManager.setTheme(pending)
@@ -215,9 +216,8 @@ struct AboutView: View {
             do {
                 try proc.run()
 
-                DispatchQueue.main.async {
-                    NSApplication.shared.terminate(nil)
-                }
+                // Terminate must be called on main thread
+                NSApplication.shared.terminate(nil)
                 return
             } catch {
                 NSLog("Direct executable launch failed: \(error.localizedDescription). Falling back to NSWorkspace.")
@@ -231,32 +231,28 @@ struct AboutView: View {
         configuration.activates = true
         configuration.addsToRecentItems = false
 
-        await withCheckedContinuation { continuation in
-            NSWorkspace.shared.openApplication(at: bundleURL, configuration: configuration) { _, openError in
-                if let openError = openError {
-                    NSLog("NSWorkspace open failed: \(openError.localizedDescription). Falling back to `open -n`.")
-                    // 3) Final fallback: open -n
-                    let task = Process()
-                    task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                    task.arguments = ["-n", bundleURL.path]
-                    task.standardOutput = FileHandle.nullDevice
-                    task.standardError = FileHandle.nullDevice
-                    do {
-                        try task.run()
-                        DispatchQueue.main.async {
-                            NSApplication.shared.terminate(nil)
-                        }
-                        return
-                    } catch {
-                        NSLog("Primary open -n failed: \(error.localizedDescription). Falling back to NSWorkspace.")
-                    }
-                }
-                continuation.resume()
+        do {
+            _ = try await NSWorkspace.shared.openApplication(
+                at: bundleURL,
+                configuration: configuration
+            )
+        } catch {
+            NSLog("NSWorkspace open failed: \(error.localizedDescription). Falling back to `open -n`.")
+            // 3) Final fallback: open -n
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            task.arguments = ["-n", bundleURL.path]
+            task.standardOutput = FileHandle.nullDevice
+            task.standardError = FileHandle.nullDevice
+            do {
+                try task.run()
+                NSApplication.shared.terminate(nil)
+                return
+            } catch {
+                NSLog("open -n also failed: \(error.localizedDescription)")
             }
         }
 
-        DispatchQueue.main.async {
-            NSApplication.shared.terminate(nil)
-        }
+        NSApplication.shared.terminate(nil)
     }
 }

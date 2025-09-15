@@ -62,16 +62,15 @@ class ImageProcessor: ObservableObject {
     private func verifyGraphicsMagickStatus() async {
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         let result = await GraphicsMagickHelper.verifyGraphicsMagickAsync(logger: loggerClosure)
-        DispatchQueue.main.async {
-            switch result {
-            case .success(let path):
-                self.gmReady = true
-                self.gmPath = path
-                self.logger.log(NSLocalizedString("GMReady", comment: "GraphicsMagick is ready."), level: .success, source: "ImageProcessor")
-            case .failure(let error):
-                self.gmReady = false
-                self.logger.logError(error.localizedDescription, source: "ImageProcessor")
-            }
+        
+        switch result {
+        case .success(let path):
+            gmReady = true
+            gmPath = path
+            logger.log(NSLocalizedString("GMReady", comment: "GraphicsMagick is ready."), level: .success, source: "ImageProcessor")
+        case .failure(let error):
+            gmReady = false
+            logger.logError(error.localizedDescription, source: "ImageProcessor")
         }
     }
     
@@ -478,28 +477,30 @@ class ImageProcessor: ObservableObject {
     
     /// Setup property bindings between components
     private func setupBindings() {
+        // Note: .receive(on:) with RunLoop.main is the recommended approach for Combine
+        // This ensures UI updates happen on the main thread without using DispatchQueue
         stateManager.$isProcessing
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .assign(to: &$isProcessing)
         
         stateManager.$totalImagesToProcess
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .assign(to: &$totalImagesToProcess)
         
         stateManager.$currentProcessedImages
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .assign(to: &$currentProcessedImages)
         
         stateManager.$processingProgress
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .assign(to: &$processingProgress)
         
         stateManager.$didFinishAllTasks
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .assign(to: &$didFinishAllTasks)
         
         logger.$logMessages
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .assign(to: &$logMessages)
     }
 }

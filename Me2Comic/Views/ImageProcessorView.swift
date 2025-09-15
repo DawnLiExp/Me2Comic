@@ -144,8 +144,11 @@ struct ImageProcessorView: View {
                         onDirectorySelect: {
                             isUserSelection = true
                             // Reset flag after a short delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                isUserSelection = false
+                            Task {
+                                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                                await MainActor.run {
+                                    isUserSelection = false
+                                }
                             }
                         }
                     )
