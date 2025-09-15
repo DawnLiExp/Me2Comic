@@ -214,6 +214,7 @@ struct BasicParametersView: View {
     let maxThreadCount: Int
     @Binding var useGrayColorspace: Bool
     @State private var showGrayTip = false
+    @State private var showThreadTip = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -251,9 +252,25 @@ struct BasicParametersView: View {
                 // Thread Count Slider
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(NSLocalizedString("ThreadCount", comment: "并发线程数："))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.textLight)
+                        HStack(spacing: 6) {
+                            Text(NSLocalizedString("ThreadCount", comment: "并发线程数："))
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.textLight)
+                            
+                            Button(action: { showThreadTip.toggle() }) {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.textMuted.opacity(0.5))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .popover(isPresented: $showThreadTip) {
+                                Text(NSLocalizedString("ThreadsDesc", comment: ""))
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.textLight)
+                                    .padding(10)
+                                    .background(Color.bgTertiary)
+                            }
+                        }
                     
                         Spacer()
                     
@@ -261,7 +278,7 @@ struct BasicParametersView: View {
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .foregroundColor(.accentGreen)
                     }
-                
+                    
                     Slider(value: Binding(
                         get: { Double(threadCount) },
                         set: { threadCount = Int($0) }
