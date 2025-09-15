@@ -9,10 +9,11 @@ import SwiftUI
 
 // MARK: - LogPanelMinimal
 
-/// Minimalistic log panel.
 struct LogPanelMinimal: View {
     @Binding var logMessages: [LogEntry]
     @State private var autoScroll = true
+    @State private var hoveredIndex: Int? = nil
+    @State private var selectedIndex: Int? = nil
     
     var body: some View {
         VStack(spacing: 0) {
@@ -40,21 +41,28 @@ struct LogPanelMinimal: View {
             // Log Content
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 1) {
-                        ForEach(Array(logMessages.enumerated()), id: \.offset) { index, message in
-                            LogRow(entry: message, index: index)
-                                .id(index)
+                    LazyVStack(alignment: .leading, spacing: 1) {
+                        ForEach(logMessages.indices, id: \.self) { index in
+                            LogRow(
+                                entry: logMessages[index],
+                                index: index,
+                                isHovered: hoveredIndex == index,
+                                onHover: { isHovering in
+                                    hoveredIndex = isHovering ? index : nil
+                                },
+                                onCopy: {
+                                    copyToClipboard(logMessages[index].displayMessage)
+                                }
+                            )
+                            .id(index)
                         }
                     }
                     .padding(.vertical, 8)
                 }
                 .background(Color.bgSecondary)
-                .onChange(of: logMessages.count) { _, _ in
-                    if autoScroll && !logMessages.isEmpty {
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            proxy.scrollTo(logMessages.count - 1, anchor: .bottom)
-                        }
-                    }
+                .onChange(of: logMessages.count) { oldCount, newCount in
+                    guard autoScroll && newCount > oldCount else { return }
+                    proxy.scrollTo(newCount - 1, anchor: .bottom)
                 }
             }
             
@@ -73,7 +81,6 @@ struct LogPanelMinimal: View {
                 
                 Spacer()
                 
-                // Copy All button
                 Button(action: copyAllLogs) {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.on.doc")
@@ -93,7 +100,6 @@ struct LogPanelMinimal: View {
         .background(Color.bgSecondary)
     }
     
-    // Copy all logs to clipboard
     private func copyAllLogs() {
         let logText = logMessages
             .map { $0.displayMessage }
@@ -102,15 +108,21 @@ struct LogPanelMinimal: View {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(logText, forType: .string)
     }
+    
+    private func copyToClipboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
 }
 
 // MARK: - LogRow
 
-/// A single row in the log panel.
 struct LogRow: View {
     let entry: LogEntry
     let index: Int
-    @State private var isHovered = false
+    let isHovered: Bool
+    let onHover: (Bool) -> Void
+    let onCopy: () -> Void
     
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -131,11 +143,9 @@ struct LogRow: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 4)
         .background(isHovered ? Color.bgTertiary.opacity(0.6) : Color.clear)
-        .onHover { hovering in
-            isHovered = hovering
-        }
+        .onHover(perform: onHover)
         .contextMenu {
-            Button(action: { copyToClipboard(entry.displayMessage) }) {
+            Button(action: onCopy) {
                 Label("Copy", systemImage: "doc.on.doc")
             }
         }
@@ -154,15 +164,10 @@ struct LogRow: View {
     private func color(for level: LogLevel) -> Color {
         switch level {
         case .info: return .textMuted
-        case .success:return Color.successGreen.opacity(0.85)
+        case .success: return Color.successGreen.opacity(0.85)
         case .warning: return Color.warningOrange.opacity(0.85)
-        case .error:  return Color.errorRed.opacity(0.85)
+        case .error: return Color.errorRed.opacity(0.85)
         case .debug: return .textMuted
         }
-    }
-    
-    private func copyToClipboard(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
     }
 }
