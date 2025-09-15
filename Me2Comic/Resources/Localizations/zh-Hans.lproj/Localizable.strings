@@ -52,7 +52,7 @@
 "UnsharpSigma" = "Unsharp Sigma：";
 "UnsharpAmount" = "Unsharp Amount：";
 "UnsharpThreshold" = "Unsharp Threshold：";
-"BatchSize" = "每批图像数（张）：";
+"BatchSize" = "每批图像数：";
 "ThreadCount" = "并发线程数：";
 "GrayColorspace" = "灰度色彩空间：";
 "pxUnit" = "像素";

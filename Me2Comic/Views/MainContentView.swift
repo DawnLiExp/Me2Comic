@@ -30,8 +30,7 @@ struct MainContentView: View {
     let onDirectorySelect: () -> Void
 
     // MARK: - UI State
-        
-    /// Heights of parameter view components for layout calculations
+    
     @State private var basicParamsHeight: CGFloat = 0
     @State private var advancedParamsHeight: CGFloat = 0
     @State private var showInputTip = false
@@ -40,9 +39,7 @@ struct MainContentView: View {
     
     // MARK: - Layout Constants
     
-    /// Extra padding for parameter area spacing adjustment
     private let parameterAreaExtraPadding: CGFloat = 0
-    /// Minimum height for parameter area to prevent layout jumps
     private let parameterAreaMinHeight: CGFloat = 220
 
     var body: some View {
@@ -74,7 +71,7 @@ struct MainContentView: View {
                     icon: "folder",
                     accentColor: .accentGreen,
                     onSelect: {
-                        onDirectorySelect() // Notify parent
+                        onDirectorySelect()
                         inputDirectory = $0
                     }
                 )
@@ -97,7 +94,6 @@ struct MainContentView: View {
                     
                     Spacer()
                     
-                    // Show in Finder button
                     if outputDirectory != nil {
                         Button(action: showOutputInFinder) {
                             Image(systemName: "magnifyingglass.circle")
@@ -126,7 +122,7 @@ struct MainContentView: View {
                     icon: "folder.badge.plus",
                     accentColor: .accentOrange,
                     onSelect: {
-                        onDirectorySelect() // Notify parent
+                        onDirectorySelect()
                         outputDirectory = $0
                     }
                 )
@@ -137,7 +133,7 @@ struct MainContentView: View {
             let computedHeight = max(max(basicParamsHeight, advancedParamsHeight) + parameterAreaExtraPadding, parameterAreaMinHeight)
 
             ZStack {
-                // Basic Parameter View (always measure height within the layer)
+                // Basic Parameter View
                 BasicParametersView(
                     widthThreshold: $widthThreshold,
                     resizeHeight: $resizeHeight,
@@ -147,7 +143,6 @@ struct MainContentView: View {
                     useGrayColorspace: $useGrayColorspace
                 )
                 .padding(.horizontal, 60)
-                // Measure Basic area height
                 .background(
                     GeometryReader { geo in
                         Color.clear
@@ -158,18 +153,17 @@ struct MainContentView: View {
                 .animation(.easeInOut(duration: 0.18), value: selectedTab)
                 .allowsHitTesting(selectedTab == "basic")
                 
-                // Advanced Parameter View (always measure height within the layer)
+                // Advanced Parameter View
                 AdvancedParametersView(
                     unsharpRadius: $unsharpRadius,
                     unsharpSigma: $unsharpSigma,
                     unsharpAmount: $unsharpAmount,
                     unsharpThreshold: $unsharpThreshold,
                     batchSize: $batchSize,
-                    enableUnsharp: $enableUnsharp
+                    enableUnsharp: $enableUnsharp,
+                    threadCount: threadCount
                 )
-
                 .padding(.horizontal, 60)
-                // Measure Advanced area height
                 .background(
                     GeometryReader { geo in
                         Color.clear
@@ -180,11 +174,8 @@ struct MainContentView: View {
                 .animation(.easeInOut(duration: 0.18), value: selectedTab)
                 .allowsHitTesting(selectedTab == "advanced")
             }
-            // Fix parameter area height (using the calculated max height)
             .frame(height: computedHeight)
-            // Update measurement results
             .onPreferenceChange(BasicParamHeightKey.self) { value in
-                // Protective handling: take non-zero and finite values
                 if value.isFinite && value > 0 {
                     basicParamsHeight = value
                 }
@@ -201,13 +192,12 @@ struct MainContentView: View {
                 action: onProcess
             )
             .padding(.horizontal, 60)
-            .padding(.bottom, 18) // Retain bottom spacing
+            .padding(.bottom, 18)
         }
     }
     
     // MARK: - Private Methods
     
-    /// Opens the output directory in Finder
     private func showOutputInFinder() {
         guard let url = outputDirectory else { return }
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
@@ -224,9 +214,9 @@ struct BasicParametersView: View {
     let maxThreadCount: Int
     @Binding var useGrayColorspace: Bool
     @State private var showGrayTip = false
+    
     var body: some View {
         VStack(spacing: 20) {
-            // Basic Parameter Group
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "gearshape.2")
@@ -330,11 +320,11 @@ struct AdvancedParametersView: View {
     @Binding var unsharpThreshold: String
     @Binding var batchSize: String
     @Binding var enableUnsharp: Bool
+    let threadCount: Int
     @State private var showUnsharpTip = false
     
     var body: some View {
         VStack(spacing: 20) {
-            // Unsharp Parameters Group
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "wand.and.rays")
@@ -400,7 +390,8 @@ struct AdvancedParametersView: View {
                 label: NSLocalizedString("BatchSize", comment: "批处理大小"),
                 value: $batchSize,
                 unit: NSLocalizedString("ImagesPerBatch", comment: "张"),
-                hint: NSLocalizedString("BatchSizeDesc", comment: "每批图像数（张）：")
+                hint: NSLocalizedString("BatchSizeDesc", comment: "每批图像数（张）："),
+                isInputDisabled: threadCount == 0
             )
         }
         .padding(24)
@@ -422,6 +413,7 @@ struct MinimalParameterField: View {
     @Binding var value: String
     let unit: String
     let hint: String
+    var isInputDisabled: Bool = false
     
     @State private var showHint = false
     
@@ -453,21 +445,22 @@ struct MinimalParameterField: View {
                 TextField("", text: $value)
                     .textFieldStyle(PlainTextFieldStyle())
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
-                    .foregroundColor(.textLight)
+                    .foregroundColor(isInputDisabled ? .textMuted : .textLight)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 60)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.bgSecondary.opacity(0.5))
+                            .fill(Color.bgSecondary.opacity(isInputDisabled ? 0.3 : 0.5))
                     )
-                    .focusable(false) // Prevent automatic focus
+                    .focusable(false)
+                    .disabled(isInputDisabled)
                 
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.textMuted)
+                        .foregroundColor(isInputDisabled ? .textMuted.opacity(0.5) : .textMuted)
                         .frame(width: 25, alignment: .leading)
                 }
             }
@@ -475,7 +468,8 @@ struct MinimalParameterField: View {
     }
 }
 
-// Used to measure Basic parameter area height
+// MARK: - PreferenceKeys
+
 private struct BasicParamHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
