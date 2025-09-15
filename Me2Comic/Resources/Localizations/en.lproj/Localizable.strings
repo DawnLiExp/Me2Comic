@@ -37,8 +37,8 @@
 "Output Directory" = "Output Directory:";
 "InputNotSelected" = "Select input directory";
 "OutputNotSelected" = "Select output directory";
-"Input Directory Placeholder" = "Select a directory containing image subfolders. The application will automatically process image files in all first-level subfolders";
-"Output Directory Placeholder" = "Select the save location for processed results. Output will maintain the same folder structure as the input directory";
+"Input Directory Placeholder" = "Select a directory containing image subfolders. The application will automatically process image files in all first-level subfolders.";
+"Output Directory Placeholder" = "Select the save location for processed results. Output will maintain the same folder structure as the input directory.";
 "BasicParameters" = "Basic";
 "SharpeningSettings" = "Sharpening";
 "ImagesPerBatch" = "img";
@@ -73,17 +73,17 @@
 "Gray" = "Gray:";
 
 /* Parameter descriptions */
-"UnderWidthDesc" = "Images with width less than this value are converted directly; otherwise, they are split into left and right parts";
-"ResizeHDesc" = "Scales proportionally by locking height";
-"QualityDesc" = "JPG quality (1-100): Better quality means larger files";
-"UnsharpDesc" = "Unsharp Mask is disabled when Amount is 0";
-"RadiusDesc" = "Controls the size of the affected area, affecting nearby pixels";
-"SigmaDesc" = "Larger values create softer edges";
-"AmountDesc" = "Controls the effect strength, higher values enhance edges";
-"ThreshDesc" = "Controls the minimum edge contrast to apply sharpening";
-"BatchSizeDesc" = "Number of images per batch (1–1000). Adjusting may improve processing speed and reduce load. Default: 40";
-"ThreadsDesc" = "Threads for image processing, based on CPU cores";
-"GrayDesc" = "ON = Convert to grayscale (8-bit); OFF = Retain original color space";
+"UnderWidthDesc" = "Images with width less than this value are converted directly; otherwise, they are split into left and right parts.";
+"ResizeHDesc" = "Scales proportionally by locking height.";
+"QualityDesc" = "JPG quality (1-100): Better quality means larger files.";
+"UnsharpDesc" = "Enhances image detail. When Amount=0, sharpening is disabled. Default: 1.5×1.0+0.7+0.02.";
+"RadiusDesc" = "Controls the size of the affected area, affecting nearby pixels.";
+"SigmaDesc" = "Larger values create softer edges.";
+"AmountDesc" = "Controls the effect strength; higher values enhance edges.";
+"ThreshDesc" = "Controls the minimum edge contrast to apply sharpening.";
+"BatchSizeDesc" = "Distributes the number of images each thread processes based on the CPU count. Proper settings can improve efficiency; range: 1–1000 (disabled in Auto mode).";
+"ThreadsDesc" = "Threads for image processing, based on CPU cores.";
+"GrayDesc" = "ON = Convert to grayscale (8-bit); OFF = Retain original color space.";
 
 /* Log messages for directory selection */
 "SelectedInputDir" = "Selected input directory: %@";

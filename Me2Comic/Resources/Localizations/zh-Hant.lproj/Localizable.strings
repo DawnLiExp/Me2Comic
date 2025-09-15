@@ -76,7 +76,7 @@
 "UnderWidthDesc" = "寬度小於此值時直接轉換，否則均分裁切為左右兩部分";
 "ResizeHDesc" = "按使用設備螢幕高像素設置，例如Kindle Paperwhite 5螢幕解析度為1236x1648，（鎖定高度按比例縮放）";
 "QualityDesc" = "JPG壓縮品質（1-100），值越高品質越好但檔案越大";
-"UnsharpDesc" = "調整圖片細節表現（如提升墨水屏顯示效果），Amount=0時停用所有Unsharp參數，預設值為1.5×1.0+0.7+0.02";
+"UnsharpDesc" = "用於增強影像細節表現，Amount=0 時將關閉銳化效果。預設值：1.5×1.0+0.7+0.02";
 "RadiusDesc" = "銳化半徑，控制影響的區域大小";
 "SigmaDesc" = "銳化模糊半徑，越大銳化效果越柔和";
 "AmountDesc" = "銳化量，控制銳化效果的強度";

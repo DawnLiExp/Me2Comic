@@ -37,8 +37,8 @@
 "Output Directory" = "出力ディレクトリ:";
 "InputNotSelected" = "入力ディレクトリを選択";
 "OutputNotSelected" = "出力ディレクトリを選択";
-"Input Directory Placeholder" = "画像サブフォルダを含むディレクトリを選択します。アプリケーションは第一階層のすべてのサブフォルダ内の画像ファイルを自動的に処理します";
-"Output Directory Placeholder" = "処理結果の保存場所を選択します。出力は入力ディレクトリと同じフォルダ構造を維持します";
+"Input Directory Placeholder" = "画像サブフォルダを含むディレクトリを選択します。アプリケーションは第一階層のすべてのサブフォルダ内の画像ファイルを自動的に処理します。";
+"Output Directory Placeholder" = "処理結果の保存場所を選択します。出力は入力ディレクトリと同じフォルダ構造を維持します。";
 "BasicParameters" = "基本設定";
 "SharpeningSettings" = "シャープ";
 "ImagesPerBatch" = "枚";
@@ -73,17 +73,17 @@
 "Gray" = "グレー:";
 
 /* Parameter descriptions */
-"UnderWidthDesc" = "幅がこの値未満の場合は変換処理、以上の場合は左右分割処理を適用";
-"ResizeHDesc" = "設定した高さ（ピクセル）でアスペクト比を保ってリサイズします";
-"QualityDesc" = "JPG圧縮品質（1〜100）。高いほど高品質で容量増";
-"UnsharpDesc" = "画像のディテール表現を最適化し、E Ink画面での視認性向上にも寄与します";
-"RadiusDesc" = "効果が及ぶ半径範囲を制御";
-"SigmaDesc" = "ぼかしの度合い（値が大きいほどソフト）";
-"AmountDesc" = "シャープネスの強度調整（強度=0でアンシャープ処理全体が無効になります）";
-"ThreshDesc" = "エッジ検出の閾値（この値以上を効果対象）";
-"BatchSizeDesc" = "各スレッドが処理する画像数（1～1000）。設定により効率向上・負荷軽減が可能です。既定値は40枚です";
-"ThreadsDesc" = "画像処理用スレッド数はCPUコア数で調整";
-"GrayDesc" = "ON=8bitグレースケール／OFF=元のカラースペース";
+"UnderWidthDesc" = "幅がこの値未満の場合は変換処理、以上の場合は左右分割処理を適用。";
+"ResizeHDesc" = "設定した高さ（ピクセル）でアスペクト比を保ってリサイズします。";
+"QualityDesc" = "JPG圧縮品質（1〜100）。高いほど高品質で容量増。";
+"UnsharpDesc" = "画像の細部を強調します。Amount=0 の場合、シャープ化は無効になります。デフォルト値：1.5×1.0+0.7+0.02。";
+"RadiusDesc" = "効果が及ぶ半径範囲を制御。";
+"SigmaDesc" = "ぼかしの度合い（値が大きいほどソフト）。";
+"AmountDesc" = "シャープネスの強度調整（強度=0でアンシャープ処理全体が無効になります）。";
+"ThreshDesc" = "エッジ検出の閾値（この値以上を効果対象）。";
+"BatchSizeDesc" = "CPU 数に応じて各スレッドが処理する画像数を割り当てます。適切に設定すると処理効率が向上します。範囲：1〜1000（自動モードでは無効）。";
+"ThreadsDesc" = "画像処理用スレッド数はCPUコア数で調整。";
+"GrayDesc" = "ON=8bitグレースケール／OFF=元のカラースペース。";
 
 /* Log messages for directory selection */
 "SelectedInputDir" = "入力ディレクトリ選択済:%@";
