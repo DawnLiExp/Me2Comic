@@ -6,18 +6,17 @@
 //
 
 import AppKit
+import Combine
 import SwiftUI
 
 // MARK: - Main View
 
-/// The main view of the image processor.
-/// Manages the overall layout, state coordination, and user interaction.
+/// Primary view managing overall layout, state coordination, and user interactions
 struct ImageProcessorView: View {
     // MARK: - Dependencies
 
-    /// The image processor instance that manages the backend processing logic.
     @StateObject private var imageProcessor = ImageProcessor()
-    /// Theme manager for color scheme
+
     @StateObject private var themeManager = ThemeManager.shared
 
     // MARK: - UI State
@@ -27,9 +26,9 @@ struct ImageProcessorView: View {
     @State private var selectedTab = "basic"
 
     @State private var showLogs = true
-    /// Prevents directory auto-save during initial load.
+    /// Prevent auto-save during initial data loading
     @State private var isLoadingDirectories = false
-    /// Prevents parameter auto-save during initial load
+
     @State private var isLoadingParameters = false
     /// Tracks if directory selection is from user action (not loading from saved state)
     @State private var isUserSelection = false
@@ -44,8 +43,7 @@ struct ImageProcessorView: View {
     @State private var widthThreshold = "3000"
     @State private var resizeHeight = "1648"
     @State private var quality = "85"
-    /// 0 = auto-detect
-    @State private var threadCount = 0
+    @State private var threadCount = 0 // 0 = Auto mode
     @State private var useGrayColorspace = true
 
     // MARK: - Advanced Parameters
@@ -56,6 +54,29 @@ struct ImageProcessorView: View {
     @State private var unsharpThreshold = "0.02"
     @State private var batchSize = "40"
     @State private var enableUnsharp = true
+
+    // MARK: - Performance Optimization
+
+    /// Debounced parameter save publisher
+    private let parameterSavePublisher = PassthroughSubject<Void, Never>()
+    @State private var parameterSaveCancellable: AnyCancellable?
+
+    /// Combined parameter state for single onChange
+    private var parametersHash: Int {
+        var hasher = Hasher()
+        hasher.combine(widthThreshold)
+        hasher.combine(resizeHeight)
+        hasher.combine(quality)
+        hasher.combine(threadCount)
+        hasher.combine(useGrayColorspace)
+        hasher.combine(unsharpRadius)
+        hasher.combine(unsharpSigma)
+        hasher.combine(unsharpAmount)
+        hasher.combine(unsharpThreshold)
+        hasher.combine(batchSize)
+        hasher.combine(enableUnsharp)
+        return hasher.finalize()
+    }
 
     // MARK: - Constants
 
@@ -81,7 +102,6 @@ struct ImageProcessorView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left Sidebar - Navigation and status display
             SidebarView(
                 gmReady: $imageProcessor.gmReady,
                 isProcessing: imageProcessor.isProcessing,
@@ -89,15 +109,13 @@ struct ImageProcessorView: View {
                 showLogs: $showLogs,
                 logMessages: $imageProcessor.logMessages
             )
-            .frame(width: 270)
+            .frame(width: 255)
 
-            // Main Content Area - Parameter configuration and processing interface
             ZStack {
-                // Background Layer
                 Color.bgPrimary
                     .ignoresSafeArea()
 
-                // Decorative Element - Gradient glow effect
+                // Decorative gradient overlay
                 GeometryReader { geo in
                     RadialGradient(
                         colors: [Color.accentGreen.opacity(0.05), Color.clear],
@@ -109,7 +127,6 @@ struct ImageProcessorView: View {
                     .blur(radius: 50)
                 }
 
-                // Content Switch - Processing view or parameter configuration view
                 if imageProcessor.isProcessing {
                     ProcessingView(
                         progress: imageProcessor.processingProgress,
@@ -143,7 +160,7 @@ struct ImageProcessorView: View {
                         },
                         onDirectorySelect: {
                             isUserSelection = true
-                            // Reset flag after a short delay
+
                             Task {
                                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                                 await MainActor.run {
@@ -163,60 +180,19 @@ struct ImageProcessorView: View {
             }
         }
         .frame(minWidth: showLogs ? 1050 : 684, minHeight: 684)
-        // .background(Color.bgPrimary)  // Temporary comment for UI testing
         .onAppear {
+            setupParameterSaveDebounce()
             loadSavedDirectories()
             loadSavedParameters()
         }
-        .onChange(of: inputDirectory) {
-            if !isLoadingDirectories {
-                saveDirectoryToUserDefaults(inputDirectory, key: UserDefaultsKeys.lastInputDirectory)
-
-                // Only log if this is a user selection (not loading from saved)
-                if isUserSelection, let url = inputDirectory {
-                    let msg = String(
-                        format: NSLocalizedString("SelectedInputDir", comment: ""),
-                        url.path
-                    )
-                    imageProcessor.logger.log(msg, level: .success, source: "ImageProcessorView")
-                }
-            }
-        }
-        .onChange(of: outputDirectory) {
-            if !isLoadingDirectories {
-                saveDirectoryToUserDefaults(outputDirectory, key: UserDefaultsKeys.lastOutputDirectory)
-
-                // Only log if this is a user selection (not loading from saved)
-                if isUserSelection, let url = outputDirectory {
-                    let msg = String(
-                        format: NSLocalizedString("SelectedOutputDir", comment: ""),
-                        url.path
-                    )
-                    imageProcessor.logger.log(msg, level: .success, source: "ImageProcessorView")
-                }
-            }
-        }
-
-        // Parameter persistence
-        .onChange(of: widthThreshold) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: resizeHeight) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: quality) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: threadCount) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: useGrayColorspace) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: unsharpRadius) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: unsharpSigma) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: unsharpAmount) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: unsharpThreshold) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: batchSize) { if !isLoadingParameters { saveParameters() } }
-        .onChange(of: enableUnsharp) { if !isLoadingParameters { saveParameters() } }
+        .onChange(of: inputDirectory) { handleDirectoryChange(inputDirectory, key: UserDefaultsKeys.lastInputDirectory, isInput: true) }
+        .onChange(of: outputDirectory) { handleDirectoryChange(outputDirectory, key: UserDefaultsKeys.lastOutputDirectory, isInput: false) }
+        .onChange(of: parametersHash) { handleParametersChange() }
     }
 
     // MARK: - Processing Logic
 
-    /// Starts the image processing.
-    /// Validates parameters and initiates the image processing workflow.
     private func startProcessing() {
-        // Use ProcessingParametersValidator for validation
         do {
             let parameters = try ProcessingParametersValidator.validateAndCreateParameters(
                 inputDirectory: inputDirectory,
@@ -233,7 +209,6 @@ struct ImageProcessorView: View {
                 useGrayColorspace: useGrayColorspace
             )
 
-            // Start the processing workflow
             withAnimation(.spring()) {
                 imageProcessor.processImages(
                     inputDir: inputDirectory!,
@@ -242,14 +217,39 @@ struct ImageProcessorView: View {
                 )
             }
         } catch {
-            // Log validation error
             imageProcessor.logger.logError(error.localizedDescription, source: "ImageProcessorView")
         }
     }
 
-    // MARK: - Parameter Persistence
+    // MARK: - Optimized Persistence
 
-    /// Save all parameters to UserDefaults
+    private func setupParameterSaveDebounce() {
+        parameterSaveCancellable = parameterSavePublisher
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .sink { _ in
+                self.saveParameters()
+            }
+    }
+
+    private func handleDirectoryChange(_ directory: URL?, key: String, isInput: Bool) {
+        guard !isLoadingDirectories else { return }
+
+        saveDirectoryToUserDefaults(directory, key: key)
+
+        if isUserSelection, let url = directory {
+            let msg = String(
+                format: NSLocalizedString(isInput ? "SelectedInputDir" : "SelectedOutputDir", comment: ""),
+                url.path
+            )
+            imageProcessor.logger.log(msg, level: .success, source: "ImageProcessorView")
+        }
+    }
+
+    private func handleParametersChange() {
+        guard !isLoadingParameters else { return }
+        parameterSavePublisher.send()
+    }
+
     private func saveParameters() {
         let defaults = UserDefaults.standard
 
@@ -270,7 +270,6 @@ struct ImageProcessorView: View {
         #endif
     }
 
-    /// Load saved parameters from UserDefaults
     private func loadSavedParameters() {
         #if DEBUG
         imageProcessor.logger.logDebug("Loading saved parameters", source: "ImageProcessorView")
@@ -287,16 +286,16 @@ struct ImageProcessorView: View {
         // Load and validate thread count
         let savedThreadCount = defaults.integer(forKey: UserDefaultsKeys.threadCount)
         if savedThreadCount == 0 {
-            threadCount = 0 // Auto mode
+            threadCount = 0 // 0 = Auto mode
         } else if savedThreadCount >= 1 && savedThreadCount <= maxThreadCount {
-            threadCount = savedThreadCount // Valid saved value
+            threadCount = savedThreadCount
         } else if savedThreadCount > maxThreadCount {
-            threadCount = maxThreadCount // Clamp to current machine's max
+            threadCount = maxThreadCount
             #if DEBUG
             imageProcessor.logger.logDebug("Thread count clamped from \(savedThreadCount) to \(maxThreadCount)", source: "ImageProcessorView")
             #endif
         } else {
-            threadCount = 0 // Invalid value, default to auto
+            threadCount = 0
         }
 
         useGrayColorspace = defaults.object(forKey: UserDefaultsKeys.useGrayColorspace) as? Bool ?? true
@@ -316,7 +315,6 @@ struct ImageProcessorView: View {
 
     // MARK: - Directory Persistence
 
-    /// Saves a directory URL to UserDefaults
     private func saveDirectoryToUserDefaults(_ url: URL?, key: String) {
         if let url = url {
             UserDefaults.standard.set(url, forKey: key)
@@ -331,7 +329,6 @@ struct ImageProcessorView: View {
         }
     }
 
-    /// Loads a directory URL from UserDefaults
     private func loadDirectoryFromUserDefaults(key: String) -> URL? {
         guard let savedURL = UserDefaults.standard.url(forKey: key) else {
             #if DEBUG
@@ -346,7 +343,6 @@ struct ImageProcessorView: View {
             #if DEBUG
             imageProcessor.logger.logDebug("Saved directory no longer exists: \(savedURL.path)", source: "ImageProcessorView")
             #endif
-            // Remove invalid directory
             UserDefaults.standard.removeObject(forKey: key)
             return nil
         }
@@ -358,16 +354,13 @@ struct ImageProcessorView: View {
         return savedURL
     }
 
-    /// Loads saved directories from UserDefaults on app launch
     private func loadSavedDirectories() {
         #if DEBUG
         imageProcessor.logger.logDebug("Starting to load saved directories", source: "ImageProcessorView")
         #endif
 
-        // Prevent onChange from triggering saves during initial load
         isLoadingDirectories = true
 
-        // Load input directory
         if let savedInputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastInputDirectory) {
             inputDirectory = savedInputDir
             let msg = String(
@@ -385,7 +378,6 @@ struct ImageProcessorView: View {
             #endif
         }
 
-        // Load output directory
         if let savedOutputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastOutputDirectory) {
             outputDirectory = savedOutputDir
             let msg = String(
@@ -403,7 +395,6 @@ struct ImageProcessorView: View {
             #endif
         }
 
-        // Re-enable saving for future changes
         isLoadingDirectories = false
 
         #if DEBUG

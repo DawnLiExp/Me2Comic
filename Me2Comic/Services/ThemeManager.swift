@@ -221,11 +221,11 @@ enum SemanticColor {
         case .textMuted:
             return Color(hex: "#8E8E93")
         case .successGreen:
-            return Color(hex: "#34C759")
+            return Color(hex: "#6BCB77")
         case .warningOrange:
-            return Color(hex: "#FF9500")
+            return Color(hex: "#FFB344")
         case .errorRed:
-            return Color(hex: "#FF3B30")
+            return Color(hex: "#FF6B6B")
         }
     }
 }

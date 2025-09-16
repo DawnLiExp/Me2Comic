@@ -19,8 +19,33 @@ struct MinimalDirectorySelector: View {
     let accentColor: Color
     let onSelect: (URL) -> Void
     
-    @State private var isHovered = false
-    @State private var isDragging = false
+    @State private var interactionState: InteractionState = .normal
+    
+    private enum InteractionState {
+        case normal, hovered, dragging
+        
+        var iconRotation: Double {
+            switch self {
+            case .hovered: return 45
+            default: return 0
+            }
+        }
+        
+        var backgroundOpacity: Double {
+            switch self {
+            case .dragging: return 0.6
+            default: return 0.3
+            }
+        }
+        
+        func borderColor(accent: Color) -> (Color, Double) {
+            switch self {
+            case .dragging: return (accent, 1.0)
+            case .hovered: return (accent, 0.5)
+            default: return (Color.clear, 0)
+            }
+        }
+    }
     
     var body: some View {
         Button(action: selectDirectory) {
@@ -49,30 +74,46 @@ struct MinimalDirectorySelector: View {
                 Image(systemName: "arrow.right.circle")
                     .font(.system(size: 16))
                     .foregroundColor(accentColor)
-                    .rotationEffect(.degrees(isHovered ? 45 : 0))
-                    .animation(.spring(response: 0.3), value: isHovered)
+                    .rotationEffect(.degrees(interactionState.iconRotation))
+                    .animation(.spring(response: 0.3), value: interactionState.iconRotation)
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.bgTertiary.opacity(isDragging ? 0.6 : 0.3))
+                    .fill(Color.bgTertiary.opacity(interactionState.backgroundOpacity))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(
-                                isDragging ? accentColor : (isHovered ? accentColor.opacity(0.5) : Color.clear),
-                                lineWidth: 1
-                            )
+                        borderOverlay
                     )
+                    .animation(.easeInOut(duration: 0.15), value: interactionState.backgroundOpacity)
             )
         }
         .buttonStyle(PlainButtonStyle())
         .onHover { hovering in
-            isHovered = hovering
+            if !isDragging {
+                interactionState = hovering ? .hovered : .normal
+            }
         }
-        .onDrop(of: [.fileURL], isTargeted: $isDragging) { providers in
+        .onDrop(of: [.fileURL], isTargeted: Binding(
+            get: { interactionState == .dragging },
+            set: { interactionState = $0 ? .dragging : .normal }
+        )) { providers in
             handleDrop(providers: providers)
             return true
         }
+    }
+    
+    @ViewBuilder
+    private var borderOverlay: some View {
+        let border = interactionState.borderColor(accent: accentColor)
+        RoundedRectangle(cornerRadius: 10)
+            .strokeBorder(
+                border.0.opacity(border.1),
+                lineWidth: 1
+            )
+    }
+    
+    private var isDragging: Bool {
+        interactionState == .dragging
     }
     
     /// Selects a directory using NSOpenPanel.

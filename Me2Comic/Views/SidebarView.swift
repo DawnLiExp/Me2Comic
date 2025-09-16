@@ -10,20 +10,12 @@ import SwiftUI
 
 // MARK: - Sidebar View
 
-/// Left navigation bar component
-/// Contains app logo, status indicator, navigation menu, and log control.
+/// Navigation sidebar containing app branding, system status, and controls
 struct SidebarView: View {
-    // MARK: - Properties
-
-    /// GraphicsMagick ready status.
     @Binding var gmReady: Bool
-    /// Whether processing is in progress.
     let isProcessing: Bool
-    /// Currently selected tab.
     @Binding var selectedTab: String
-    /// Whether to show logs.
     @Binding var showLogs: Bool
-    /// List of log messages.
     @Binding var logMessages: [LogEntry]
     
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -31,16 +23,13 @@ struct SidebarView: View {
     
     var body: some View {
         ZStack {
-            // Visual effect background
-            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+            VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
                 .ignoresSafeArea()
             
-            // Theme color overlay
             Color.bgSecondary
-                .opacity(0.3)
+                .opacity(0.6)
                 .ignoresSafeArea()
             
-            // Content
             VStack(spacing: 0) {
                 // Logo Area
                 VStack(spacing: 16) {
@@ -62,15 +51,14 @@ struct SidebarView: View {
                 }
                 .padding(.vertical, 30)
                 
-                // Status Indicator
-                StatusIndicator(gmReady: gmReady)
+                StatusIndicator(gmReady: gmReady, isVisible: !isProcessing)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 20)
                 
                 Divider()
                     .background(Color.textMuted.opacity(0.2))
                 
-                // Navigation Menu
+                // Tab Navigation
                 VStack(spacing: 4) {
                     NavigationItem(
                         icon: "square.grid.2x2",
@@ -96,7 +84,6 @@ struct SidebarView: View {
                 
                 // Bottom Controls
                 VStack(spacing: 12) {
-                    // Log Toggle
                     HStack {
                         Image(systemName: showLogs ? "doc.text" : "doc.text.fill")
                             .font(.system(size: 14))
@@ -113,7 +100,6 @@ struct SidebarView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // Clear Logs Button
                     if !logMessages.isEmpty {
                         Button(action: {
                             withAnimation {
@@ -129,11 +115,12 @@ struct SidebarView: View {
                             .foregroundColor(.textMuted)
                             .padding(.vertical, 8)
                             .frame(maxWidth: .infinity)
-                            .background(Color.bgTertiary.opacity(0.3)) // 使用主题色
+                            .background(Color.bgTertiary.opacity(0.3))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal, 20)
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
                 }
                 .padding(.vertical, 20)
@@ -146,6 +133,7 @@ struct SidebarView: View {
 
 struct StatusIndicator: View {
     let gmReady: Bool
+    let isVisible: Bool
     @State private var pulse = false
     
     var body: some View {
@@ -156,14 +144,21 @@ struct StatusIndicator: View {
                 .overlay(
                     Circle()
                         .stroke(gmReady ? Color.successGreen : Color.warningOrange, lineWidth: 8)
-                        .opacity(pulse ? 0 : 0.5)
-                        .scaleEffect(pulse ? 2 : 1)
+                        .opacity(pulse && isVisible ? 0 : 0.5)
+                        .scaleEffect(pulse && isVisible ? 2 : 1)
                         .animation(
-                            .easeOut(duration: 1).repeatForever(autoreverses: false),
+                            isVisible ? .easeOut(duration: 1).repeatForever(autoreverses: false) : .default,
                             value: pulse
                         )
                 )
-                .onAppear { pulse = true }
+                .onAppear {
+                    if isVisible {
+                        pulse = true
+                    }
+                }
+                .onChange(of: isVisible) { _, newValue in
+                    pulse = newValue
+                }
             
             VStack(alignment: .leading, spacing: 2) {
                 Text("GraphicsMagick")
@@ -176,6 +171,7 @@ struct StatusIndicator: View {
             
             Spacer()
         }
+        .padding(.leading, 6)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
@@ -203,33 +199,40 @@ struct NavigationItem: View {
     @State private var isHovered = false
     
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: isSelected ? .medium : .regular))
-                    .foregroundColor(isSelected ? .accentGreen : .textMuted)
-                    .frame(width: 24)
-                
-                Text(title)
-                    .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                    .foregroundColor(isSelected ? .textLight : .textMuted)
-                
-                Spacer()
-                
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.accentGreen)
-                        .frame(width: 3, height: 16)
-                }
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: isSelected ? .medium : .regular))
+                .foregroundColor(isSelected ? .accentGreen : .textMuted)
+                .frame(width: 24)
+            
+            Text(title)
+                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                .foregroundColor(isSelected ? .textLight : .textMuted)
+            
+            Spacer()
+            
+            if isSelected {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.accentGreen)
+                    .frame(width: 3, height: 16)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .opacity
+                    ))
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.accentGreen.opacity(0.15) : (isHovered ? Color.bgTertiary.opacity(0.2) : Color.clear))
-            )
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.accentGreen.opacity(0.15) : (isHovered ? Color.bgTertiary.opacity(0.2) : Color.clear))
+                .animation(.easeInOut(duration: 0.15), value: isSelected)
+                .animation(.easeInOut(duration: 0.1), value: isHovered)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            action()
+        }
         .onHover { hovering in
             isHovered = hovering
         }

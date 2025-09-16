@@ -9,7 +9,6 @@ import SwiftUI
 
 // MARK: - MainContentView
 
-/// Main content area for parameter configuration and processing interface.
 struct MainContentView: View {
     @Binding var inputDirectory: URL?
     @Binding var outputDirectory: URL?
@@ -31,19 +30,17 @@ struct MainContentView: View {
 
     // MARK: - UI State
     
-    @State private var basicParamsHeight: CGFloat = 0
-    @State private var advancedParamsHeight: CGFloat = 0
     @State private var showInputTip = false
     @State private var showOutputTip = false
     @State private var isShowInFinderHovered = false
     
     // MARK: - Layout Constants
     
-    private let parameterAreaExtraPadding: CGFloat = 0
-    private let parameterAreaMinHeight: CGFloat = 220
+    /// Prevents layout shift during tab transitions
+    private let parameterAreaHeight: CGFloat = 360
 
     var body: some View {
-        VStack(spacing: 30) {
+        VStack(spacing: 9) {
             // Directory Selection
             VStack(spacing: 16) {
                 HStack(spacing: 4) {
@@ -129,64 +126,41 @@ struct MainContentView: View {
             }
             .padding(.horizontal, 60)
 
-            // Parameter Area
-            let computedHeight = max(max(basicParamsHeight, advancedParamsHeight) + parameterAreaExtraPadding, parameterAreaMinHeight)
-
+            // Parameter Configuration Area
             ZStack {
-                // Basic Parameter View
-                BasicParametersView(
-                    widthThreshold: $widthThreshold,
-                    resizeHeight: $resizeHeight,
-                    quality: $quality,
-                    threadCount: $threadCount,
-                    maxThreadCount: maxThreadCount,
-                    useGrayColorspace: $useGrayColorspace
-                )
-                .padding(.horizontal, 60)
-                .background(
-                    GeometryReader { geo in
-                        Color.clear
-                            .preference(key: BasicParamHeightKey.self, value: geo.size.height)
-                    }
-                )
-                .opacity(selectedTab == "basic" ? 1 : 0)
-                .animation(.easeInOut(duration: 0.18), value: selectedTab)
-                .allowsHitTesting(selectedTab == "basic")
-                
-                // Advanced Parameter View
-                AdvancedParametersView(
-                    unsharpRadius: $unsharpRadius,
-                    unsharpSigma: $unsharpSigma,
-                    unsharpAmount: $unsharpAmount,
-                    unsharpThreshold: $unsharpThreshold,
-                    batchSize: $batchSize,
-                    enableUnsharp: $enableUnsharp,
-                    threadCount: threadCount
-                )
-                .padding(.horizontal, 60)
-                .background(
-                    GeometryReader { geo in
-                        Color.clear
-                            .preference(key: AdvancedParamHeightKey.self, value: geo.size.height)
-                    }
-                )
-                .opacity(selectedTab == "advanced" ? 1 : 0)
-                .animation(.easeInOut(duration: 0.18), value: selectedTab)
-                .allowsHitTesting(selectedTab == "advanced")
-            }
-            .frame(height: computedHeight)
-            .onPreferenceChange(BasicParamHeightKey.self) { value in
-                if value.isFinite && value > 0 {
-                    basicParamsHeight = value
+                if selectedTab == "basic" {
+                    BasicParametersView(
+                        widthThreshold: $widthThreshold,
+                        resizeHeight: $resizeHeight,
+                        quality: $quality,
+                        threadCount: $threadCount,
+                        maxThreadCount: maxThreadCount,
+                        useGrayColorspace: $useGrayColorspace
+                    )
+                    .transition(.asymmetric(
+                        insertion: .opacity.animation(.easeIn(duration: 0.15)),
+                        removal: .identity
+                    ))
+                } else {
+                    AdvancedParametersView(
+                        unsharpRadius: $unsharpRadius,
+                        unsharpSigma: $unsharpSigma,
+                        unsharpAmount: $unsharpAmount,
+                        unsharpThreshold: $unsharpThreshold,
+                        batchSize: $batchSize,
+                        enableUnsharp: $enableUnsharp,
+                        threadCount: threadCount
+                    )
+                    .transition(.asymmetric(
+                        insertion: .opacity.animation(.easeIn(duration: 0.15)),
+                        removal: .identity
+                    ))
                 }
             }
-            .onPreferenceChange(AdvancedParamHeightKey.self) { value in
-                if value.isFinite && value > 0 {
-                    advancedParamsHeight = value
-                }
-            }
+            .padding(.horizontal, 60)
+            .frame(height: parameterAreaHeight)
+            .animation(.easeInOut(duration: 0.18), value: selectedTab)
 
-            // Start Button
             ProcessButton(
                 enabled: inputDirectory != nil && outputDirectory != nil,
                 action: onProcess
@@ -482,21 +456,5 @@ struct MinimalParameterField: View {
                 }
             }
         }
-    }
-}
-
-// MARK: - PreferenceKeys
-
-private struct BasicParamHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-private struct AdvancedParamHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
     }
 }
