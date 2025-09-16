@@ -7,8 +7,11 @@
 
 Me2Comic 是一款 macOS 图形界面工具，调用 GraphicsMagick 批量转换与裁剪图片，力求在减小文件体积的同时保留较高画质。最初是我用来处理漫画图片、学习 Swift 时的周末小项目，现在以 MIT 协议开源发布，欢迎试用、修改，或者随便看看～🍻
 
-<img src="screenshot.png" alt="Me2Comic Screenshot" width="500">
-
+<div style="display: flex; justify-content: space-between; gap: 20px;">
+  <img src="screenshot1.png" style="border: none; width: 32%;" />
+  <img src="screenshot2.png" style="border: none; width: 32%;" />
+  <img src="screenshot3.png" style="border: none; width: 32%;" />
+</div>
 
 ## 主要功能
 
@@ -24,7 +27,9 @@ Me2Comic 是一款 macOS 图形界面工具，调用 GraphicsMagick 批量转换
 
 ## 系统要求
 
-macOs • 13.0+
+- macOS 14.0+
+- Swift 6
+- GraphicsMagick:
 
 ## 安装依赖：
 

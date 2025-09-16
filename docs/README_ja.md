@@ -7,7 +7,11 @@
 
 Me2Comic は macOS 向けの GUI ツールで、GraphicsMagick を外部コマンドとして呼び出し、画像の一括変換とトリミングを行います。画質を保ちつつファイルサイズを抑えることを重視しています。もともとは Swift の学習と漫画画像の整理を目的とした週末のサイドプロジェクトでしたが、MIT ライセンスのもとでオープンソースとして公開しました。気軽に試したり、カスタマイズして使っていただければ嬉しいです。🍻
 
-<img src="screenshot.png" alt="Me2Comic スクリーンショット" width="500">
+<div style="display: flex; justify-content: space-between; gap: 20px;">
+  <img src="screenshot1.png" style="border: none; width: 32%;" />
+  <img src="screenshot2.png" style="border: none; width: 32%;" />
+  <img src="screenshot3.png" style="border: none; width: 32%;" />
+</div>
 
 ## 特徴
 
@@ -23,7 +27,8 @@ Me2Comic は macOS 向けの GUI ツールで、GraphicsMagick を外部コマ�
 
 ## 動作環境
 
-- macOS 13.0 以降
+- macOS 14.0 以降
+- Swift 6
 - GraphicsMagick のインストールが必要:
 
 ```shell

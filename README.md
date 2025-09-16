@@ -7,7 +7,11 @@
 
 Me2Comic is a macOS GUI tool that calls GraphicsMagick to batch convert and crop images, prioritizing quality while reducing file size. It started as a weekend side project for processing comic images and experimenting with Swift. Now it's open-sourced under the MIT license—feel free to explore, tweak it, or just take a look. 🍻
 
-<img src="docs/screenshot.png" alt="Me2Comic Screenshot" width="500">
+<div style="display: flex; justify-content: space-between; gap: 20px;">
+  <img src="docs/screenshot1.png" style="border: none; width: 32%;" />
+  <img src="docs/screenshot2.png" style="border: none; width: 32%;" />
+  <img src="docs/screenshot3.png" style="border: none; width: 32%;" />
+</div>
 
 ## Features
 
@@ -23,7 +27,8 @@ Me2Comic is a macOS GUI tool that calls GraphicsMagick to batch convert and crop
 
 ## Requirements
 
-- macOS 13.0+
+- macOS 14.0+
+- Swift 6
 - GraphicsMagick:
 
 ```shell
