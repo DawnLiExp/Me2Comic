@@ -82,6 +82,10 @@ struct GMProcessExecutor {
     
     /// Write single command to file handle
     func writeCommand(_ command: String, to fileHandle: FileHandle) async -> Result<Void, ProcessingError> {
+        guard !Task.isCancelled else {
+            return .failure(.processingCancelled)
+        }
+        
         guard let data = (command + "\n").data(using: .utf8) else {
             #if DEBUG
             logger?("Failed to encode command to UTF-8", .debug, "GMProcessExecutor")
@@ -89,96 +93,30 @@ struct GMProcessExecutor {
             return .failure(.commandEncodingFailed)
         }
         
-        // Extract buffer pointer synchronously
-        let bufferCopy: (UnsafeMutableRawPointer, Int)? = data.withUnsafeBytes { buffer in
-            guard let baseAddress = buffer.baseAddress else {
-                return nil
-            }
-            // Create a copy of the data to use outside the closure
-            let copy = UnsafeMutableRawPointer.allocate(
-                byteCount: buffer.count,
-                alignment: 1
-            )
-            copy.copyMemory(from: baseAddress, byteCount: buffer.count)
-            return (copy, buffer.count)
-        }
-        
-        guard let (bufferPointer, bufferCount) = bufferCopy else {
+        do {
+            try await Task {
+                try fileHandle.write(contentsOf: data)
+            }.value
+            
             #if DEBUG
-            logger?("Failed to access data buffer for command write", .debug, "GMProcessExecutor")
+            logger?("Command write completed: \(data.count) bytes", .debug, "GMProcessExecutor")
             #endif
-            return .failure(.commandEncodingFailed)
-        }
-        
-        defer {
-            bufferPointer.deallocate()
-        }
-        
-        let fd = fileHandle.fileDescriptor
-        var written = 0
-        var attempts = 0
-        
-        while written < bufferCount {
-            guard !Task.isCancelled else {
+            
+            return .success(())
+        } catch {
+            #if DEBUG
+            logger?("File handle write failed: \(error)", .debug, "GMProcessExecutor")
+            #endif
+            
+            if Task.isCancelled {
                 return .failure(.processingCancelled)
-            }
-            
-            let remaining = bufferCount - written
-            let chunkSize = min(remaining, Constants.writeChunkSize)
-            let ptr = bufferPointer.advanced(by: written)
-            
-            let result = write(fd, ptr, chunkSize)
-            
-            if result > 0 {
-                written += result
-                attempts = 0
-                
-                #if DEBUG
-                if written == bufferCount {
-                    logger?("Command write completed: \(bufferCount) bytes", .debug, "GMProcessExecutor")
-                }
-                #endif
-            } else if result == 0 {
-                attempts += 1
-                if attempts > 5 {
-                    #if DEBUG
-                    logger?("Write failed: no progress after 5 attempts", .debug, "GMProcessExecutor")
-                    #endif
-                    return .failure(.pipeWriteFailed(POSIXError: POSIXError(.EIO)))
-                }
-                try? await Task.sleep(nanoseconds: 10000000) // 10ms
+            } else if (error as NSError).domain == NSCocoaErrorDomain {
+                return .failure(.pipeBroken)
             } else {
-                let err = errno
-                switch err {
-                case EINTR:
-                    #if DEBUG
-                    logger?("Write interrupted (EINTR), retrying", .debug, "GMProcessExecutor")
-                    #endif
-                    continue
-                case EAGAIN, EWOULDBLOCK:
-                    attempts += 1
-                    if attempts > Constants.maxWriteAttempts {
-                        #if DEBUG
-                        logger?("Write timeout after \(Constants.maxWriteAttempts) attempts", .debug, "GMProcessExecutor")
-                        #endif
-                        return .failure(.processIOTimeout)
-                    }
-                    try? await Task.sleep(nanoseconds: 10000000) // 10ms
-                case EPIPE:
-                    #if DEBUG
-                    logger?("Broken pipe detected (EPIPE)", .debug, "GMProcessExecutor")
-                    #endif
-                    return .failure(.pipeBroken)
-                default:
-                    #if DEBUG
-                    logger?("Write error: errno \(err)", .debug, "GMProcessExecutor")
-                    #endif
-                    return .failure(.pipeWriteFailed(POSIXError: POSIXError(POSIXError.Code(rawValue: err) ?? .EIO)))
-                }
+                let posixError = POSIXError(.EIO)
+                return .failure(.pipeWriteFailed(POSIXError: posixError))
             }
         }
-        
-        return .success(())
     }
     
     // MARK: - Private Methods
