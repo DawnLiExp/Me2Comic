@@ -33,6 +33,7 @@
 "AdvancedParameters" = "Advanced Settings";
 "ClearLogsCount" = "Clear Logs (%d)";
 "ShowLogs" = "Show Logs";
+"CPUUsage" = "CPU Usage";
 
 /* Main Content */
 "Input Directory" = "Input Directory:";

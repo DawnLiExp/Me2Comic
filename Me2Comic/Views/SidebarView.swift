@@ -27,7 +27,7 @@ struct SidebarView: View {
                 .ignoresSafeArea()
             
             Color.bgSecondary
-                .opacity(0.6)
+                .opacity(0.4)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -78,6 +78,9 @@ struct SidebarView: View {
                 .padding(.horizontal, 12)
                 
                 Spacer()
+                
+                // CPU Usage Monitor
+                CPUUsageChartView()
                 
                 Divider()
                     .background(Color.textMuted.opacity(0.2))

@@ -20,6 +20,8 @@
 		FC7950BC2E68C17F00F891B3 /* GMCommandBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950BB2E68C17D00F891B3 /* GMCommandBuilder.swift */; };
 		FC9051092E75E50D0007EB2D /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9051082E75E50B0007EB2D /* ThemeManager.swift */; };
 		FC9092EC2DFEC37700867319 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9092EB2DFEC37700867319 /* ImageIO.framework */; };
+		FC91CC6C2EA522BB00955736 /* CPUMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC91CC6B2EA522BB00955736 /* CPUMonitor.swift */; };
+		FC91CC6E2EA522D900955736 /* CPUUsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC91CC6D2EA522D900955736 /* CPUUsageChartView.swift */; };
 		FCA94A172E43C43A00CC23BC /* ParametersValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA94A162E43C43600CC23BC /* ParametersValidator.swift */; };
 		FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */; };
 		FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB9B0C72DBDFD4500110511 /* Me2ComicApp.swift */; };
@@ -60,6 +62,8 @@
 		FC8BA09D2DCB7E1B007582B9 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		FC9051082E75E50B0007EB2D /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		FC9092EB2DFEC37700867319 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
+		FC91CC6B2EA522BB00955736 /* CPUMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUMonitor.swift; sourceTree = "<group>"; };
+		FC91CC6D2EA522D900955736 /* CPUUsageChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUUsageChartView.swift; sourceTree = "<group>"; };
 		FC96492D2DCA646B00DAB31A /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		FCA94A162E43C43600CC23BC /* ParametersValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParametersValidator.swift; sourceTree = "<group>"; };
 		FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageIOHelper.swift; sourceTree = "<group>"; };
@@ -148,6 +152,7 @@
 			children = (
 				FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */,
 				FCD6E2D92E7300EE006E3B1E /* ColorExtensions.swift */,
+				FC91CC6B2EA522BB00955736 /* CPUMonitor.swift */,
 				FC7950B32E68B59700F891B3 /* FileSystemHelper.swift */,
 				FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */,
 				FC7950B52E68C14600F891B3 /* PathCollisionManager.swift */,
@@ -220,6 +225,7 @@
 			isa = PBXGroup;
 			children = (
 				FCD13BC72E431E0D003A8023 /* AboutView.swift */,
+				FC91CC6D2EA522D900955736 /* CPUUsageChartView.swift */,
 				FCD6E2DB2E730356006E3B1E /* DirectorySelectorView.swift */,
 				FCB9B0C92DBDFD4500110511 /* ImageProcessorView.swift */,
 				FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */,
@@ -305,6 +311,7 @@
 				FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */,
 				FCEAFA682E60DD11008575D6 /* ProcessingTypes.swift in Sources */,
 				FCD6E2E42E7305AB006E3B1E /* ProcessButtonView.swift in Sources */,
+				FC91CC6E2EA522D900955736 /* CPUUsageChartView.swift in Sources */,
 				FC7950BC2E68C17F00F891B3 /* GMCommandBuilder.swift in Sources */,
 				FCEAFA642E60DAAD008575D6 /* BatchTaskOrganizer.swift in Sources */,
 				FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */,
@@ -322,6 +329,7 @@
 				FC7950B42E68B59900F891B3 /* FileSystemHelper.swift in Sources */,
 				FCD6E2E82E730608006E3B1E /* ProcessingView.swift in Sources */,
 				FC7950BA2E68C16E00F891B3 /* GMProcessExecutor.swift in Sources */,
+				FC91CC6C2EA522BB00955736 /* CPUMonitor.swift in Sources */,
 				FCD13BC82E431E0F003A8023 /* AboutView.swift in Sources */,
 				FC7950B02E6892DF00F891B3 /* ProcessingError.swift in Sources */,
 				FCB9B0CA2DBDFD4500110511 /* ImageProcessorView.swift in Sources */,

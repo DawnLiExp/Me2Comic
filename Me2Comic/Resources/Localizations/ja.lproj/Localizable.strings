@@ -33,6 +33,7 @@
 "AdvancedParameters" = "詳細設定";
 "ClearLogsCount" = "ログを消去 (%d)";
 "ShowLogs" = "ログを表示";
+"CPUUsage" = "CPU使用率";
 
 /* Main Content */
 "Input Directory" = "入力ディレクトリ:";
