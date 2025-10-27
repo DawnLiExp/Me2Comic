@@ -9,7 +9,9 @@ import SwiftUI
 
 // MARK: - Theme Definition
 
-enum AppTheme: String, CaseIterable {
+enum AppTheme: String, CaseIterable, Identifiable {
+    var id: String { rawValue }
+    case auto
     case midnightBlue
     case warmSand
     case forestShadow
@@ -17,6 +19,8 @@ enum AppTheme: String, CaseIterable {
     
     var displayName: String {
         switch self {
+        case .auto:
+            return NSLocalizedString("Auto", comment: "")
         case .midnightBlue:
             return NSLocalizedString("ThemeMidnightBlue", comment: "")
         case .warmSand:
@@ -32,7 +36,7 @@ enum AppTheme: String, CaseIterable {
         switch self {
         case .warmSand:
             return true
-        case .midnightBlue, .forestShadow, .macOsDark:
+        case .midnightBlue, .forestShadow, .macOsDark, .auto:
             return false
         }
     }
@@ -45,6 +49,7 @@ final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
     
     @Published private(set) var currentTheme: AppTheme
+    @Published private(set) var selectedThemeMode: AppTheme
     
     private enum UserDefaultsKeys {
         static let selectedTheme = "Me2Comic.selectedTheme"
@@ -54,14 +59,13 @@ final class ThemeManager: ObservableObject {
     private init() {
         // Migrate old theme identifiers
         if let savedTheme = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedTheme) {
-            let migratedTheme: String
-            switch savedTheme {
+            let migratedTheme: String = switch savedTheme {
             case "greenDark":
-                migratedTheme = "midnightBlue"
+                "midnightBlue"
             case "macOSDark":
-                migratedTheme = "warmSand"
+                "warmSand"
             default:
-                migratedTheme = savedTheme
+                savedTheme
             }
             
             if migratedTheme != savedTheme {
@@ -73,28 +77,56 @@ final class ThemeManager: ObservableObject {
         if let pendingTheme = UserDefaults.standard.string(forKey: UserDefaultsKeys.pendingTheme),
            let theme = AppTheme(rawValue: pendingTheme)
         {
-            self.currentTheme = theme
+            self.selectedThemeMode = theme
             UserDefaults.standard.set(theme.rawValue, forKey: UserDefaultsKeys.selectedTheme)
             UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.pendingTheme)
-        }
-        // Load saved theme or use default
-        else if let savedTheme = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedTheme),
-                let theme = AppTheme(rawValue: savedTheme)
-        {
-            self.currentTheme = theme
+            
+            // Resolve actual theme
+            if theme == .auto {
+                let isSystemDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                self.currentTheme = isSystemDark ? .midnightBlue : .warmSand
+            } else {
+                self.currentTheme = theme
+            }
         } else {
-            self.currentTheme = .midnightBlue
+            // Load saved theme mode
+            let savedThemeRawValue = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedTheme)
+            let savedMode = savedThemeRawValue.flatMap { AppTheme(rawValue: $0) } ?? .auto
+            
+            self.selectedThemeMode = savedMode
+            
+            // Resolve actual theme
+            if savedMode == .auto {
+                let isSystemDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                self.currentTheme = isSystemDark ? .midnightBlue : .warmSand
+            } else {
+                self.currentTheme = savedMode
+            }
         }
     }
     
     func setTheme(_ theme: AppTheme) -> Bool {
-        guard theme != currentTheme else { return false }
+        guard theme != selectedThemeMode else { return false }
+        
+        // Save user selection
         UserDefaults.standard.set(theme.rawValue, forKey: UserDefaultsKeys.selectedTheme)
+        self.selectedThemeMode = theme
+        
+        // Resolve actual theme
+        if theme == .auto {
+            let isSystemDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            self.currentTheme = isSystemDark ? .midnightBlue : .warmSand
+        } else {
+            self.currentTheme = theme
+        }
+        
         return true
     }
     
     func color(for colorType: SemanticColor) -> Color {
         switch currentTheme {
+        case .auto:
+            fatalError("currentTheme should never be .auto")
         case .midnightBlue:
             return colorType.midnightBlueColor
         case .warmSand:

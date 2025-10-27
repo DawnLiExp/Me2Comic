@@ -38,11 +38,11 @@ struct AboutView: View {
     
     // Applied Settings (currently active)
     @State private var appliedLanguage: String = ""
-    @State private var appliedTheme: AppTheme = ThemeManager.shared.currentTheme
+    @State private var appliedTheme: AppTheme = ThemeManager.shared.selectedThemeMode
     
     // Selected Settings (UI selection)
     @State private var selectedLanguage: String = ""
-    @State private var selectedTheme: AppTheme = ThemeManager.shared.currentTheme
+    @State private var selectedTheme: AppTheme = ThemeManager.shared.selectedThemeMode
     
     // Pending Changes
     @State private var pendingChangeType: PendingChangeType = .none
@@ -245,8 +245,8 @@ struct AboutView: View {
     }
     
     private func loadSettings() {
-        // Load applied settings
-        appliedTheme = themeManager.currentTheme
+        // Load applied settings (user's selection mode)
+        appliedTheme = themeManager.selectedThemeMode
         
         if let saved = UserDefaults.standard.string(forKey: "SelectedLanguage") {
             appliedLanguage = saved
@@ -263,7 +263,8 @@ struct AboutView: View {
         }
         
         if let pendingThemeRaw = UserDefaults.standard.string(forKey: "Me2Comic.pendingTheme"),
-           let pendingTheme = AppTheme(rawValue: pendingThemeRaw) {
+           let pendingTheme = AppTheme(rawValue: pendingThemeRaw)
+        {
             selectedTheme = pendingTheme
         } else {
             selectedTheme = appliedTheme
@@ -305,7 +306,7 @@ struct AboutView: View {
         let hasLanguageChange = selectedLanguage != appliedLanguage
         let hasThemeChange = selectedTheme != appliedTheme
         
-        if hasLanguageChange && hasThemeChange {
+        if hasLanguageChange, hasThemeChange {
             pendingChangeType = .both
         } else if hasLanguageChange {
             pendingChangeType = .language
@@ -320,7 +321,8 @@ struct AboutView: View {
     private func performRestart() async {
         // Apply pending theme
         if let pendingThemeRaw = UserDefaults.standard.string(forKey: "Me2Comic.pendingTheme"),
-           let pendingTheme = AppTheme(rawValue: pendingThemeRaw) {
+           let pendingTheme = AppTheme(rawValue: pendingThemeRaw)
+        {
             _ = themeManager.setTheme(pendingTheme)
             UserDefaults.standard.removeObject(forKey: "Me2Comic.pendingTheme")
         }
@@ -338,9 +340,9 @@ struct AboutView: View {
         // Try direct executable launch
         let execURL = Bundle.main.executableURL
             ?? bundleURL
-                .appendingPathComponent("Contents")
-                .appendingPathComponent("MacOS")
-                .appendingPathComponent(Bundle.main.infoDictionary?["CFBundleExecutable"] as? String ?? "")
+            .appendingPathComponent("Contents")
+            .appendingPathComponent("MacOS")
+            .appendingPathComponent(Bundle.main.infoDictionary?["CFBundleExecutable"] as? String ?? "")
         
         if FileManager.default.fileExists(atPath: execURL.path) {
             let process = Process()
