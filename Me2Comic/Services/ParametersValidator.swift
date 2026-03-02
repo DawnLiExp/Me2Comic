@@ -19,17 +19,17 @@ enum ProcessingParameterError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidWidthThreshold:
-            return NSLocalizedString("InvalidWidthThreshold", comment: "")
+            return String(localized: "InvalidWidthThreshold")
         case .invalidResizeHeight:
-            return NSLocalizedString("InvalidResizeHeight", comment: "")
+            return String(localized: "InvalidResizeHeight")
         case .invalidQuality:
-            return NSLocalizedString("InvalidOutputQuality", comment: "")
+            return String(localized: "InvalidOutputQuality")
         case .invalidUnsharpParameters:
-            return NSLocalizedString("InvalidUnsharpParameters", comment: "")
+            return String(localized: "InvalidUnsharpParameters")
         case .invalidBatchSize:
-            return NSLocalizedString("InvalidBatchSize", comment: "")
+            return String(localized: "InvalidBatchSize")
         case .noInputOrOutputDirectory:
-            return NSLocalizedString("NoInputOrOutputDir", comment: "")
+            return String(localized: "NoInputOrOutputDir")
         }
     }
 }

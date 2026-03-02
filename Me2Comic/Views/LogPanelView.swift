@@ -24,13 +24,13 @@ struct LogPanelMinimal: View {
                         .font(.system(size: 14))
                         .foregroundColor(.accentOrange)
                     
-                    Text(NSLocalizedString("ProcessingLogs", comment: "处理日志"))
+                    Text(String(localized: "ProcessingLogs"))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.textLight)
                 }
                 Spacer()
                 
-                Text(String(format: NSLocalizedString("LogsCount", comment: "%d 条"), logMessages.count))
+                Text(String(format: String(localized: "LogsCount"), logMessages.count))
                     .font(.system(size: 11))
                     .foregroundColor(.textMuted)
             }
@@ -72,7 +72,7 @@ struct LogPanelMinimal: View {
                     HStack(spacing: 6) {
                         Image(systemName: autoScroll ? "arrow.down.circle.fill" : "arrow.down.circle")
                             .font(.system(size: 12))
-                        Text(NSLocalizedString("AutoScroll", comment: "自动滚动"))
+                        Text(String(localized: "AutoScroll"))
                             .font(.system(size: 11))
                     }
                     .foregroundColor(autoScroll ? .accentGreen : .textMuted)
@@ -85,7 +85,7 @@ struct LogPanelMinimal: View {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.on.doc")
                             .font(.system(size: 12))
-                        Text(NSLocalizedString("CopyAll", comment: "复制全部"))
+                        Text(String(localized: "CopyAll"))
                             .font(.system(size: 11))
                     }
                     .foregroundColor(.textMuted)

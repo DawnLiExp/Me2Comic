@@ -67,76 +67,58 @@ extension ProcessingError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .graphicsMagickNotFound:
-            return NSLocalizedString("GMNotFoundViaWhich", comment: "")
+            return String(localized: "GMNotFoundViaWhich")
             
         case .graphicsMagickNotReady:
-            return NSLocalizedString("GMNotReady", comment: "")
+            return String(localized: "GMNotReady")
             
         case .graphicsMagickVerificationFailed(let details):
-            return String(format: NSLocalizedString("GMExecutionFailed", comment: ""), details)
+            return String(format: String(localized: "GMExecutionFailed"), details)
             
         case .graphicsMagickExecutionFailed(let exitCode, let stderr):
-            let baseMessage = NSLocalizedString("GMExecutionException", comment: "")
+            let baseMessage = String(localized: "GMExecutionException")
             if let stderr = stderr, !stderr.isEmpty {
                 return "\(baseMessage): \(stderr)"
             }
             return "\(baseMessage) (exit code: \(exitCode))"
             
         case .directoryCreationFailed(let path, let underlyingError):
-            return String(
-                format: NSLocalizedString("CannotCreateOutputDir", comment: ""),
-                "\(path): \(underlyingError.localizedDescription)"
-            )
+            return String(localized: "CannotCreateOutputDir", defaultValue: "\(path): \(underlyingError.localizedDescription)")
             
         case .directoryReadFailed(let path, let underlyingError):
-            return String(
-                format: NSLocalizedString("ErrorReadingDirectory", comment: ""),
-                path
-            ) + ": " + underlyingError.localizedDescription
+            return String(format: String(localized: "ErrorReadingDirectory"), path) + ": " + underlyingError.localizedDescription
             
         case .fileNotFound(let path):
-            return String(
-                format: NSLocalizedString("ErrorScanningDirectory", comment: ""),
-                path,
-                "File not found"
-            )
+            return String(format: String(localized: "ErrorScanningDirectory"), path, String(localized: "FileNotFound"))
             
         case .filePropertiesUnavailable(let path):
-            return String(
-                format: NSLocalizedString("ErrorScanningDirectory", comment: ""),
-                path,
-                "Cannot read file properties"
-            )
+            return String(format: String(localized: "ErrorScanningDirectory"), path, String(localized: "CannotReadFileProperties"))
             
         case .imageDimensionsUnavailable(let path),
              .imageSourceCreationFailed(let path),
              .invalidImageFormat(let path):
-            return String(
-                format: NSLocalizedString("ErrorScanningDirectory", comment: ""),
-                path,
-                "Invalid image"
-            )
+            return String(format: String(localized: "ErrorScanningDirectory"), path, String(localized: "InvalidImageFormat"))
             
         case .pipeWriteFailed(let posixError):
-            return NSLocalizedString("GMExecutionException", comment: "") + ": " + posixError.localizedDescription
+            return String(localized: "GMExecutionException") + ": " + posixError.localizedDescription
             
         case .pipeBroken:
-            return NSLocalizedString("GMExecutionException", comment: "") + ": Pipe broken"
+            return String(localized: "GMExecutionException") + ": Pipe broken"
             
         case .processIOTimeout:
-            return NSLocalizedString("GMExecutionException", comment: "") + ": Process I/O timeout"
+            return String(localized: "GMExecutionException") + ": Process I/O timeout"
             
         case .commandEncodingFailed:
-            return NSLocalizedString("GMExecutionException", comment: "") + ": Command encoding failed"
+            return String(localized: "GMExecutionException") + ": Command encoding failed"
             
         case .invalidParameter(let parameter, let reason):
             return "\(parameter): \(reason)"
             
         case .noImagesFound(let directory):
-            return String(format: NSLocalizedString("NoImagesInDir", comment: ""), directory)
+            return String(localized: "NoImagesInDir", defaultValue: "\(directory)")
             
         case .processingCancelled:
-            return NSLocalizedString("ProcessingStopped", comment: "")
+            return String(localized: "ProcessingStopped")
         }
     }
 }

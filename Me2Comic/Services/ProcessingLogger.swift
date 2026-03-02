@@ -152,49 +152,35 @@ class ProcessingLogger: ObservableObject, LoggingProtocol {
 
     /// Log processing start parameters
     func logStartParameters(_ parameters: ProcessingParameters) {
-        let grayStatus = NSLocalizedString(
-            parameters.useGrayColorspace ? "GrayEnabled" : "GrayDisabled",
-            comment: ""
-        )
+        let grayStatus = parameters.useGrayColorspace ? String(localized: "GrayEnabled") : String(localized: "GrayDisabled")
         
         if parameters.unsharpAmount > 0 {
-            log(String(
-                format: NSLocalizedString("StartProcessingWithUnsharp", comment: ""),
-                parameters.widthThreshold,
-                parameters.resizeHeight,
-                parameters.quality,
-                parameters.threadCount,
-                parameters.unsharpRadius,
-                parameters.unsharpSigma,
-                parameters.unsharpAmount,
-                parameters.unsharpThreshold,
-                grayStatus
-            ), level: .info)
+            log(String(format: String(localized: "StartProcessingWithUnsharp"), 
+                       parameters.widthThreshold, 
+                       parameters.resizeHeight, 
+                       parameters.quality, 
+                       parameters.threadCount, 
+                       parameters.unsharpRadius, 
+                       parameters.unsharpSigma, 
+                       parameters.unsharpAmount, 
+                       parameters.unsharpThreshold, 
+                       grayStatus), level: .info)
         } else {
-            log(String(
-                format: NSLocalizedString("StartProcessingNoUnsharp", comment: ""),
-                parameters.widthThreshold,
-                parameters.resizeHeight,
-                parameters.quality,
-                parameters.threadCount,
-                grayStatus
-            ), level: .info)
+            log(String(format: String(localized: "StartProcessingNoUnsharp"), 
+                       parameters.widthThreshold, 
+                       parameters.resizeHeight, 
+                       parameters.quality, 
+                       parameters.threadCount, 
+                       grayStatus), level: .info)
         }
     }
     
     /// Format processing time for display
     func formatProcessingTime(_ seconds: Int) -> String {
         if seconds < 60 {
-            return String(
-                format: NSLocalizedString("ProcessingTimeSeconds", comment: ""),
-                seconds
-            )
+            return String(format: String(localized: "ProcessingTimeSeconds"), seconds)
         } else {
-            return String(
-                format: NSLocalizedString("ProcessingTimeMinutesSeconds", comment: ""),
-                seconds / 60,
-                seconds % 60
-            )
+            return String(format: String(localized: "ProcessingTimeMinutesSeconds"), seconds / 60, seconds % 60)
         }
     }
     

@@ -27,7 +27,7 @@ struct CPUUsageChartView: View {
                         .foregroundColor(.accentGreen)
                         .frame(width: 24)
                     
-                    Text(NSLocalizedString("CPUUsage", comment: ""))
+                    Text("CPUUsage")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.textLight)
                 }

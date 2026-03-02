@@ -66,13 +66,9 @@ struct ProcessingView: View {
             
             // Status Text
             VStack(spacing: 8) {
-                Text(NSLocalizedString("ProcessingStatus", comment: "正在处理..."))
+                Text("ProcessingStatus")
                     .font(.system(size: 20, weight: .light))
                     .foregroundColor(.textLight)
-                
-                //   Text(NSLocalizedString("EstimatedTimeRemaining", comment: "预计剩余时间: 2分34秒"))
-                //       .font(.system(size: 13))
-                //        .foregroundColor(.textMuted)
             }
             
             // Stop Button
@@ -80,7 +76,7 @@ struct ProcessingView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 12))
-                    Text(NSLocalizedString("Stop", comment: "停止"))
+                    Text("Stop")
                         .font(.system(size: 14, weight: .medium))
                 }
                 .foregroundColor(.errorRed)

@@ -106,12 +106,12 @@ class GraphicsMagickHelper {
                   let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !output.isEmpty
             else {
-                logHandler(NSLocalizedString("GMNotFoundViaWhich", comment: "Cannot find gm via `which`"))
+                logHandler(String(localized: "GMNotFoundViaWhich"))
                 return nil
             }
             return output
         } catch {
-            logHandler(NSLocalizedString("GMWhichCommandFailed", comment: "`which gm` command failed"))
+            logHandler(String(localized: "GMWhichCommandFailed"))
             return nil
         }
     }
@@ -133,17 +133,17 @@ class GraphicsMagickHelper {
             try task.run()
             task.waitUntilExit()
             let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
-            let outputMessage = String(data: outputData, encoding: .utf8) ?? NSLocalizedString("CannotReadOutput", comment: "")
+            let outputMessage = String(data: outputData, encoding: .utf8) ?? String(localized: "CannotReadOutput")
 
             if task.terminationStatus != 0 {
-                logHandler(NSLocalizedString("GMExecutionFailed", comment: "gm command failed to run properly"))
+                logHandler(String(localized: "GMExecutionFailed"))
                 return .failure(.graphicsMagickVerificationFailed(details: outputMessage))
             } else {
-                logHandler(String(format: NSLocalizedString("GraphicsMagickVersion", comment: ""), outputMessage))
+                logHandler(String(localized: "GraphicsMagickVersion", defaultValue: "\(outputMessage)"))
                 return .success(())
             }
         } catch {
-            logHandler(NSLocalizedString("GMExecutionException", comment: "Exception thrown when trying to run gm"))
+            logHandler(String(localized: "GMExecutionException"))
             return .failure(.graphicsMagickVerificationFailed(details: error.localizedDescription))
         }
     }

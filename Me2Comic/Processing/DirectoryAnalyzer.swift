@@ -72,7 +72,7 @@ final class DirectoryAnalyzer: Sendable {
         switch subdirectoriesResult {
         case .success(let subdirectories):
             guard !subdirectories.isEmpty else {
-                logHandler(NSLocalizedString("NoSubdirectories", comment: ""), .warning, "DirectoryAnalyzer")
+                logHandler(String(localized: "NoSubdirectories"), .warning, "DirectoryAnalyzer")
                 return []
             }
             

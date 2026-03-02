@@ -20,15 +20,15 @@ enum AppTheme: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .auto:
-            return NSLocalizedString("Auto", comment: "")
+            return String(localized: "Auto")
         case .midnightBlue:
-            return NSLocalizedString("ThemeMidnightBlue", comment: "")
+            return String(localized: "ThemeMidnightBlue")
         case .warmSand:
-            return NSLocalizedString("ThemeWarmSand", comment: "")
+            return String(localized: "ThemeWarmSand")
         case .forestShadow:
-            return NSLocalizedString("ThemeForestShadow", comment: "")
+            return String(localized: "ThemeForestShadow")
         case .macOsDark:
-            return NSLocalizedString("ThemeMacOsDark", comment: "")
+            return String(localized: "ThemeMacOsDark")
         }
     }
     

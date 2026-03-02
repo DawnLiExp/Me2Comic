@@ -28,18 +28,11 @@ final class NotificationManager: Sendable {
         duration: String
     ) async throws {
         let subtitle = failedCount > 0
-            ? String(
-                format: NSLocalizedString("ProcessingCompleteWithFailures", comment: ""),
-                processedCount,
-                failedCount
-            )
-            : String(
-                format: NSLocalizedString("ProcessingCompleteSuccess", comment: ""),
-                processedCount
-            )
+            ? String(format: String(localized: "ProcessingCompleteWithFailures"), processedCount, failedCount)
+            : String(format: String(localized: "ProcessingCompleteSuccess"), processedCount)
 
         try await sendNotification(
-            title: NSLocalizedString("ProcessingCompleteTitle", comment: ""),
+            title: String(localized: "ProcessingCompleteTitle"),
             subtitle: subtitle,
             body: duration
         )

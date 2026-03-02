@@ -67,7 +67,7 @@ class ImageProcessor: ObservableObject {
         case .success(let path):
             gmReady = true
             gmPath = path
-            logger.log(NSLocalizedString("GMReady", comment: "GraphicsMagick is ready."), level: .success, source: "ImageProcessor")
+            logger.log(String(localized: "GMReady"), level: .success, source: "ImageProcessor")
         case .failure(let error):
             gmReady = false
             logger.logError(error.localizedDescription, source: "ImageProcessor")
@@ -83,8 +83,8 @@ class ImageProcessor: ObservableObject {
         activeProcessingTask?.cancel()
         activeProcessingTask = nil
         
-        logger.log(NSLocalizedString("ProcessingStopRequested", comment: ""), level: .warning, source: "ImageProcessor")
-        logger.log(NSLocalizedString("ProcessingStopped", comment: ""), level: .warning, source: "ImageProcessor")
+        logger.log(String(localized: "ProcessingStopRequested"), level: .warning, source: "ImageProcessor")
+        logger.log(String(localized: "ProcessingStopped"), level: .warning, source: "ImageProcessor")
         
         stateManager.stopProcessing()
     }
@@ -116,7 +116,7 @@ class ImageProcessor: ObservableObject {
     /// Main async processing implementation
     private func processImagesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
         guard gmReady else {
-            logger.logError(NSLocalizedString("GMNotReady", comment: "GraphicsMagick is not ready. Please check installation."), source: "ImageProcessor")
+            logger.logError(String(localized: "GMNotReady"), source: "ImageProcessor")
             stateManager.stopProcessing()
             return
         }
@@ -175,7 +175,7 @@ class ImageProcessor: ObservableObject {
         
         let totalImages = scanResults.reduce(0) { $0 + $1.imageFiles.count }
         stateManager.setTotalImages(totalImages)
-        logger.log(String(format: NSLocalizedString("TotalImagesToProcess", comment: ""), totalImages), level: .info, source: "ImageProcessor")
+        logger.log(String(format: String(localized: "TotalImagesToProcess"), totalImages), level: .info, source: "ImageProcessor")
         
         #if DEBUG
         logger.logDebug("Processing \(totalImages) total images across \(scanResults.count) directories", source: "ImageProcessor")
@@ -416,26 +416,17 @@ class ImageProcessor: ObservableObject {
             scanResults
                 .filter { $0.category == .isolated }
                 .forEach { result in
-                    logger.log(String(
-                        format: NSLocalizedString("ProcessedSubdir", comment: ""),
-                        result.directoryURL.lastPathComponent
-                    ), level: .success, source: "ImageProcessor")
+                    logger.log(String(format: String(localized: "ProcessedSubdir"), result.directoryURL.lastPathComponent), level: .success, source: "ImageProcessor")
                 }
             
             // Add global batch results
             if globalProcessedCount > 0 {
-                logger.log(String(
-                    format: NSLocalizedString("CompletedGlobalBatchWithCount", comment: ""),
-                    globalProcessedCount
-                ), level: .success, source: "ImageProcessor")
+                logger.log(String(format: String(localized: "CompletedGlobalBatchWithCount"), globalProcessedCount), level: .success, source: "ImageProcessor")
             }
             
             // Add failure summary
             if !failedFiles.isEmpty {
-                logger.log(String(
-                    format: NSLocalizedString("FailedFiles", comment: ""),
-                    failedFiles.count
-                ), level: .error, source: "ImageProcessor")
+                logger.log(String(format: String(localized: "FailedFiles"), failedFiles.count), level: .error, source: "ImageProcessor")
                 for item in failedFiles.prefix(10) {
                     logger.log("  - \(item)", level: .error, source: "ImageProcessor")
                 }
@@ -446,16 +437,13 @@ class ImageProcessor: ObservableObject {
             }
             
             // Success: Total images processed
-            logger.log(String(
-                format: NSLocalizedString("TotalImagesProcessed", comment: ""),
-                processedCount
-            ), level: .info, source: "ImageProcessor")
+            logger.log(String(format: String(localized: "TotalImagesProcessed"), processedCount), level: .info, source: "ImageProcessor")
                 
             // Success: Processing time
             logger.log(duration, level: .info, source: "ImageProcessor")
                 
             // Success: Processing complete
-            logger.log(NSLocalizedString("ProcessingComplete", comment: ""), level: .success, source: "ImageProcessor")
+            logger.log(String(localized: "ProcessingComplete"), level: .success, source: "ImageProcessor")
         }
         
         // Ensure all logs are processed before marking completion

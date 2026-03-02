@@ -75,10 +75,7 @@ class BatchTaskOrganizer {
             let subName = result.directoryURL.lastPathComponent
             let outputSubdir = outputDir.appendingPathComponent(subName)
             
-            logger.appendLog(String(
-                format: NSLocalizedString("StartProcessingSubdir", comment: ""),
-                subName
-            ))
+            logger.appendLog(String(localized: "StartProcessingSubdir", defaultValue: "\(subName)"))
             
             let batchSize = calculateIsolatedBatchSize(
                 imageCount: result.imageFiles.count,
@@ -123,7 +120,7 @@ class BatchTaskOrganizer {
             logger.logDebug("High-resolution global batch: \(highResImages.count) images from \(highResGlobalResults.count) directories", source: "BatchTaskOrganizer")
             #endif
             
-            logger.appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+            logger.appendLog(String(localized: "StartProcessingGlobalBatch"))
             
             let highResBatchSize = calculateGlobalBatchSize(
                 imageCount: highResImages.count,
@@ -152,7 +149,7 @@ class BatchTaskOrganizer {
             #endif
             
             if highResGlobalResults.isEmpty {
-                logger.appendLog(NSLocalizedString("StartProcessingGlobalBatch", comment: ""))
+                logger.appendLog(String(localized: "StartProcessingGlobalBatch"))
             }
             
             let normalBatchSize = calculateGlobalBatchSize(

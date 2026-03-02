@@ -19,7 +19,7 @@ struct SidebarView: View {
     @Binding var logMessages: [LogEntry]
     
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-    private let buildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? NSLocalizedString("BuildVersionDefault", comment: "")
+    private let buildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? String(localized: "BuildVersionDefault")
     
     var body: some View {
         ZStack {
@@ -62,14 +62,14 @@ struct SidebarView: View {
                 VStack(spacing: 4) {
                     NavigationItem(
                         icon: "square.grid.2x2",
-                        title: NSLocalizedString("BasicSettings", comment: "基础设置"),
+                        title: String(localized: "BasicSettings"),
                         isSelected: selectedTab == "basic",
                         action: { selectedTab = "basic" }
                     )
                     
                     NavigationItem(
                         icon: "slider.horizontal.3",
-                        title: NSLocalizedString("AdvancedParameters", comment: "高级参数"),
+                        title: String(localized: "AdvancedParameters"),
                         isSelected: selectedTab == "advanced",
                         action: { selectedTab = "advanced" }
                     )
@@ -92,13 +92,16 @@ struct SidebarView: View {
                             .font(.system(size: 14))
                             .foregroundColor(.textMuted)
                         
-                        Text(NSLocalizedString("ShowLogs", comment: "显示日志"))
+                        Text(String(localized: "ShowLogs"))
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(.textMuted)
                         
                         Spacer()
                         
-                        Toggle("", isOn: $showLogs)
+                        Toggle(isOn: $showLogs) {
+                            EmptyView()
+                        }
+                            .labelsHidden()
                             .toggleStyle(MinimalToggleStyle())
                     }
                     .padding(.horizontal, 20)
@@ -112,7 +115,7 @@ struct SidebarView: View {
                             HStack {
                                 Image(systemName: "trash")
                                     .font(.system(size: 12))
-                                Text(String(format: NSLocalizedString("ClearLogsCount", comment: "清理日志 (%d)"), logMessages.count))
+                                Text(String(format: String(localized: "ClearLogsCount"), logMessages.count))
                                     .font(.system(size: 12, weight: .regular))
                             }
                             .foregroundColor(.textMuted)
@@ -167,7 +170,7 @@ struct StatusIndicator: View {
                 Text("GraphicsMagick")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.textLight)
-                Text(gmReady ? NSLocalizedString("Ready", comment: "准备就绪") : NSLocalizedString("Detecting", comment: "检测中..."))
+                Text(gmReady ? String(localized: "Ready") : String(localized: "Detecting"))
                     .font(.system(size: 10))
                     .foregroundColor(.textMuted)
             }

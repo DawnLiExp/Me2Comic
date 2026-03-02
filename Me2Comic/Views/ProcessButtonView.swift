@@ -23,7 +23,7 @@ struct ProcessButton: View {
                 Image(systemName: "play.fill")
                     .font(.system(size: 14))
 
-                Text(NSLocalizedString("StartProcessing", comment: "开始处理"))
+                Text("StartProcessing")
                     .font(.system(size: 15, weight: .medium))
             }
             .foregroundColor(enabled ? .white : .textMuted)

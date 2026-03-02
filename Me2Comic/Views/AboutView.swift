@@ -28,7 +28,7 @@ struct AboutView: View {
     
     private var displayBuildVersion: String {
         if buildVersion.isEmpty {
-            return NSLocalizedString("BuildVersionDefault", comment: "")
+            return String(localized: "BuildVersionDefault")
         }
         return buildVersion
     }
@@ -111,7 +111,7 @@ struct AboutView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(secondaryTextColor)
                 
-                Text(String(format: NSLocalizedString("BuildVersionLabel", comment: ""), displayBuildVersion))
+                Text(String(format: String(localized: "BuildVersionLabel"), displayBuildVersion))
                     .font(.system(size: 11))
                     .foregroundColor(tertiaryTextColor)
             }
@@ -128,16 +128,17 @@ struct AboutView: View {
         VStack(spacing: 24) {
             // Language Setting
             SettingRow(
-                title: NSLocalizedString("LanguageSettings", comment: ""),
+                title: String(localized: "LanguageSettings"),
                 value: selectedLanguage,
                 hasPendingChange: hasPendingLanguageChange
             ) {
-                Picker("", selection: $selectedLanguage) {
+                Picker(selection: $selectedLanguage, label: EmptyView()) {
                     Text("简体中文").tag("zh-Hans")
                     Text("繁體中文").tag("zh-Hant")
                     Text("English").tag("en")
                     Text("日本語").tag("ja")
                 }
+                .labelsHidden()
                 .pickerStyle(.menu)
                 .frame(width: 120)
                 .onChange(of: selectedLanguage) { _, newValue in
@@ -147,15 +148,16 @@ struct AboutView: View {
             
             // Theme Setting
             SettingRow(
-                title: NSLocalizedString("ThemeSettings", comment: ""),
+                title: String(localized: "ThemeSettings"),
                 value: selectedTheme,
                 hasPendingChange: hasPendingThemeChange
             ) {
-                Picker("", selection: $selectedTheme) {
+                Picker(selection: $selectedTheme, label: EmptyView()) {
                     ForEach(AppTheme.allCases, id: \.self) { theme in
                         Text(theme.displayName).tag(theme)
                     }
                 }
+                .labelsHidden()
                 .pickerStyle(.menu)
                 .frame(width: 120)
                 .onChange(of: selectedTheme) { _, newTheme in
@@ -170,7 +172,7 @@ struct AboutView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.orange)
                     
-                    Text(NSLocalizedString("RestartRequired", comment: ""))
+                    Text(String(localized: "RestartRequired"))
                         .font(.system(size: 11))
                         .foregroundColor(secondaryTextColor)
                 }
@@ -181,12 +183,12 @@ struct AboutView: View {
     
     private var restartAlert: Alert {
         Alert(
-            title: Text(NSLocalizedString("RestartRequired", comment: "")),
+            title: Text(String(localized: "RestartRequired")),
             message: Text(restartMessage),
-            primaryButton: .default(Text(NSLocalizedString("RestartNow", comment: ""))) {
+            primaryButton: .default(Text(String(localized: "RestartNow"))) {
                 Task { await performRestart() }
             },
-            secondaryButton: .cancel(Text(NSLocalizedString("Later", comment: "")))
+            secondaryButton: .cancel(Text(String(localized: "Later")))
         )
     }
     
@@ -203,11 +205,11 @@ struct AboutView: View {
     private var restartMessage: String {
         switch pendingChangeType {
         case .language:
-            return NSLocalizedString("RestartRequiredLanguage", comment: "")
+            return String(localized: "RestartRequiredLanguage")
         case .theme:
-            return NSLocalizedString("RestartRequiredTheme", comment: "")
+            return String(localized: "RestartRequiredTheme")
         case .both:
-            return NSLocalizedString("RestartRequiredBoth", comment: "")
+            return String(localized: "RestartRequiredBoth")
         case .none:
             return ""
         }

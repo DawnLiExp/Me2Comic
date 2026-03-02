@@ -44,7 +44,7 @@ struct MainContentView: View {
             // Directory Selection
             VStack(spacing: 16) {
                 HStack(spacing: 4) {
-                    Text(NSLocalizedString("Input Directory", comment: "输入目录"))
+                    Text(String(localized: "Input Directory"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
                         
@@ -55,14 +55,14 @@ struct MainContentView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .popover(isPresented: $showInputTip) {
-                        Text(NSLocalizedString("Input Directory Placeholder", comment: "选择包含子文件夹的图片目录"))
+                        Text(String(localized: "Input Directory Placeholder"))
                             .padding()
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                     
                 MinimalDirectorySelector(
-                    title: inputDirectory?.lastPathComponent ?? NSLocalizedString("InputNotSelected", comment: "未选择输入目录"),
+                    title: inputDirectory?.lastPathComponent ?? String(localized: "InputNotSelected"),
                     subtitle: inputDirectory?.path ?? "",
                     path: inputDirectory?.path,
                     icon: "folder",
@@ -74,7 +74,7 @@ struct MainContentView: View {
                 )
                     
                 HStack(spacing: 4) {
-                    Text(NSLocalizedString("Output Directory", comment: "输出目录"))
+                    Text(String(localized: "Output Directory"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
                         
@@ -85,7 +85,7 @@ struct MainContentView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .popover(isPresented: $showOutputTip) {
-                        Text(NSLocalizedString("Output Directory Placeholder", comment: "处理后的图片保存位置"))
+                        Text(String(localized: "Output Directory Placeholder"))
                             .padding()
                     }
                     
@@ -113,7 +113,7 @@ struct MainContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                     
                 MinimalDirectorySelector(
-                    title: outputDirectory?.lastPathComponent ?? NSLocalizedString("OutputNotSelected", comment: "未选择输出目录"),
+                    title: outputDirectory?.lastPathComponent ?? String(localized: "OutputNotSelected"),
                     subtitle: outputDirectory?.path ?? "",
                     path: outputDirectory?.path,
                     icon: "folder.badge.plus",
@@ -197,37 +197,37 @@ struct BasicParametersView: View {
                     Image(systemName: "gearshape.2")
                         .font(.system(size: 14))
                         .foregroundColor(.accentOrange)
-                    Text(NSLocalizedString("BasicParameters", comment: "基础参数选项"))
+                    Text(String(localized: "BasicParameters"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
                 }
                 
                 MinimalParameterField(
-                    label: NSLocalizedString("WidthUnder", comment: "宽度阀值"),
+                    label: String(localized: "WidthUnder"),
                     value: $widthThreshold,
-                    unit: NSLocalizedString("pxUnit", comment: "px"),
-                    hint: NSLocalizedString("UnderWidthDesc", comment: "宽度小于此值时直接转换，否则先分裂切为左右两部分")
+                    unit: String(localized: "pxUnit"),
+                    hint: String(localized: "UnderWidthDesc")
                 )
             
                 MinimalParameterField(
-                    label: NSLocalizedString("ResizeHeight", comment: "转换高度"),
+                    label: String(localized: "ResizeHeight"),
                     value: $resizeHeight,
-                    unit: NSLocalizedString("pxUnit", comment: "px"),
-                    hint: NSLocalizedString("ResizeHDesc", comment: "转换后图片高度值")
+                    unit: String(localized: "pxUnit"),
+                    hint: String(localized: "ResizeHDesc")
                 )
             
                 MinimalParameterField(
-                    label: NSLocalizedString("OutputQuality", comment: "输出质量（%）："),
+                    label: String(localized: "OutputQuality"),
                     value: $quality,
                     unit: "%",
-                    hint: NSLocalizedString("QualityDesc", comment: "JPG压缩质量（1-100），值越高质量越好但文件越大")
+                    hint: String(localized: "QualityDesc")
                 )
             
                 // Thread Count Slider
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         HStack(spacing: 6) {
-                            Text(NSLocalizedString("ThreadCount", comment: "并发线程数："))
+                            Text(String(localized: "ThreadCount"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.textLight)
                             
@@ -238,7 +238,7 @@ struct BasicParametersView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                             .popover(isPresented: $showThreadTip) {
-                                Text(NSLocalizedString("ThreadsDesc", comment: ""))
+                                Text(String(localized: "ThreadsDesc"))
                                     .font(.system(size: 11))
                                     .foregroundColor(.textLight)
                                     .padding(10)
@@ -248,7 +248,7 @@ struct BasicParametersView: View {
                     
                         Spacer()
                     
-                        Text(threadCount == 0 ? NSLocalizedString("Auto", comment: "自动") : String(format: NSLocalizedString("ThreadsCount", comment: "%d 线程"), threadCount))
+                        Text(threadCount == 0 ? String(localized: "Auto") : String(format: String(localized: "ThreadsCount"), threadCount))
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .foregroundColor(.accentGreen)
                     }
@@ -263,7 +263,7 @@ struct BasicParametersView: View {
                 // Grayscale Toggle
                 HStack {
                     HStack(spacing: 6) {
-                        Text(NSLocalizedString("GrayColorspace", comment: "灰度色彩空间（黑白）："))
+                        Text(String(localized: "GrayColorspace"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.textLight)
                         
@@ -274,7 +274,7 @@ struct BasicParametersView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .popover(isPresented: $showGrayTip) {
-                            Text(NSLocalizedString("GrayDesc", comment: "on=转换至灰度空间（8-bit），off=保留原始色彩空间"))
+                            Text(String(localized: "GrayDesc"))
                                 .font(.system(size: 11))
                                 .foregroundColor(.textLight)
                                 .padding(10)
@@ -284,7 +284,10 @@ struct BasicParametersView: View {
                     
                     Spacer()
 
-                    Toggle("", isOn: $useGrayColorspace)
+                    Toggle(isOn: $useGrayColorspace) {
+                        EmptyView()
+                    }
+                        .labelsHidden()
                         .toggleStyle(MinimalToggleStyle())
                 }
                 .padding(.vertical, 8)
@@ -321,7 +324,7 @@ struct AdvancedParametersView: View {
                     Image(systemName: "wand.and.rays")
                         .font(.system(size: 14))
                         .foregroundColor(.accentOrange)
-                    Text(NSLocalizedString("SharpeningSettings", comment: "锐化设置"))
+                    Text(String(localized: "SharpeningSettings"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
 
@@ -332,13 +335,16 @@ struct AdvancedParametersView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .popover(isPresented: $showUnsharpTip) {
-                        Text(NSLocalizedString("UnsharpDesc", comment: "锐化参数说明"))
+                        Text(String(localized: "UnsharpDesc"))
                             .padding()
                     }
 
                     Spacer()
 
-                    Toggle("", isOn: $enableUnsharp)
+                    Toggle(isOn: $enableUnsharp) {
+                        EmptyView()
+                    }
+                        .labelsHidden()
                         .toggleStyle(MinimalToggleStyle())
                 }
                 
@@ -347,28 +353,28 @@ struct AdvancedParametersView: View {
                         label: "Radius",
                         value: $unsharpRadius,
                         unit: "",
-                        hint: NSLocalizedString("RadiusDesc", comment: "锐化半径，控制影响的区域大小")
+                        hint: String(localized: "RadiusDesc")
                     )
                     
                     MinimalParameterField(
                         label: "Sigma",
                         value: $unsharpSigma,
                         unit: "",
-                        hint: NSLocalizedString("SigmaDesc", comment: "锐化模糊半径，越大锐化效果越柔和")
+                        hint: String(localized: "SigmaDesc")
                     )
                     
                     MinimalParameterField(
                         label: "Amount",
                         value: $unsharpAmount,
                         unit: "",
-                        hint: NSLocalizedString("AmountDesc", comment: "锐化量，控制锐化效果的强度")
+                        hint: String(localized: "AmountDesc")
                     )
                     
                     MinimalParameterField(
                         label: "Threshold",
                         value: $unsharpThreshold,
                         unit: "",
-                        hint: NSLocalizedString("ThreshDesc", comment: "锐化阈值，只对高于此值的边缘进行锐化")
+                        hint: String(localized: "ThreshDesc")
                     )
                 }
             }
@@ -378,10 +384,10 @@ struct AdvancedParametersView: View {
             
             // Batch Processing Parameters
             MinimalParameterField(
-                label: NSLocalizedString("BatchSize", comment: "批处理大小"),
+                label: String(localized: "BatchSize"),
                 value: $batchSize,
-                unit: NSLocalizedString("ImagesPerBatch", comment: "张"),
-                hint: NSLocalizedString("BatchSizeDesc", comment: "每批图像数（张）："),
+                unit: String(localized: "ImagesPerBatch"),
+                hint: String(localized: "BatchSizeDesc"),
                 isInputDisabled: threadCount == 0
             )
         }
@@ -433,7 +439,10 @@ struct MinimalParameterField: View {
             Spacer()
             
             HStack(spacing: 4) {
-                TextField("", text: $value)
+                TextField(text: $value) {
+                    EmptyView()
+                }
+                    .labelsHidden()
                     .textFieldStyle(PlainTextFieldStyle())
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .foregroundColor(isInputDisabled ? .textMuted : .textLight)

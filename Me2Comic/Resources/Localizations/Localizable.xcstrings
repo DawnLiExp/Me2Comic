@@ -1,9 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-
-    },
     "%lld / %lld" : {
       "localizations" : {
         "en" : {
@@ -524,6 +521,34 @@
         }
       }
     },
+    "CannotReadFileProperties" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cannot read file properties"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイル属性を読み取れません"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取文件属性"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法讀取檔案屬性"
+          }
+        }
+      }
+    },
     "CannotReadOutput" : {
       "localizations" : {
         "en" : {
@@ -789,29 +814,7 @@
         }
       }
     },
-    "EstimatedTimeRemaining" : {
-      "comment" : "预计剩余时间: 2分34秒",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "残り時間の予測"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "预计剩余时间"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "預計剩餘時間"
-          }
-        }
-      }
-    },
+
     "FailedFiles" : {
       "localizations" : {
         "en" : {
@@ -865,6 +868,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無法建立目錄遍歷器"
+          }
+        }
+      }
+    },
+    "FileNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File not found"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイルが見つかりません"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件未找到"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檔案未找到"
           }
         }
       }
@@ -1380,6 +1411,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "每批影像數無效。請輸入 1 至 1000 的整數。"
+          }
+        }
+      }
+    },
+    "InvalidImageFormat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid image format"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無効な画像形式"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无效的图像格式"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無效的影像格式"
           }
         }
       }

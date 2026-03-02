@@ -55,7 +55,7 @@ class AutoParameterCalculator {
             return (parameters.threadCount, parameters.batchSize)
         }
         
-        logger.appendLog(NSLocalizedString("AutoModeEnabled", comment: ""))
+        logger.appendLog(String(localized: "AutoModeEnabled"))
         
         #if DEBUG
         logger.logDebug("Auto mode enabled for \(totalImages) images\(hasHighResolution ? " [High Resolution Detected]" : "")", source: "AutoParameterCalculator")
@@ -69,11 +69,7 @@ class AutoParameterCalculator {
                 threadCount: threadCount
             )
             
-            logger.appendLog(String(
-                format: NSLocalizedString("AutoAllocatedParameters", comment: ""),
-                threadCount,
-                batchSize
-            ))
+            logger.appendLog(String(format: String(localized: "AutoAllocatedParameters"), threadCount, batchSize))
             
             #if DEBUG
             logger.logDebug("High resolution optimization: threads=\(threadCount), batch=\(batchSize)", source: "AutoParameterCalculator")
@@ -85,11 +81,7 @@ class AutoParameterCalculator {
         // Standard auto parameter calculation
         let autoParams = calculateAutoParameters(totalImageCount: totalImages)
         
-        logger.appendLog(String(
-            format: NSLocalizedString("AutoAllocatedParameters", comment: ""),
-            autoParams.threadCount,
-            autoParams.batchSize
-        ))
+        logger.appendLog(String(format: String(localized: "AutoAllocatedParameters"), autoParams.threadCount, autoParams.batchSize))
         
         #if DEBUG
         logger.logDebug("Auto-calculated parameters: threads=\(autoParams.threadCount), batch=\(autoParams.batchSize)", source: "AutoParameterCalculator")

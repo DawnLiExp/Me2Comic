@@ -237,10 +237,7 @@ struct ImageProcessorView: View {
         saveDirectoryToUserDefaults(directory, key: key)
 
         if isUserSelection, let url = directory {
-            let msg = String(
-                format: NSLocalizedString(isInput ? "SelectedInputDir" : "SelectedOutputDir", comment: ""),
-                url.path
-            )
+            let msg = String(format: String(localized: isInput ? "SelectedInputDir" : "SelectedOutputDir"), url.path)
             imageProcessor.logger.log(msg, level: .success, source: "ImageProcessorView")
         }
     }
@@ -363,10 +360,7 @@ struct ImageProcessorView: View {
 
         if let savedInputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastInputDirectory) {
             inputDirectory = savedInputDir
-            let msg = String(
-                format: NSLocalizedString("LoadedLastInputDir", comment: ""),
-                savedInputDir.path
-            )
+            let msg = String(format: String(localized: "LoadedLastInputDir"), savedInputDir.path)
             imageProcessor.logger.log(msg, level: .success)
 
             #if DEBUG
@@ -380,10 +374,7 @@ struct ImageProcessorView: View {
 
         if let savedOutputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastOutputDirectory) {
             outputDirectory = savedOutputDir
-            let msg = String(
-                format: NSLocalizedString("LoadedLastOutputDir", comment: ""),
-                savedOutputDir.path
-            )
+            let msg = String(format: String(localized: "LoadedLastOutputDir"), savedOutputDir.path)
             imageProcessor.logger.log(msg, level: .success)
 
             #if DEBUG
