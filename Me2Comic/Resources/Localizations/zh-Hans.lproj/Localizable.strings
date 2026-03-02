@@ -33,6 +33,7 @@
 "AdvancedParameters" = "高级设置";
 "ClearLogsCount" = "清理日志 (%d)";
 "ShowLogs" = "显示日志";
+"CPUUsage" = "CPU使用率";
 
 /* Main Content */
 "Input Directory" = "输入目录：";
