@@ -103,7 +103,7 @@ enum SystemInfoHelper {
         var size = MemoryLayout<UInt64>.size
         let result = sysctlbyname("hw.memsize", &memory, &size, nil, 0)
         
-        if result == 0 && memory > 0 {
+        if result == 0, memory > 0 {
             logger?("Physical memory detected: \(memory / 1024 / 1024 / 1024) GB", .debug, "SystemInfoHelper")
             return .success(memory)
         } else {

@@ -62,7 +62,7 @@ struct LogEntry: Sendable {
         timeFormatter.dateFormat = "HH:mm:ss.SSS"
         let timeString = timeFormatter.string(from: timestamp)
         
-        if let source = source {
+        if let source {
             return "\(timeString) \(level.prefix) [\(source)] \(message)"
         } else {
             return "\(timeString) \(level.prefix) \(message)"
@@ -155,22 +155,22 @@ class ProcessingLogger: ObservableObject, LoggingProtocol {
         let grayStatus = parameters.useGrayColorspace ? String(localized: "GrayEnabled") : String(localized: "GrayDisabled")
         
         if parameters.unsharpAmount > 0 {
-            log(String(format: String(localized: "StartProcessingWithUnsharp"), 
-                       parameters.widthThreshold, 
-                       parameters.resizeHeight, 
-                       parameters.quality, 
-                       parameters.threadCount, 
-                       parameters.unsharpRadius, 
-                       parameters.unsharpSigma, 
-                       parameters.unsharpAmount, 
-                       parameters.unsharpThreshold, 
+            log(String(format: String(localized: "StartProcessingWithUnsharp"),
+                       parameters.widthThreshold,
+                       parameters.resizeHeight,
+                       parameters.quality,
+                       parameters.threadCount,
+                       parameters.unsharpRadius,
+                       parameters.unsharpSigma,
+                       parameters.unsharpAmount,
+                       parameters.unsharpThreshold,
                        grayStatus), level: .info)
         } else {
-            log(String(format: String(localized: "StartProcessingNoUnsharp"), 
-                       parameters.widthThreshold, 
-                       parameters.resizeHeight, 
-                       parameters.quality, 
-                       parameters.threadCount, 
+            log(String(format: String(localized: "StartProcessingNoUnsharp"),
+                       parameters.widthThreshold,
+                       parameters.resizeHeight,
+                       parameters.quality,
+                       parameters.threadCount,
                        grayStatus), level: .info)
         }
     }

@@ -77,7 +77,7 @@ extension ProcessingError: LocalizedError {
             
         case .graphicsMagickExecutionFailed(let exitCode, let stderr):
             let baseMessage = String(localized: "GMExecutionException")
-            if let stderr = stderr, !stderr.isEmpty {
+            if let stderr, !stderr.isEmpty {
                 return "\(baseMessage): \(stderr)"
             }
             return "\(baseMessage) (exit code: \(exitCode))"

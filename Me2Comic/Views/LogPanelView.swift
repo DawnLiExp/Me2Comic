@@ -61,7 +61,7 @@ struct LogPanelMinimal: View {
                 }
                 .background(Color.bgSecondary)
                 .onChange(of: logMessages.count) { oldCount, newCount in
-                    guard autoScroll && newCount > oldCount else { return }
+                    guard autoScroll, newCount > oldCount else { return }
                     proxy.scrollTo(newCount - 1, anchor: .bottom)
                 }
             }
@@ -102,7 +102,7 @@ struct LogPanelMinimal: View {
     
     private func copyAllLogs() {
         let logText = logMessages
-            .map { $0.displayMessage }
+            .map(\.displayMessage)
             .joined(separator: "\n")
         
         NSPasteboard.general.clearContents()

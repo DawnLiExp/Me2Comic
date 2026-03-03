@@ -10,7 +10,10 @@ import SwiftUI
 // MARK: - Theme Definition
 
 enum AppTheme: String, CaseIterable, Identifiable {
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
+
     case auto
     case midnightBlue
     case warmSand

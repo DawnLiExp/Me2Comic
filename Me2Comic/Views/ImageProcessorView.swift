@@ -284,7 +284,7 @@ struct ImageProcessorView: View {
         let savedThreadCount = defaults.integer(forKey: UserDefaultsKeys.threadCount)
         if savedThreadCount == 0 {
             threadCount = 0 // 0 = Auto mode
-        } else if savedThreadCount >= 1 && savedThreadCount <= maxThreadCount {
+        } else if savedThreadCount >= 1, savedThreadCount <= maxThreadCount {
             threadCount = savedThreadCount
         } else if savedThreadCount > maxThreadCount {
             threadCount = maxThreadCount
@@ -313,7 +313,7 @@ struct ImageProcessorView: View {
     // MARK: - Directory Persistence
 
     private func saveDirectoryToUserDefaults(_ url: URL?, key: String) {
-        if let url = url {
+        if let url {
             UserDefaults.standard.set(url, forKey: key)
             #if DEBUG
             imageProcessor.logger.logDebug("Successfully saved directory for key: \(key), path: \(url.path)", source: "ImageProcessorView")

@@ -89,7 +89,7 @@ struct BatchImageProcessor {
         
         // Fetch image dimensions
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
-            imagePaths: images.map { $0.path },
+            imagePaths: images.map(\.path),
             asyncCancellationCheck: { !Task.isCancelled },
             logger: logger
         )
@@ -98,7 +98,7 @@ struct BatchImageProcessor {
             #if DEBUG
             logger?("Batch processing cancelled or no dimensions retrieved", .debug, "BatchImageProcessor")
             #endif
-            return (0, images.map { $0.lastPathComponent })
+            return (0, images.map(\.lastPathComponent))
         }
         
         #if DEBUG
@@ -148,7 +148,7 @@ struct BatchImageProcessor {
             return (processedCount, failedFiles)
             
         case .failure:
-            return (0, images.map { $0.lastPathComponent })
+            return (0, images.map(\.lastPathComponent))
         }
     }
     

@@ -101,8 +101,8 @@ struct SidebarView: View {
                         Toggle(isOn: $showLogs) {
                             EmptyView()
                         }
-                            .labelsHidden()
-                            .toggleStyle(MinimalToggleStyle())
+                        .labelsHidden()
+                        .toggleStyle(MinimalToggleStyle())
                     }
                     .padding(.horizontal, 20)
                     

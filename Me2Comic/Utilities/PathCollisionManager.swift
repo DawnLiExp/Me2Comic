@@ -26,7 +26,7 @@ actor PathCollisionManager {
         var candidateKey = candidate.lowercased()
         var attempt = 0
         
-        while reservedPaths.contains(candidateKey) && attempt < 10000 {
+        while reservedPaths.contains(candidateKey), attempt < 10000 {
             attempt += 1
             candidate = "\(basePath)-\(attempt)\(suffix)"
             candidateKey = candidate.lowercased()

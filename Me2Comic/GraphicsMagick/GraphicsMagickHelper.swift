@@ -27,7 +27,7 @@ class GraphicsMagickHelper {
             }
         }.value
 
-        guard let path = path else {
+        guard let path else {
             #if DEBUG
             logger?("GraphicsMagick path detection failed", .debug, "GraphicsMagickHelper")
             #endif

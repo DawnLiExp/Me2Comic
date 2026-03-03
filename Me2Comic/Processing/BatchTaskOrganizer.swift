@@ -114,7 +114,7 @@ class BatchTaskOrganizer {
         
         // Process high-resolution global batch first
         if !highResGlobalResults.isEmpty {
-            let highResImages = highResGlobalResults.flatMap { $0.imageFiles }
+            let highResImages = highResGlobalResults.flatMap(\.imageFiles)
             
             #if DEBUG
             logger.logDebug("High-resolution global batch: \(highResImages.count) images from \(highResGlobalResults.count) directories", source: "BatchTaskOrganizer")
@@ -142,7 +142,7 @@ class BatchTaskOrganizer {
         
         // Process normal-resolution global batch
         if !normalGlobalResults.isEmpty {
-            let normalImages = normalGlobalResults.flatMap { $0.imageFiles }
+            let normalImages = normalGlobalResults.flatMap(\.imageFiles)
             
             #if DEBUG
             logger.logDebug("Normal-resolution global batch: \(normalImages.count) images from \(normalGlobalResults.count) directories", source: "BatchTaskOrganizer")

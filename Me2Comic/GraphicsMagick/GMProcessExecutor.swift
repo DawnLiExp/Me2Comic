@@ -272,7 +272,7 @@ struct GMProcessExecutor {
     
     /// Terminate process
     private func terminateProcess(_ process: Process?) {
-        guard let process = process, process.isRunning else { return }
+        guard let process, process.isRunning else { return }
         
         #if DEBUG
         logger?("Terminating GraphicsMagick process", .debug, "GMProcessExecutor")

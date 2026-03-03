@@ -287,8 +287,8 @@ struct BasicParametersView: View {
                     Toggle(isOn: $useGrayColorspace) {
                         EmptyView()
                     }
-                        .labelsHidden()
-                        .toggleStyle(MinimalToggleStyle())
+                    .labelsHidden()
+                    .toggleStyle(MinimalToggleStyle())
                 }
                 .padding(.vertical, 8)
             }
@@ -344,8 +344,8 @@ struct AdvancedParametersView: View {
                     Toggle(isOn: $enableUnsharp) {
                         EmptyView()
                     }
-                        .labelsHidden()
-                        .toggleStyle(MinimalToggleStyle())
+                    .labelsHidden()
+                    .toggleStyle(MinimalToggleStyle())
                 }
                 
                 if enableUnsharp {
@@ -442,20 +442,20 @@ struct MinimalParameterField: View {
                 TextField(text: $value) {
                     EmptyView()
                 }
-                    .labelsHidden()
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
-                    .foregroundColor(isInputDisabled ? .textMuted : .textLight)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 60)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.bgSecondary.opacity(isInputDisabled ? 0.3 : 0.5))
-                    )
-                    .focusable(false)
-                    .disabled(isInputDisabled)
+                .labelsHidden()
+                .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .foregroundColor(isInputDisabled ? .textMuted : .textLight)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 60)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.bgSecondary.opacity(isInputDisabled ? 0.3 : 0.5))
+                )
+                .focusable(false)
+                .disabled(isInputDisabled)
                 
                 if !unit.isEmpty {
                     Text(unit)

@@ -24,12 +24,30 @@ class ImageProcessor: ObservableObject {
     
     // MARK: - Published State (Forwarded from components)
     
-    @Published var isProcessing = false { didSet { stateManager.isProcessing = isProcessing } }
-    @Published var logMessages: [LogEntry] = [] { didSet { logger.logMessages = logMessages } }
-    @Published var totalImagesToProcess = 0 { didSet { stateManager.totalImagesToProcess = totalImagesToProcess } }
-    @Published var currentProcessedImages = 0 { didSet { stateManager.currentProcessedImages = currentProcessedImages } }
-    @Published var processingProgress = 0.0 { didSet { stateManager.processingProgress = processingProgress } }
-    @Published var didFinishAllTasks = false { didSet { stateManager.didFinishAllTasks = didFinishAllTasks } }
+    @Published var isProcessing = false {
+        didSet { stateManager.isProcessing = isProcessing }
+    }
+
+    @Published var logMessages: [LogEntry] = [] {
+        didSet { logger.logMessages = logMessages }
+    }
+
+    @Published var totalImagesToProcess = 0 {
+        didSet { stateManager.totalImagesToProcess = totalImagesToProcess }
+    }
+
+    @Published var currentProcessedImages = 0 {
+        didSet { stateManager.currentProcessedImages = currentProcessedImages }
+    }
+
+    @Published var processingProgress = 0.0 {
+        didSet { stateManager.processingProgress = processingProgress }
+    }
+
+    @Published var didFinishAllTasks = false {
+        didSet { stateManager.didFinishAllTasks = didFinishAllTasks }
+    }
+
     @Published var gmReady = false
     
     // MARK: - Initialization
@@ -153,7 +171,7 @@ class ImageProcessor: ObservableObject {
         let analyzer = DirectoryAnalyzer(
             logHandler: loggerClosure,
             isProcessingCheck: { @Sendable [weak self] in
-                guard let self = self else { return false }
+                guard let self else { return false }
                 return await MainActor.run {
                     self.stateManager.isProcessing && !Task.isCancelled
                 }
@@ -186,7 +204,7 @@ class ImageProcessor: ObservableObject {
         
         let globalBatchImages = scanResults
             .filter { $0.category == .globalBatch }
-            .flatMap { $0.imageFiles }
+            .flatMap(\.imageFiles)
         
         let (effectiveThreadCount, effectiveBatchSize) = autoCalculator.determineParameters(
             parameters: parameters,
@@ -230,7 +248,7 @@ class ImageProcessor: ObservableObject {
         effectiveThreadCount: Int,
         effectiveBatchSize: Int
     ) async {
-        guard stateManager.isProcessing && !Task.isCancelled else {
+        guard stateManager.isProcessing, !Task.isCancelled else {
             #if DEBUG
             logger.logDebug("Batch processing skipped due to cancellation or state", source: "ImageProcessor")
             #endif
@@ -271,7 +289,7 @@ class ImageProcessor: ObservableObject {
             $0.category == .globalBatch && $0.isHighResolution
         }
         if !highResGlobalResults.isEmpty {
-            let highResImageCount = highResGlobalResults.flatMap { $0.imageFiles }.count
+            let highResImageCount = highResGlobalResults.flatMap(\.imageFiles).count
             let highResBatchCount = Int(ceil(Double(highResImageCount) / Double(effectiveBatchSize)))
             for i in currentIndex ..< (currentIndex + highResBatchCount) {
                 highResGlobalIndices.insert(i)
@@ -288,7 +306,7 @@ class ImageProcessor: ObservableObject {
             // Start worker threads
             for threadId in 0 ..< effectiveThreadCount {
                 group.addTask { [weak self] in
-                    guard let self = self else { return BatchResult.empty }
+                    guard let self else { return BatchResult.empty }
                     
                     var localResults = BatchResult.empty
                     
@@ -336,7 +354,7 @@ class ImageProcessor: ObservableObject {
             
             // Collect results from all threads
             for await result in group {
-                guard !Task.isCancelled && stateManager.isProcessing else { break }
+                guard !Task.isCancelled, stateManager.isProcessing else { break }
                 
                 await stateManager.handleBatchCompletion(
                     processedCount: result.processed,
@@ -358,7 +376,7 @@ class ImageProcessor: ObservableObject {
         logger.logDebug("Work distribution: \(stats.distribution), steal operations: \(stats.stealCount)", source: "ImageProcessor")
         #endif
         
-        guard !Task.isCancelled && stateManager.isProcessing else {
+        guard !Task.isCancelled, stateManager.isProcessing else {
             #if DEBUG
             logger.logDebug("Batch processing completed due to cancellation", source: "ImageProcessor")
             #endif

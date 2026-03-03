@@ -177,7 +177,7 @@ final class DirectoryAnalyzer: Sendable {
         directoryName: String
     ) async -> (category: ProcessingCategory, isHighResolution: Bool) {
         let sampleImages = Array(imageFiles.prefix(Constants.sampleSize))
-        let samplePaths = sampleImages.map { $0.path }
+        let samplePaths = sampleImages.map(\.path)
         
         #if DEBUG
         logHandler("Sampling \(sampleImages.count) images from \(directoryName) for categorization", .debug, "DirectoryAnalyzer")
