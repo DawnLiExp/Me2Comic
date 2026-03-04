@@ -2,7 +2,7 @@
 //  AboutView.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/8/6.
+//  关于界面：语言切换、主题设置
 //
 
 import AppKit
@@ -34,7 +34,7 @@ struct AboutView: View {
     }
     
     // Theme
-    @StateObject private var themeManager = ThemeManager.shared
+    @State private var themeManager = ThemeManager.shared
     
     // Applied Settings (currently active)
     @State private var appliedLanguage: String = ""
@@ -398,7 +398,7 @@ private struct SettingRow<Content: View>: View {
     let hasPendingChange: Bool
     let content: () -> Content
     
-    @StateObject private var themeManager = ThemeManager.shared
+    @State private var themeManager = ThemeManager.shared
     
     var body: some View {
         HStack(spacing: 16) {

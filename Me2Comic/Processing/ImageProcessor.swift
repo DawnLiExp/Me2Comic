@@ -2,15 +2,16 @@
 //  ImageProcessor.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/5/12.
+//  纯处理流程协调器：组件依赖注入、工作窃取并发管理
 //
 
-import Combine
 import Foundation
+import Observation
 
 /// Manages the image processing workflow
 @MainActor
-class ImageProcessor: ObservableObject {
+@Observable
+class ImageProcessor {
     // MARK: - Properties
     
     private let notificationManager = NotificationManager()
@@ -22,42 +23,40 @@ class ImageProcessor: ObservableObject {
     private var gmPath = ""
     private var activeProcessingTask: Task<Void, Never>?
     
-    // MARK: - Published State (Forwarded from components)
+    // MARK: - Observable State Proxies
     
-    @Published var isProcessing = false {
-        didSet { stateManager.isProcessing = isProcessing }
+    var isProcessing: Bool {
+        stateManager.isProcessing
     }
-
-    @Published var logMessages: [LogEntry] = [] {
-        didSet { logger.logMessages = logMessages }
+    
+    var logMessages: [LogEntry] {
+        get { logger.logMessages }
+        set { logger.logMessages = newValue }
     }
-
-    @Published var totalImagesToProcess = 0 {
-        didSet { stateManager.totalImagesToProcess = totalImagesToProcess }
+    
+    var totalImagesToProcess: Int {
+        stateManager.totalImagesToProcess
     }
-
-    @Published var currentProcessedImages = 0 {
-        didSet { stateManager.currentProcessedImages = currentProcessedImages }
+    
+    var currentProcessedImages: Int {
+        stateManager.currentProcessedImages
     }
-
-    @Published var processingProgress = 0.0 {
-        didSet { stateManager.processingProgress = processingProgress }
+    
+    var processingProgress: Double {
+        stateManager.processingProgress
     }
-
-    @Published var didFinishAllTasks = false {
-        didSet { stateManager.didFinishAllTasks = didFinishAllTasks }
+    
+    var didFinishAllTasks: Bool {
+        stateManager.didFinishAllTasks
     }
-
-    @Published var gmReady = false
+    
+    var gmReady = false
     
     // MARK: - Initialization
     
     init() {
         taskOrganizer = BatchTaskOrganizer(logger: logger)
         autoCalculator = AutoParameterCalculator(logger: logger)
-        
-        // Bind state changes
-        setupBindings()
         
         // Verify GraphicsMagick on initialization
         Task {
@@ -477,36 +476,5 @@ class ImageProcessor: ObservableObject {
         
         // Mark tasks as finished with extended delay to show 100% progress
         stateManager.markTasksFinished(withDelay: 700_000_000)
-    }
-    
-    // MARK: - Helper Methods
-    
-    /// Setup property bindings between components
-    private func setupBindings() {
-        // Note: .receive(on:) with RunLoop.main is the recommended approach for Combine
-        // This ensures UI updates happen on the main thread without using DispatchQueue
-        stateManager.$isProcessing
-            .receive(on: RunLoop.main)
-            .assign(to: &$isProcessing)
-        
-        stateManager.$totalImagesToProcess
-            .receive(on: RunLoop.main)
-            .assign(to: &$totalImagesToProcess)
-        
-        stateManager.$currentProcessedImages
-            .receive(on: RunLoop.main)
-            .assign(to: &$currentProcessedImages)
-        
-        stateManager.$processingProgress
-            .receive(on: RunLoop.main)
-            .assign(to: &$processingProgress)
-        
-        stateManager.$didFinishAllTasks
-            .receive(on: RunLoop.main)
-            .assign(to: &$didFinishAllTasks)
-        
-        logger.$logMessages
-            .receive(on: RunLoop.main)
-            .assign(to: &$logMessages)
     }
 }

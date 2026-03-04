@@ -2,12 +2,12 @@
 //  CPUMonitor.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/9/13.
+//  CPU使用率监控器：实时获取CPU使用率、历史记录管理
 //
 
 import AppKit
-import Combine
 import Foundation
+import Observation
 
 // MARK: - CPU Usage Data
 
@@ -36,12 +36,13 @@ private struct CPULoadInfo {
 // MARK: - CPU Monitor
 
 @MainActor
-final class CPUMonitor: ObservableObject {
+@Observable
+final class CPUMonitor {
     // MARK: - Properties
     
-    @Published private(set) var usageHistory: [CPUUsageData] = []
-    @Published private(set) var currentUsage: Double = 0.0
-    @Published private(set) var isMonitoring = false
+    private(set) var usageHistory: [CPUUsageData] = []
+    private(set) var currentUsage: Double = 0.0
+    private(set) var isMonitoring = false
     
     private var monitoringTask: Task<Void, Never>?
     private var previousLoadInfo: CPULoadInfo?

@@ -2,9 +2,10 @@
 //  ThemeManager.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/9/14.
+//  主题管理：主题切换、持久化、语义颜色提供
 //
 
+import Observation
 import SwiftUI
 
 // MARK: - Theme Definition
@@ -48,11 +49,12 @@ enum AppTheme: String, CaseIterable, Identifiable {
 // MARK: - Theme Manager
 
 @MainActor
-final class ThemeManager: ObservableObject {
+@Observable
+final class ThemeManager {
     static let shared = ThemeManager()
     
-    @Published private(set) var currentTheme: AppTheme
-    @Published private(set) var selectedThemeMode: AppTheme
+    private(set) var currentTheme: AppTheme
+    private(set) var selectedThemeMode: AppTheme
     
     private enum UserDefaultsKeys {
         static let selectedTheme = "Me2Comic.selectedTheme"

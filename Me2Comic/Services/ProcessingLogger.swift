@@ -2,10 +2,11 @@
 //  ProcessingLogger.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/8/29.
+//  日志系统：日志的唯一真实来源(SSOT)、异步流管理、格式化输出
 //
 
 import Foundation
+import Observation
 
 // MARK: - Log Level Definition
 
@@ -82,10 +83,11 @@ protocol LoggingProtocol: Sendable {
 
 /// Manages asynchronous logging with level-based filtering and unified interface
 @MainActor
-class ProcessingLogger: ObservableObject, LoggingProtocol {
+@Observable
+class ProcessingLogger: LoggingProtocol {
     // MARK: - Properties
     
-    @Published var logMessages: [LogEntry] = []
+    var logMessages: [LogEntry] = []
     private var logContinuation: AsyncStream<LogEntry>.Continuation?
     private var debugLogContinuation: AsyncStream<LogEntry>.Continuation?
     

@@ -2,10 +2,11 @@
 //  ProcessingStateManager.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/8/29.
+//  处理状态管理：处理状态的唯一真实来源(SSOT)、进度追踪、聚合
 //
 
 import Foundation
+import Observation
 
 /// Thread-safe aggregation of batch processing results
 actor BatchResultAggregator {
@@ -29,14 +30,15 @@ actor BatchResultAggregator {
 
 /// Manages processing state and progress for image batch operations
 @MainActor
-class ProcessingStateManager: ObservableObject {
+@Observable
+class ProcessingStateManager {
     // MARK: - Published State
     
-    @Published var isProcessing = false
-    @Published var totalImagesToProcess = 0
-    @Published var currentProcessedImages = 0
-    @Published var processingProgress = 0.0
-    @Published var didFinishAllTasks = false
+    var isProcessing = false
+    var totalImagesToProcess = 0
+    var currentProcessedImages = 0
+    var processingProgress = 0.0
+    var didFinishAllTasks = false
     
     // MARK: - Properties
     
