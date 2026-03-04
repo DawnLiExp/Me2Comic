@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - CPU Usage Chart View
 
 struct CPUUsageChartView: View {
-    @StateObject private var cpuMonitor = CPUMonitor()
+    @State private var cpuMonitor = CPUMonitor()
     
     var headerHorizontalPadding: CGFloat = 24
     var chartHorizontalPadding: CGFloat = 0

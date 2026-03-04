@@ -6,7 +6,6 @@
 //
 
 import AppKit
-import Combine
 import SwiftUI
 
 // MARK: - Main View
@@ -15,9 +14,7 @@ import SwiftUI
 struct ImageProcessorView: View {
     // MARK: - Dependencies
 
-    @StateObject private var imageProcessor = ImageProcessor()
-
-    @StateObject private var themeManager = ThemeManager.shared
+    @State private var imageProcessor = ImageProcessor()
 
     // MARK: - UI State
 
@@ -57,9 +54,8 @@ struct ImageProcessorView: View {
 
     // MARK: - Performance Optimization
 
-    /// Debounced parameter save publisher
-    private let parameterSavePublisher = PassthroughSubject<Void, Never>()
-    @State private var parameterSaveCancellable: AnyCancellable?
+    /// Debounced parameter save task
+    @State private var parameterSaveTask: Task<Void, Never>?
 
     /// Combined parameter state for single onChange
     private var parametersHash: Int {
@@ -181,9 +177,11 @@ struct ImageProcessorView: View {
         }
         .frame(minWidth: showLogs ? 1050 : 684, minHeight: 684)
         .onAppear {
-            setupParameterSaveDebounce()
             loadSavedDirectories()
             loadSavedParameters()
+        }
+        .onDisappear {
+            parameterSaveTask?.cancel()
         }
         .onChange(of: inputDirectory) { handleDirectoryChange(inputDirectory, key: UserDefaultsKeys.lastInputDirectory, isInput: true) }
         .onChange(of: outputDirectory) { handleDirectoryChange(outputDirectory, key: UserDefaultsKeys.lastOutputDirectory, isInput: false) }
@@ -223,14 +221,6 @@ struct ImageProcessorView: View {
 
     // MARK: - Optimized Persistence
 
-    private func setupParameterSaveDebounce() {
-        parameterSaveCancellable = parameterSavePublisher
-            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
-            .sink { _ in
-                self.saveParameters()
-            }
-    }
-
     private func handleDirectoryChange(_ directory: URL?, key: String, isInput: Bool) {
         guard !isLoadingDirectories else { return }
 
@@ -244,7 +234,12 @@ struct ImageProcessorView: View {
 
     private func handleParametersChange() {
         guard !isLoadingParameters else { return }
-        parameterSavePublisher.send()
+        parameterSaveTask?.cancel()
+        parameterSaveTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            saveParameters()
+        }
     }
 
     private func saveParameters() {

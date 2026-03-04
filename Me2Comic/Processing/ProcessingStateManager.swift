@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Observation
 
 /// Thread-safe aggregation of batch processing results
 actor BatchResultAggregator {
@@ -29,14 +30,15 @@ actor BatchResultAggregator {
 
 /// Manages processing state and progress for image batch operations
 @MainActor
-class ProcessingStateManager: ObservableObject {
+@Observable
+class ProcessingStateManager {
     // MARK: - Published State
     
-    @Published var isProcessing = false
-    @Published var totalImagesToProcess = 0
-    @Published var currentProcessedImages = 0
-    @Published var processingProgress = 0.0
-    @Published var didFinishAllTasks = false
+    var isProcessing = false
+    var totalImagesToProcess = 0
+    var currentProcessedImages = 0
+    var processingProgress = 0.0
+    var didFinishAllTasks = false
     
     // MARK: - Properties
     

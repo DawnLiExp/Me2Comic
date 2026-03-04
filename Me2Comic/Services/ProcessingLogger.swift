@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Observation
 
 // MARK: - Log Level Definition
 
@@ -82,10 +83,11 @@ protocol LoggingProtocol: Sendable {
 
 /// Manages asynchronous logging with level-based filtering and unified interface
 @MainActor
-class ProcessingLogger: ObservableObject, LoggingProtocol {
+@Observable
+class ProcessingLogger: LoggingProtocol {
     // MARK: - Properties
     
-    @Published var logMessages: [LogEntry] = []
+    var logMessages: [LogEntry] = []
     private var logContinuation: AsyncStream<LogEntry>.Continuation?
     private var debugLogContinuation: AsyncStream<LogEntry>.Continuation?
     
