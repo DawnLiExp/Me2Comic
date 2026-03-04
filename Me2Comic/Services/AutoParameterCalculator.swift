@@ -12,7 +12,7 @@ import Foundation
 class AutoParameterCalculator {
     // MARK: - Properties
     
-    private let logger: ProcessingLogger
+    private let logger: any LoggingProtocol
     private let maxThreadCount: Int
     
     // MARK: - Constants
@@ -26,7 +26,7 @@ class AutoParameterCalculator {
     
     // MARK: - Initialization
     
-    init(logger: ProcessingLogger) {
+    init(logger: any LoggingProtocol) {
         self.logger = logger
         self.maxThreadCount = SystemInfoHelper.getMaxThreadCount()
         

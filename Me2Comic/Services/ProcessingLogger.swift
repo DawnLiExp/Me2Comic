@@ -31,7 +31,7 @@ enum LogLevel: Int, CaseIterable, Sendable {
     var isUserVisible: Bool {
         switch self {
         case .debug: return false
-        case .info, .success, .warning, .error: return true // ← 添加了.success
+        case .info, .success, .warning, .error: return true
         }
     }
 }
@@ -73,10 +73,37 @@ struct LogEntry: Sendable {
 
 // MARK: - Logging Protocol
 
-/// Protocol for unified logging interface
-@preconcurrency
-protocol LoggingProtocol: Sendable {
+/// Protocol for unified logging interface.
+/// Only `log(_:level:source:)` must be implemented; all convenience methods have defaults.
+protocol LoggingProtocol: AnyObject, Sendable {
+    /// Core logging method — the single required implementation point.
     func log(_ message: String, level: LogLevel, source: String?)
+}
+
+// MARK: - LoggingProtocol Default Implementations
+
+extension LoggingProtocol {
+    func appendLog(_ message: String) {
+        log(message, level: .info, source: nil)
+    }
+
+    func logDebug(_ message: String, source: String? = nil) {
+        #if DEBUG
+        log(message, level: .debug, source: source)
+        #endif
+    }
+
+    func logWarning(_ message: String, source: String? = nil) {
+        log(message, level: .warning, source: source)
+    }
+
+    func logError(_ message: String, source: String? = nil) {
+        log(message, level: .error, source: source)
+    }
+
+    func logSuccess(_ message: String, source: String? = nil) {
+        log(message, level: .success, source: source)
+    }
 }
 
 // MARK: - Processing Logger
@@ -84,7 +111,7 @@ protocol LoggingProtocol: Sendable {
 /// Manages asynchronous logging with level-based filtering and unified interface
 @MainActor
 @Observable
-class ProcessingLogger: LoggingProtocol {
+final class ProcessingLogger: LoggingProtocol {
     // MARK: - Properties
     
     var logMessages: [LogEntry] = []

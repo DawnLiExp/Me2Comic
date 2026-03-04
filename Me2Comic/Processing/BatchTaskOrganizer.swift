@@ -33,7 +33,7 @@ struct BatchResult {
 class BatchTaskOrganizer {
     // MARK: - Properties
     
-    private let logger: ProcessingLogger
+    private let logger: any LoggingProtocol
     
     // MARK: - Constants
     
@@ -45,7 +45,7 @@ class BatchTaskOrganizer {
     
     // MARK: - Initialization
     
-    init(logger: ProcessingLogger) {
+    init(logger: any LoggingProtocol) {
         self.logger = logger
         
         #if DEBUG
