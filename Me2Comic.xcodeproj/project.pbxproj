@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		FC00E6772E6D74D700C3ABB2 /* TaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */; };
+		FC141A3C2F583D9600C85663 /* AppSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC141A3B2F583D9600C85663 /* AppSettingsStore.swift */; };
 		FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */; };
 		FC40C69E2F55C5EA00B96519 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FC40C69D2F55C5EA00B96519 /* Localizable.xcstrings */; };
 		FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */; };
@@ -49,6 +50,7 @@
 
 /* Begin PBXFileReference section */
 		FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueue.swift; sourceTree = "<group>"; };
+		FC141A3B2F583D9600C85663 /* AppSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsStore.swift; sourceTree = "<group>"; };
 		FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImageProcessor.swift; sourceTree = "<group>"; };
 		FC40C69D2F55C5EA00B96519 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInfoHelper.swift; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 		FC0D171D2E6AB33100353B5F /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				FC141A3B2F583D9600C85663 /* AppSettingsStore.swift */,
 				FCEAFA652E60DACB008575D6 /* AutoParameterCalculator.swift */,
 				FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */,
 				FCA94A162E43C43600CC23BC /* ParametersValidator.swift */,
@@ -314,6 +317,7 @@
 				FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */,
 				FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */,
 				FCD6E2E02E7303C8006E3B1E /* SidebarView.swift in Sources */,
+				FC141A3C2F583D9600C85663 /* AppSettingsStore.swift in Sources */,
 				FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */,
 				FC7950B62E68C14800F891B3 /* PathCollisionManager.swift in Sources */,
 				FCA94A172E43C43A00CC23BC /* ParametersValidator.swift in Sources */,

@@ -2,7 +2,7 @@
 //  MainContentView.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/9/11.
+//  主内容区：参数配置（基础/高级）
 //
 
 import SwiftUI
@@ -10,32 +10,19 @@ import SwiftUI
 // MARK: - MainContentView
 
 struct MainContentView: View {
-    @Binding var inputDirectory: URL?
-    @Binding var outputDirectory: URL?
+    @Bindable var settings: AppSettingsStore
     let selectedTab: String
-    @Binding var widthThreshold: String
-    @Binding var resizeHeight: String
-    @Binding var quality: String
-    @Binding var threadCount: Int
-    let maxThreadCount: Int
-    @Binding var useGrayColorspace: Bool
-    @Binding var unsharpRadius: String
-    @Binding var unsharpSigma: String
-    @Binding var unsharpAmount: String
-    @Binding var unsharpThreshold: String
-    @Binding var batchSize: String
-    @Binding var enableUnsharp: Bool
     let onProcess: () -> Void
     let onDirectorySelect: () -> Void
 
     // MARK: - UI State
-    
+
     @State private var showInputTip = false
     @State private var showOutputTip = false
     @State private var isShowInFinderHovered = false
-    
+
     // MARK: - Layout Constants
-    
+
     /// Prevents layout shift during tab transitions
     private let parameterAreaHeight: CGFloat = 360
 
@@ -47,7 +34,7 @@ struct MainContentView: View {
                     Text(String(localized: "Input Directory"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
-                        
+
                     Button(action: { showInputTip.toggle() }) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 12))
@@ -60,24 +47,24 @@ struct MainContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                    
+
                 MinimalDirectorySelector(
-                    title: inputDirectory?.lastPathComponent ?? String(localized: "InputNotSelected"),
-                    subtitle: inputDirectory?.path ?? "",
-                    path: inputDirectory?.path,
+                    title: settings.inputDirectory?.lastPathComponent ?? String(localized: "InputNotSelected"),
+                    subtitle: settings.inputDirectory?.path ?? "",
+                    path: settings.inputDirectory?.path,
                     icon: "folder",
                     accentColor: .accentGreen,
                     onSelect: {
                         onDirectorySelect()
-                        inputDirectory = $0
+                        settings.inputDirectory = $0
                     }
                 )
-                    
+
                 HStack(spacing: 4) {
                     Text(String(localized: "Output Directory"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
-                        
+
                     Button(action: { showOutputTip.toggle() }) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 12))
@@ -88,10 +75,10 @@ struct MainContentView: View {
                         Text(String(localized: "Output Directory Placeholder"))
                             .padding()
                     }
-                    
+
                     Spacer()
-                    
-                    if outputDirectory != nil {
+
+                    if settings.outputDirectory != nil {
                         Button(action: showOutputInFinder) {
                             Image(systemName: "magnifyingglass.circle")
                                 .font(.system(size: 16))
@@ -107,20 +94,20 @@ struct MainContentView: View {
                             }
                         }
                         .transition(.opacity.combined(with: .scale))
-                        .animation(.spring(response: 0.3), value: outputDirectory != nil)
+                        .animation(.spring(response: 0.3), value: settings.outputDirectory != nil)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                    
+
                 MinimalDirectorySelector(
-                    title: outputDirectory?.lastPathComponent ?? String(localized: "OutputNotSelected"),
-                    subtitle: outputDirectory?.path ?? "",
-                    path: outputDirectory?.path,
+                    title: settings.outputDirectory?.lastPathComponent ?? String(localized: "OutputNotSelected"),
+                    subtitle: settings.outputDirectory?.path ?? "",
+                    path: settings.outputDirectory?.path,
                     icon: "folder.badge.plus",
                     accentColor: .accentOrange,
                     onSelect: {
                         onDirectorySelect()
-                        outputDirectory = $0
+                        settings.outputDirectory = $0
                     }
                 )
             }
@@ -129,32 +116,17 @@ struct MainContentView: View {
             // Parameter Configuration Area
             ZStack {
                 if selectedTab == "basic" {
-                    BasicParametersView(
-                        widthThreshold: $widthThreshold,
-                        resizeHeight: $resizeHeight,
-                        quality: $quality,
-                        threadCount: $threadCount,
-                        maxThreadCount: maxThreadCount,
-                        useGrayColorspace: $useGrayColorspace
-                    )
-                    .transition(.asymmetric(
-                        insertion: .opacity.animation(.easeIn(duration: 0.15)),
-                        removal: .identity
-                    ))
+                    BasicParametersView(settings: settings)
+                        .transition(.asymmetric(
+                            insertion: .opacity.animation(.easeIn(duration: 0.15)),
+                            removal: .identity
+                        ))
                 } else {
-                    AdvancedParametersView(
-                        unsharpRadius: $unsharpRadius,
-                        unsharpSigma: $unsharpSigma,
-                        unsharpAmount: $unsharpAmount,
-                        unsharpThreshold: $unsharpThreshold,
-                        batchSize: $batchSize,
-                        enableUnsharp: $enableUnsharp,
-                        threadCount: threadCount
-                    )
-                    .transition(.asymmetric(
-                        insertion: .opacity.animation(.easeIn(duration: 0.15)),
-                        removal: .identity
-                    ))
+                    AdvancedParametersView(settings: settings)
+                        .transition(.asymmetric(
+                            insertion: .opacity.animation(.easeIn(duration: 0.15)),
+                            removal: .identity
+                        ))
                 }
             }
             .padding(.horizontal, 60)
@@ -162,18 +134,18 @@ struct MainContentView: View {
             .animation(.easeInOut(duration: 0.18), value: selectedTab)
 
             ProcessButton(
-                enabled: inputDirectory != nil && outputDirectory != nil,
+                enabled: settings.inputDirectory != nil && settings.outputDirectory != nil,
                 action: onProcess
             )
             .padding(.horizontal, 60)
             .padding(.bottom, 18)
         }
     }
-    
+
     // MARK: - Private Methods
-    
+
     private func showOutputInFinder() {
-        guard let url = outputDirectory else { return }
+        guard let url = settings.outputDirectory else { return }
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
     }
 }
@@ -181,15 +153,10 @@ struct MainContentView: View {
 // MARK: - BasicParametersView
 
 struct BasicParametersView: View {
-    @Binding var widthThreshold: String
-    @Binding var resizeHeight: String
-    @Binding var quality: String
-    @Binding var threadCount: Int
-    let maxThreadCount: Int
-    @Binding var useGrayColorspace: Bool
+    @Bindable var settings: AppSettingsStore
     @State private var showGrayTip = false
     @State private var showThreadTip = false
-    
+
     var body: some View {
         VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 16) {
@@ -201,28 +168,28 @@ struct BasicParametersView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
                 }
-                
+
                 MinimalParameterField(
                     label: String(localized: "WidthUnder"),
-                    value: $widthThreshold,
+                    value: $settings.widthThreshold,
                     unit: String(localized: "pxUnit"),
                     hint: String(localized: "UnderWidthDesc")
                 )
-            
+
                 MinimalParameterField(
                     label: String(localized: "ResizeHeight"),
-                    value: $resizeHeight,
+                    value: $settings.resizeHeight,
                     unit: String(localized: "pxUnit"),
                     hint: String(localized: "ResizeHDesc")
                 )
-            
+
                 MinimalParameterField(
                     label: String(localized: "OutputQuality"),
-                    value: $quality,
+                    value: $settings.quality,
                     unit: "%",
                     hint: String(localized: "QualityDesc")
                 )
-            
+
                 // Thread Count Slider
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -230,7 +197,7 @@ struct BasicParametersView: View {
                             Text(String(localized: "ThreadCount"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.textLight)
-                            
+
                             Button(action: { showThreadTip.toggle() }) {
                                 Image(systemName: "info.circle")
                                     .font(.system(size: 10))
@@ -245,28 +212,34 @@ struct BasicParametersView: View {
                                     .background(Color.bgTertiary)
                             }
                         }
-                    
+
                         Spacer()
-                    
-                        Text(threadCount == 0 ? String(localized: "Auto") : String(format: String(localized: "ThreadsCount"), threadCount))
+
+                        Text(settings.threadCount == 0
+                            ? String(localized: "Auto")
+                            : String(format: String(localized: "ThreadsCount"), settings.threadCount))
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .foregroundColor(.accentGreen)
                     }
-                    
-                    Slider(value: Binding(
-                        get: { Double(threadCount) },
-                        set: { threadCount = Int($0) }
-                    ), in: 0 ... Double(maxThreadCount), step: 1)
-                        .accentColor(.accentGreen)
+
+                    Slider(
+                        value: Binding(
+                            get: { Double(settings.threadCount) },
+                            set: { settings.threadCount = Int($0) }
+                        ),
+                        in: 0 ... Double(settings.maxThreadCount),
+                        step: 1
+                    )
+                    .accentColor(.accentGreen)
                 }
-            
+
                 // Grayscale Toggle
                 HStack {
                     HStack(spacing: 6) {
                         Text(String(localized: "GrayColorspace"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.textLight)
-                        
+
                         Button(action: { showGrayTip.toggle() }) {
                             Image(systemName: "info.circle")
                                 .font(.system(size: 10))
@@ -281,10 +254,10 @@ struct BasicParametersView: View {
                                 .background(Color.bgTertiary)
                         }
                     }
-                    
+
                     Spacer()
 
-                    Toggle(isOn: $useGrayColorspace) {
+                    Toggle(isOn: $settings.useGrayColorspace) {
                         EmptyView()
                     }
                     .labelsHidden()
@@ -308,15 +281,9 @@ struct BasicParametersView: View {
 // MARK: - AdvancedParametersView
 
 struct AdvancedParametersView: View {
-    @Binding var unsharpRadius: String
-    @Binding var unsharpSigma: String
-    @Binding var unsharpAmount: String
-    @Binding var unsharpThreshold: String
-    @Binding var batchSize: String
-    @Binding var enableUnsharp: Bool
-    let threadCount: Int
+    @Bindable var settings: AppSettingsStore
     @State private var showUnsharpTip = false
-    
+
     var body: some View {
         VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 16) {
@@ -341,54 +308,54 @@ struct AdvancedParametersView: View {
 
                     Spacer()
 
-                    Toggle(isOn: $enableUnsharp) {
+                    Toggle(isOn: $settings.enableUnsharp) {
                         EmptyView()
                     }
                     .labelsHidden()
                     .toggleStyle(MinimalToggleStyle())
                 }
-                
-                if enableUnsharp {
+
+                if settings.enableUnsharp {
                     MinimalParameterField(
                         label: "Radius",
-                        value: $unsharpRadius,
+                        value: $settings.unsharpRadius,
                         unit: "",
                         hint: String(localized: "RadiusDesc")
                     )
-                    
+
                     MinimalParameterField(
                         label: "Sigma",
-                        value: $unsharpSigma,
+                        value: $settings.unsharpSigma,
                         unit: "",
                         hint: String(localized: "SigmaDesc")
                     )
-                    
+
                     MinimalParameterField(
                         label: "Amount",
-                        value: $unsharpAmount,
+                        value: $settings.unsharpAmount,
                         unit: "",
                         hint: String(localized: "AmountDesc")
                     )
-                    
+
                     MinimalParameterField(
                         label: "Threshold",
-                        value: $unsharpThreshold,
+                        value: $settings.unsharpThreshold,
                         unit: "",
                         hint: String(localized: "ThreshDesc")
                     )
                 }
             }
-            
+
             Divider()
                 .background(Color.textMuted.opacity(0.2))
-            
+
             // Batch Processing Parameters
             MinimalParameterField(
                 label: String(localized: "BatchSize"),
-                value: $batchSize,
+                value: $settings.batchSize,
                 unit: String(localized: "ImagesPerBatch"),
                 hint: String(localized: "BatchSizeDesc"),
-                isInputDisabled: threadCount == 0
+                isInputDisabled: settings.threadCount == 0
             )
         }
         .padding(24)
@@ -411,16 +378,16 @@ struct MinimalParameterField: View {
     let unit: String
     let hint: String
     var isInputDisabled: Bool = false
-    
+
     @State private var showHint = false
-    
+
     var body: some View {
         HStack {
             HStack(spacing: 6) {
                 Text(label)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.textLight)
-                
+
                 Button(action: { showHint.toggle() }) {
                     Image(systemName: "info.circle")
                         .font(.system(size: 10))
@@ -435,9 +402,9 @@ struct MinimalParameterField: View {
                         .background(Color.bgTertiary)
                 }
             }
-            
+
             Spacer()
-            
+
             HStack(spacing: 4) {
                 TextField(text: $value) {
                     EmptyView()
@@ -456,7 +423,7 @@ struct MinimalParameterField: View {
                 )
                 .focusable(false)
                 .disabled(isInputDisabled)
-                
+
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.system(size: 11, weight: .medium))
