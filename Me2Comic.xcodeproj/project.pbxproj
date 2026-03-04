@@ -11,6 +11,7 @@
 		FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */; };
 		FC40C69E2F55C5EA00B96519 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FC40C69D2F55C5EA00B96519 /* Localizable.xcstrings */; };
 		FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */; };
+		FC63E7192F57E0B8008F0D86 /* AppSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC63E7182F57E0B8008F0D86 /* AppSettingsStore.swift */; };
 		FC74A4E62E75F49200EC1D39 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC74A4E52E75F49000EC1D39 /* VisualEffectView.swift */; };
 		FC7950B02E6892DF00F891B3 /* ProcessingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */; };
 		FC7950B22E68B57F00F891B3 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */; };
@@ -52,6 +53,7 @@
 		FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImageProcessor.swift; sourceTree = "<group>"; };
 		FC40C69D2F55C5EA00B96519 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInfoHelper.swift; sourceTree = "<group>"; };
+		FC63E7182F57E0B8008F0D86 /* AppSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsStore.swift; sourceTree = "<group>"; };
 		FC74A4E52E75F49000EC1D39 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
 		FC7950AF2E6892DD00F891B3 /* ProcessingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingError.swift; sourceTree = "<group>"; };
 		FC7950B12E68B57D00F891B3 /* AsyncSemaphore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphore.swift; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 		FC0D171D2E6AB33100353B5F /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				FC63E7182F57E0B8008F0D86 /* AppSettingsStore.swift */,
 				FCEAFA652E60DACB008575D6 /* AutoParameterCalculator.swift */,
 				FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */,
 				FCA94A162E43C43600CC23BC /* ParametersValidator.swift */,
@@ -314,6 +317,7 @@
 				FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */,
 				FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */,
 				FCD6E2E02E7303C8006E3B1E /* SidebarView.swift in Sources */,
+				FC63E7192F57E0B8008F0D86 /* AppSettingsStore.swift in Sources */,
 				FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */,
 				FC7950B62E68C14800F891B3 /* PathCollisionManager.swift in Sources */,
 				FCA94A172E43C43A00CC23BC /* ParametersValidator.swift in Sources */,
@@ -482,7 +486,7 @@
 		FCB9B0D42DBDFD4700110511 /* Debug configuration for PBXNativeTarget "Me2Comic" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Me2Comic/Me2Comic.entitlements;
@@ -504,7 +508,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.9.6;
+				MARKETING_VERSION = 0.9.7;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = me2.comic.me2comic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -517,7 +521,7 @@
 		FCB9B0D52DBDFD4700110511 /* Release configuration for PBXNativeTarget "Me2Comic" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Me2Comic/Me2Comic.entitlements;
@@ -544,7 +548,7 @@
 				);
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.9.6;
+				MARKETING_VERSION = 0.9.7;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = me2.comic.me2comic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
