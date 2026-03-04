@@ -48,9 +48,20 @@
 		FCFCBCE92E24D92C00312F32 /* DirectoryAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCFCBCE72E24D92C00312F32 /* DirectoryAnalyzer.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		FC141A552F585BAA00C85663 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FCB9B0BC2DBDFD4500110511 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FCB9B0C32DBDFD4500110511;
+			remoteInfo = Me2Comic;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueue.swift; sourceTree = "<group>"; };
 		FC141A3B2F583D9600C85663 /* AppSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsStore.swift; sourceTree = "<group>"; };
+		FC141A512F585BAA00C85663 /* Me2ComicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Me2ComicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImageProcessor.swift; sourceTree = "<group>"; };
 		FC40C69D2F55C5EA00B96519 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInfoHelper.swift; sourceTree = "<group>"; };
@@ -92,7 +103,20 @@
 		FCFCBCE72E24D92C00312F32 /* DirectoryAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAnalyzer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FC141A5E2F585BB600C85663 /* Me2ComicTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Me2ComicTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		FC141A4E2F585BAA00C85663 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 		FCB9B0C12DBDFD4500110511 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
@@ -192,6 +216,7 @@
 			isa = PBXGroup;
 			children = (
 				FCB9B0C62DBDFD4500110511 /* Me2Comic */,
+				FC141A5E2F585BB600C85663 /* Me2ComicTests */,
 				FC9092EA2DFEC37700867319 /* Frameworks */,
 				FCB9B0C52DBDFD4500110511 /* Products */,
 			);
@@ -201,6 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				FCB9B0C42DBDFD4500110511 /* Me2Comic.app */,
+				FC141A512F585BAA00C85663 /* Me2ComicTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -240,6 +266,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		FC141A502F585BAA00C85663 /* Me2ComicTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC141A592F585BAA00C85663 /* Build configuration list for PBXNativeTarget "Me2ComicTests" */;
+			buildPhases = (
+				FC141A4D2F585BAA00C85663 /* Sources */,
+				FC141A4E2F585BAA00C85663 /* Frameworks */,
+				FC141A4F2F585BAA00C85663 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FC141A562F585BAA00C85663 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				FC141A5E2F585BB600C85663 /* Me2ComicTests */,
+			);
+			name = Me2ComicTests;
+			productName = Me2ComicTests;
+			productReference = FC141A512F585BAA00C85663 /* Me2ComicTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		FCB9B0C32DBDFD4500110511 /* Me2Comic */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = FCB9B0D32DBDFD4700110511 /* Build configuration list for PBXNativeTarget "Me2Comic" */;
@@ -262,9 +309,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1520;
+				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					FC141A502F585BAA00C85663 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = FCB9B0C32DBDFD4500110511;
+					};
 					FCB9B0C32DBDFD4500110511 = {
 						CreatedOnToolsVersion = 15.2;
 					};
@@ -287,11 +338,17 @@
 			projectRoot = "";
 			targets = (
 				FCB9B0C32DBDFD4500110511 /* Me2Comic */,
+				FC141A502F585BAA00C85663 /* Me2ComicTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		FC141A4F2F585BAA00C85663 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
 		FCB9B0C22DBDFD4500110511 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
@@ -302,6 +359,11 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		FC141A4D2F585BAA00C85663 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 		FCB9B0C02DBDFD4500110511 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
@@ -345,7 +407,57 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		FC141A562F585BAA00C85663 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FCB9B0C32DBDFD4500110511 /* Me2Comic */;
+			targetProxy = FC141A552F585BAA00C85663 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		FC141A572F585BAA00C85663 /* Debug configuration for PBXNativeTarget "Me2ComicTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2XCFSMR77F;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me2.test.Me2ComicTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Me2Comic.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Me2Comic";
+			};
+			name = Debug;
+		};
+		FC141A582F585BAA00C85663 /* Release configuration for PBXNativeTarget "Me2ComicTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2XCFSMR77F;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me2.test.Me2ComicTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Me2Comic.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Me2Comic";
+			};
+			name = Release;
+		};
 		FCB9B0D12DBDFD4700110511 /* Debug configuration for PBXProject "Me2Comic" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -562,6 +674,14 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		FC141A592F585BAA00C85663 /* Build configuration list for PBXNativeTarget "Me2ComicTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC141A572F585BAA00C85663 /* Debug configuration for PBXNativeTarget "Me2ComicTests" */,
+				FC141A582F585BAA00C85663 /* Release configuration for PBXNativeTarget "Me2ComicTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
 		FCB9B0BF2DBDFD4500110511 /* Build configuration list for PBXProject "Me2Comic" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
