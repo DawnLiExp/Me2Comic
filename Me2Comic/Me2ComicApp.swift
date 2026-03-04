@@ -52,6 +52,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.isMovableByWindowBackground = true
             window.titlebarAppearsTransparent = true
             window.styleMask.insert(.fullSizeContentView)
+            window.tabbingMode = .disallowed
             window.delegate = self
         }
 
