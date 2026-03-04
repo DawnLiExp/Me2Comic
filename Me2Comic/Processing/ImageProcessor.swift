@@ -15,46 +15,21 @@ class ImageProcessor {
     // MARK: - Properties
     
     private let notificationManager = NotificationManager()
-    private let stateManager = ProcessingStateManager()
-    let logger = ProcessingLogger()
+    private let stateManager: ProcessingStateManager
+    let logger: ProcessingLogger
     private let taskOrganizer: BatchTaskOrganizer
     private let autoCalculator: AutoParameterCalculator
     
     private var gmPath = ""
     private var activeProcessingTask: Task<Void, Never>?
     
-    // MARK: - Observable State Proxies
-    
-    var isProcessing: Bool {
-        stateManager.isProcessing
-    }
-    
-    var logMessages: [LogEntry] {
-        get { logger.logMessages }
-        set { logger.logMessages = newValue }
-    }
-    
-    var totalImagesToProcess: Int {
-        stateManager.totalImagesToProcess
-    }
-    
-    var currentProcessedImages: Int {
-        stateManager.currentProcessedImages
-    }
-    
-    var processingProgress: Double {
-        stateManager.processingProgress
-    }
-    
-    var didFinishAllTasks: Bool {
-        stateManager.didFinishAllTasks
-    }
-    
     var gmReady = false
     
     // MARK: - Initialization
     
-    init() {
+    init(stateManager: ProcessingStateManager, logger: ProcessingLogger) {
+        self.stateManager = stateManager
+        self.logger = logger
         taskOrganizer = BatchTaskOrganizer(logger: logger)
         autoCalculator = AutoParameterCalculator(logger: logger)
         

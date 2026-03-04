@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - LogPanelMinimal
 
 struct LogPanelMinimal: View {
-    @Binding var logMessages: [LogEntry]
+    var logger: ProcessingLogger
     @State private var autoScroll = true
     @State private var hoveredIndex: Int? = nil
     @State private var selectedIndex: Int? = nil
@@ -30,7 +30,7 @@ struct LogPanelMinimal: View {
                 }
                 Spacer()
                 
-                Text(String(format: String(localized: "LogsCount"), logMessages.count))
+                Text(String(format: String(localized: "LogsCount"), logger.logMessages.count))
                     .font(.system(size: 11))
                     .foregroundColor(.textMuted)
             }
@@ -42,16 +42,16 @@ struct LogPanelMinimal: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 1) {
-                        ForEach(logMessages.indices, id: \.self) { index in
+                        ForEach(logger.logMessages.indices, id: \.self) { index in
                             LogRow(
-                                entry: logMessages[index],
+                                entry: logger.logMessages[index],
                                 index: index,
                                 isHovered: hoveredIndex == index,
                                 onHover: { isHovering in
                                     hoveredIndex = isHovering ? index : nil
                                 },
                                 onCopy: {
-                                    copyToClipboard(logMessages[index].displayMessage)
+                                    copyToClipboard(logger.logMessages[index].displayMessage)
                                 }
                             )
                             .id(index)
@@ -60,7 +60,7 @@ struct LogPanelMinimal: View {
                     .padding(.vertical, 8)
                 }
                 .background(Color.bgSecondary)
-                .onChange(of: logMessages.count) { oldCount, newCount in
+                .onChange(of: logger.logMessages.count) { oldCount, newCount in
                     guard autoScroll, newCount > oldCount else { return }
                     proxy.scrollTo(newCount - 1, anchor: .bottom)
                 }
@@ -91,7 +91,7 @@ struct LogPanelMinimal: View {
                     .foregroundColor(.textMuted)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .disabled(logMessages.isEmpty)
+                .disabled(logger.logMessages.isEmpty)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -101,7 +101,7 @@ struct LogPanelMinimal: View {
     }
     
     private func copyAllLogs() {
-        let logText = logMessages
+        let logText = logger.logMessages
             .map(\.displayMessage)
             .joined(separator: "\n")
         

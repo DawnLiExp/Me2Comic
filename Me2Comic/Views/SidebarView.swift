@@ -16,7 +16,7 @@ struct SidebarView: View {
     let isProcessing: Bool
     @Binding var selectedTab: String
     @Binding var showLogs: Bool
-    @Binding var logMessages: [LogEntry]
+    var logger: ProcessingLogger
     
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     private let buildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? String(localized: "BuildVersionDefault")
@@ -106,16 +106,16 @@ struct SidebarView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    if !logMessages.isEmpty {
+                    if !logger.logMessages.isEmpty {
                         Button(action: {
                             withAnimation {
-                                logMessages.removeAll()
+                                logger.logMessages.removeAll()
                             }
                         }) {
                             HStack {
                                 Image(systemName: "trash")
                                     .font(.system(size: 12))
-                                Text(String(format: String(localized: "ClearLogsCount"), logMessages.count))
+                                Text(String(format: String(localized: "ClearLogsCount"), logger.logMessages.count))
                                     .font(.system(size: 12, weight: .regular))
                             }
                             .foregroundColor(.textMuted)
