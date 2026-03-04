@@ -12,9 +12,14 @@ import SwiftUI
 
 /// Primary view managing overall layout, state coordination, and user interactions
 struct ImageProcessorView: View {
-    // MARK: - Dependencies
+    // MARK: - State Sources (Single Source of Truth)
 
-    @State private var imageProcessor = ImageProcessor()
+    @State private var stateManager = ProcessingStateManager()
+    @State private var logger = ProcessingLogger()
+
+    // MARK: - Processing Coordinator
+
+    @State private var imageProcessor: ImageProcessor
 
     // MARK: - UI State
 
@@ -94,16 +99,26 @@ struct ImageProcessorView: View {
         static let enableUnsharp = "Me2Comic.enableUnsharp"
     }
 
+    // MARK: - Initialization
+
+    init() {
+        let sm = ProcessingStateManager()
+        let lg = ProcessingLogger()
+        _stateManager = State(initialValue: sm)
+        _logger = State(initialValue: lg)
+        _imageProcessor = State(initialValue: ImageProcessor(stateManager: sm, logger: lg))
+    }
+
     // MARK: - View Layout
 
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(
                 gmReady: $imageProcessor.gmReady,
-                isProcessing: imageProcessor.isProcessing,
+                isProcessing: stateManager.isProcessing,
                 selectedTab: $selectedTab,
                 showLogs: $showLogs,
-                logMessages: $imageProcessor.logMessages
+                logger: logger
             )
             .frame(width: 255)
 
@@ -123,11 +138,11 @@ struct ImageProcessorView: View {
                     .blur(radius: 50)
                 }
 
-                if imageProcessor.isProcessing {
+                if stateManager.isProcessing {
                     ProcessingView(
-                        progress: imageProcessor.processingProgress,
-                        processedCount: imageProcessor.currentProcessedImages,
-                        totalCount: imageProcessor.totalImagesToProcess,
+                        progress: stateManager.processingProgress,
+                        processedCount: stateManager.currentProcessedImages,
+                        totalCount: stateManager.totalImagesToProcess,
                         onStop: {
                             withAnimation {
                                 imageProcessor.stopProcessing()
@@ -170,7 +185,7 @@ struct ImageProcessorView: View {
 
             // Right Log Panel - Optional display
             if showLogs {
-                LogPanelMinimal(logMessages: $imageProcessor.logMessages)
+                LogPanelMinimal(logger: logger)
                     .frame(width: 350)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
@@ -215,7 +230,7 @@ struct ImageProcessorView: View {
                 )
             }
         } catch {
-            imageProcessor.logger.logError(error.localizedDescription, source: "ImageProcessorView")
+            logger.logError(error.localizedDescription, source: "ImageProcessorView")
         }
     }
 
@@ -228,7 +243,7 @@ struct ImageProcessorView: View {
 
         if isUserSelection, let url = directory {
             let msg = String(format: String(localized: isInput ? "SelectedInputDir" : "SelectedOutputDir"), url.path)
-            imageProcessor.logger.log(msg, level: .success, source: "ImageProcessorView")
+            logger.log(msg, level: .success, source: "ImageProcessorView")
         }
     }
 
@@ -258,13 +273,13 @@ struct ImageProcessorView: View {
         defaults.set(enableUnsharp, forKey: UserDefaultsKeys.enableUnsharp)
 
         #if DEBUG
-        imageProcessor.logger.logDebug("Parameters saved to UserDefaults", source: "ImageProcessorView")
+        logger.logDebug("Parameters saved to UserDefaults", source: "ImageProcessorView")
         #endif
     }
 
     private func loadSavedParameters() {
         #if DEBUG
-        imageProcessor.logger.logDebug("Loading saved parameters", source: "ImageProcessorView")
+        logger.logDebug("Loading saved parameters", source: "ImageProcessorView")
         #endif
 
         isLoadingParameters = true
@@ -284,7 +299,7 @@ struct ImageProcessorView: View {
         } else if savedThreadCount > maxThreadCount {
             threadCount = maxThreadCount
             #if DEBUG
-            imageProcessor.logger.logDebug("Thread count clamped from \(savedThreadCount) to \(maxThreadCount)", source: "ImageProcessorView")
+            logger.logDebug("Thread count clamped from \(savedThreadCount) to \(maxThreadCount)", source: "ImageProcessorView")
             #endif
         } else {
             threadCount = 0
@@ -301,7 +316,7 @@ struct ImageProcessorView: View {
         isLoadingParameters = false
 
         #if DEBUG
-        imageProcessor.logger.logDebug("Parameters loaded from UserDefaults", source: "ImageProcessorView")
+        logger.logDebug("Parameters loaded from UserDefaults", source: "ImageProcessorView")
         #endif
     }
 
@@ -311,12 +326,12 @@ struct ImageProcessorView: View {
         if let url {
             UserDefaults.standard.set(url, forKey: key)
             #if DEBUG
-            imageProcessor.logger.logDebug("Successfully saved directory for key: \(key), path: \(url.path)", source: "ImageProcessorView")
+            logger.logDebug("Successfully saved directory for key: \(key), path: \(url.path)", source: "ImageProcessorView")
             #endif
         } else {
             UserDefaults.standard.removeObject(forKey: key)
             #if DEBUG
-            imageProcessor.logger.logDebug("Removed directory for key: \(key)", source: "ImageProcessorView")
+            logger.logDebug("Removed directory for key: \(key)", source: "ImageProcessorView")
             #endif
         }
     }
@@ -324,7 +339,7 @@ struct ImageProcessorView: View {
     private func loadDirectoryFromUserDefaults(key: String) -> URL? {
         guard let savedURL = UserDefaults.standard.url(forKey: key) else {
             #if DEBUG
-            imageProcessor.logger.logDebug("No saved directory found for key: \(key)", source: "ImageProcessorView")
+            logger.logDebug("No saved directory found for key: \(key)", source: "ImageProcessorView")
             #endif
             return nil
         }
@@ -333,14 +348,14 @@ struct ImageProcessorView: View {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: savedURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
             #if DEBUG
-            imageProcessor.logger.logDebug("Saved directory no longer exists: \(savedURL.path)", source: "ImageProcessorView")
+            logger.logDebug("Saved directory no longer exists: \(savedURL.path)", source: "ImageProcessorView")
             #endif
             UserDefaults.standard.removeObject(forKey: key)
             return nil
         }
 
         #if DEBUG
-        imageProcessor.logger.logDebug("Successfully loaded directory for key: \(key), path: \(savedURL.path)", source: "ImageProcessorView")
+        logger.logDebug("Successfully loaded directory for key: \(key), path: \(savedURL.path)", source: "ImageProcessorView")
         #endif
 
         return savedURL
@@ -348,7 +363,7 @@ struct ImageProcessorView: View {
 
     private func loadSavedDirectories() {
         #if DEBUG
-        imageProcessor.logger.logDebug("Starting to load saved directories", source: "ImageProcessorView")
+        logger.logDebug("Starting to load saved directories", source: "ImageProcessorView")
         #endif
 
         isLoadingDirectories = true
@@ -356,35 +371,35 @@ struct ImageProcessorView: View {
         if let savedInputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastInputDirectory) {
             inputDirectory = savedInputDir
             let msg = String(format: String(localized: "LoadedLastInputDir"), savedInputDir.path)
-            imageProcessor.logger.log(msg, level: .success)
+            logger.log(msg, level: .success)
 
             #if DEBUG
-            imageProcessor.logger.logDebug("Successfully loaded input directory: \(savedInputDir.path)", source: "ImageProcessorView")
+            logger.logDebug("Successfully loaded input directory: \(savedInputDir.path)", source: "ImageProcessorView")
             #endif
         } else {
             #if DEBUG
-            imageProcessor.logger.logDebug("No saved input directory found", source: "ImageProcessorView")
+            logger.logDebug("No saved input directory found", source: "ImageProcessorView")
             #endif
         }
 
         if let savedOutputDir = loadDirectoryFromUserDefaults(key: UserDefaultsKeys.lastOutputDirectory) {
             outputDirectory = savedOutputDir
             let msg = String(format: String(localized: "LoadedLastOutputDir"), savedOutputDir.path)
-            imageProcessor.logger.log(msg, level: .success)
+            logger.log(msg, level: .success)
 
             #if DEBUG
-            imageProcessor.logger.logDebug("Successfully loaded output directory: \(savedOutputDir.path)", source: "ImageProcessorView")
+            logger.logDebug("Successfully loaded output directory: \(savedOutputDir.path)", source: "ImageProcessorView")
             #endif
         } else {
             #if DEBUG
-            imageProcessor.logger.logDebug("No saved output directory found", source: "ImageProcessorView")
+            logger.logDebug("No saved output directory found", source: "ImageProcessorView")
             #endif
         }
 
         isLoadingDirectories = false
 
         #if DEBUG
-        imageProcessor.logger.logDebug("Finished loading saved directories", source: "ImageProcessorView")
+        logger.logDebug("Finished loading saved directories", source: "ImageProcessorView")
         #endif
     }
 }
