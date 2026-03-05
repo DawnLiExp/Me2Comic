@@ -38,6 +38,15 @@
 		FCD6E2E62E7305C7006E3B1E /* LogPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */; };
 		FCD6E2E82E730608006E3B1E /* ProcessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD6E2E72E730606006E3B1E /* ProcessingView.swift */; };
 		FCDCAEA62E4389EF00216C1D /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */; };
+		FCE51AC52F59DBAA005E37D2 /* MockProcessingLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51AB72F59DBAA005E37D2 /* MockProcessingLogger.swift */; };
+		FCE51AC62F59DBAA005E37D2 /* AsyncSemaphoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51AB92F59DBAA005E37D2 /* AsyncSemaphoreTests.swift */; };
+		FCE51AC72F59DBAA005E37D2 /* PathCollisionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABA2F59DBAA005E37D2 /* PathCollisionManagerTests.swift */; };
+		FCE51AC82F59DBAA005E37D2 /* TaskQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABB2F59DBAA005E37D2 /* TaskQueueTests.swift */; };
+		FCE51AC92F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABD2F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift */; };
+		FCE51ACA2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABE2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift */; };
+		FCE51ACB2F59DBAA005E37D2 /* GMCommandBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51AC02F59DBAA005E37D2 /* GMCommandBuilderTests.swift */; };
+		FCE51ACC2F59DBAA005E37D2 /* GraphicsMagickHelperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51AC12F59DBAA005E37D2 /* GraphicsMagickHelperTests.swift */; };
+		FCE51ACD2F59DBAA005E37D2 /* ParametersValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51AC22F59DBAA005E37D2 /* ParametersValidatorTests.swift */; };
 		FCEAFA602E60DA7B008575D6 /* ProcessingStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */; };
 		FCEAFA622E60DA9C008575D6 /* ProcessingLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */; };
 		FCEAFA642E60DAAD008575D6 /* BatchTaskOrganizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEAFA632E60DAAB008575D6 /* BatchTaskOrganizer.swift */; };
@@ -93,6 +102,15 @@
 		FCD6E2E52E7305C5006E3B1E /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPanelView.swift; sourceTree = "<group>"; };
 		FCD6E2E72E730606006E3B1E /* ProcessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingView.swift; sourceTree = "<group>"; };
 		FCDCAEA52E4389ED00216C1D /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		FCE51AB72F59DBAA005E37D2 /* MockProcessingLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProcessingLogger.swift; sourceTree = "<group>"; };
+		FCE51AB92F59DBAA005E37D2 /* AsyncSemaphoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphoreTests.swift; sourceTree = "<group>"; };
+		FCE51ABA2F59DBAA005E37D2 /* PathCollisionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathCollisionManagerTests.swift; sourceTree = "<group>"; };
+		FCE51ABB2F59DBAA005E37D2 /* TaskQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueueTests.swift; sourceTree = "<group>"; };
+		FCE51ABD2F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoParameterCalculatorTests.swift; sourceTree = "<group>"; };
+		FCE51ABE2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchTaskOrganizerTests.swift; sourceTree = "<group>"; };
+		FCE51AC02F59DBAA005E37D2 /* GMCommandBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GMCommandBuilderTests.swift; sourceTree = "<group>"; };
+		FCE51AC12F59DBAA005E37D2 /* GraphicsMagickHelperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsMagickHelperTests.swift; sourceTree = "<group>"; };
+		FCE51AC22F59DBAA005E37D2 /* ParametersValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParametersValidatorTests.swift; sourceTree = "<group>"; };
 		FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingStateManager.swift; sourceTree = "<group>"; };
 		FCEAFA612E60DA9A008575D6 /* ProcessingLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingLogger.swift; sourceTree = "<group>"; };
 		FCEAFA632E60DAAB008575D6 /* BatchTaskOrganizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchTaskOrganizer.swift; sourceTree = "<group>"; };
@@ -102,14 +120,6 @@
 		FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsMagickHelper.swift; sourceTree = "<group>"; };
 		FCFCBCE72E24D92C00312F32 /* DirectoryAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAnalyzer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		FC141A5E2F585BB600C85663 /* Me2ComicTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Me2ComicTests;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		FC141A4E2F585BAA00C85663 /* Frameworks */ = {
@@ -216,7 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				FCB9B0C62DBDFD4500110511 /* Me2Comic */,
-				FC141A5E2F585BB600C85663 /* Me2ComicTests */,
+				FCE51AC42F59DBAA005E37D2 /* Me2ComicTests */,
 				FC9092EA2DFEC37700867319 /* Frameworks */,
 				FCB9B0C52DBDFD4500110511 /* Products */,
 			);
@@ -245,6 +255,54 @@
 				FCB9B0C72DBDFD4500110511 /* Me2ComicApp.swift */,
 			);
 			path = Me2Comic;
+			sourceTree = "<group>";
+		};
+		FCE51AB82F59DBAA005E37D2 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				FCE51AB72F59DBAA005E37D2 /* MockProcessingLogger.swift */,
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
+		FCE51ABC2F59DBAA005E37D2 /* P1_Actors */ = {
+			isa = PBXGroup;
+			children = (
+				FCE51AB92F59DBAA005E37D2 /* AsyncSemaphoreTests.swift */,
+				FCE51ABA2F59DBAA005E37D2 /* PathCollisionManagerTests.swift */,
+				FCE51ABB2F59DBAA005E37D2 /* TaskQueueTests.swift */,
+			);
+			path = P1_Actors;
+			sourceTree = "<group>";
+		};
+		FCE51ABF2F59DBAA005E37D2 /* P2_BusinessLogic */ = {
+			isa = PBXGroup;
+			children = (
+				FCE51ABD2F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift */,
+				FCE51ABE2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift */,
+			);
+			path = P2_BusinessLogic;
+			sourceTree = "<group>";
+		};
+		FCE51AC32F59DBAA005E37D2 /* PureLogic */ = {
+			isa = PBXGroup;
+			children = (
+				FCE51AC02F59DBAA005E37D2 /* GMCommandBuilderTests.swift */,
+				FCE51AC12F59DBAA005E37D2 /* GraphicsMagickHelperTests.swift */,
+				FCE51AC22F59DBAA005E37D2 /* ParametersValidatorTests.swift */,
+			);
+			path = PureLogic;
+			sourceTree = "<group>";
+		};
+		FCE51AC42F59DBAA005E37D2 /* Me2ComicTests */ = {
+			isa = PBXGroup;
+			children = (
+				FCE51AB82F59DBAA005E37D2 /* Helpers */,
+				FCE51ABC2F59DBAA005E37D2 /* P1_Actors */,
+				FCE51ABF2F59DBAA005E37D2 /* P2_BusinessLogic */,
+				FCE51AC32F59DBAA005E37D2 /* PureLogic */,
+			);
+			path = Me2ComicTests;
 			sourceTree = "<group>";
 		};
 		FCF6FDC42DF08BBA00572AC1 /* Views */ = {
@@ -278,9 +336,6 @@
 			);
 			dependencies = (
 				FC141A562F585BAA00C85663 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				FC141A5E2F585BB600C85663 /* Me2ComicTests */,
 			);
 			name = Me2ComicTests;
 			productName = Me2ComicTests;
@@ -362,6 +417,15 @@
 		FC141A4D2F585BAA00C85663 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
+				FCE51AC52F59DBAA005E37D2 /* MockProcessingLogger.swift in Sources */,
+				FCE51AC62F59DBAA005E37D2 /* AsyncSemaphoreTests.swift in Sources */,
+				FCE51AC72F59DBAA005E37D2 /* PathCollisionManagerTests.swift in Sources */,
+				FCE51AC82F59DBAA005E37D2 /* TaskQueueTests.swift in Sources */,
+				FCE51AC92F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift in Sources */,
+				FCE51ACA2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift in Sources */,
+				FCE51ACB2F59DBAA005E37D2 /* GMCommandBuilderTests.swift in Sources */,
+				FCE51ACC2F59DBAA005E37D2 /* GraphicsMagickHelperTests.swift in Sources */,
+				FCE51ACD2F59DBAA005E37D2 /* ParametersValidatorTests.swift in Sources */,
 			);
 		};
 		FCB9B0C02DBDFD4500110511 /* Sources */ = {
@@ -598,7 +662,7 @@
 		FCB9B0D42DBDFD4700110511 /* Debug configuration for PBXNativeTarget "Me2Comic" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Me2Comic/Me2Comic.entitlements;
@@ -633,7 +697,7 @@
 		FCB9B0D52DBDFD4700110511 /* Release configuration for PBXNativeTarget "Me2Comic" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Me2Comic/Me2Comic.entitlements;
