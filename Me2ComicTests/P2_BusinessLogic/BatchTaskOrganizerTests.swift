@@ -89,4 +89,121 @@ struct BatchTaskOrganizerTests {
         #expect(batches.count == 1)
         #expect(batches[0].count == 10)
     }
+
+    // MARK: - 重名文件预计算测试
+
+    @Test("单目录同名文件(不同扩展名)：所有 batch 的 duplicateBaseNames 均应包含重名项")
+    func testDuplicateBaseNamesPropagatedAcrossBatches() {
+        let logger = MockProcessingLogger()
+        let organizer = BatchTaskOrganizer(logger: logger)
+
+        let images = [
+            URL(fileURLWithPath: "/dir/cover.jpg"),
+            URL(fileURLWithPath: "/dir/cover.png"),
+            URL(fileURLWithPath: "/dir/cover.webp")
+        ]
+        let scanResult = DirectoryScanResult(
+            directoryURL: URL(fileURLWithPath: "/dir"),
+            imageFiles: images,
+            category: .isolated,
+            isHighResolution: false
+        )
+        // batchSize=1 强制每张独立一个 batch，模拟最极端的跨 batch 场景
+        let params = ProcessingParameters(
+            widthThreshold: 3000, resizeHeight: 1800, quality: 85,
+            threadCount: 1,
+            unsharpRadius: 0, unsharpSigma: 0, unsharpAmount: 0, unsharpThreshold: 0,
+            batchSize: 1,
+            useGrayColorspace: false
+        )
+
+        let tasks = organizer.prepareBatchTasks(
+            scanResults: [scanResult],
+            globalBatchImages: [],
+            outputDir: URL(fileURLWithPath: "/output"),
+            parameters: params,
+            effectiveThreadCount: 1,
+            effectiveBatchSize: 1
+        )
+
+        // 3 images × batchSize 1 → 3 tasks，每个 task 都应携带完整的目录级重名集合
+        #expect(tasks.count == 3)
+        for task in tasks {
+            #expect(task.duplicateBaseNames.contains("cover"),
+                    "每个 batch 的 duplicateBaseNames 必须包含 'cover'，不应因 batch 切分而丢失")
+        }
+    }
+
+    @Test("无重名文件：duplicateBaseNames 应为空集合")
+    func testNoDuplicatesWithUniqueNames() {
+        let logger = MockProcessingLogger()
+        let organizer = BatchTaskOrganizer(logger: logger)
+
+        let images = [
+            URL(fileURLWithPath: "/dir/img1.jpg"),
+            URL(fileURLWithPath: "/dir/img2.png"),
+            URL(fileURLWithPath: "/dir/img3.webp")
+        ]
+        let scanResult = DirectoryScanResult(
+            directoryURL: URL(fileURLWithPath: "/dir"),
+            imageFiles: images,
+            category: .isolated,
+            isHighResolution: false
+        )
+        let params = ProcessingParameters(
+            widthThreshold: 3000, resizeHeight: 1800, quality: 85,
+            threadCount: 1,
+            unsharpRadius: 0, unsharpSigma: 0, unsharpAmount: 0, unsharpThreshold: 0,
+            batchSize: 10,
+            useGrayColorspace: false
+        )
+
+        let tasks = organizer.prepareBatchTasks(
+            scanResults: [scanResult],
+            globalBatchImages: [],
+            outputDir: URL(fileURLWithPath: "/output"),
+            parameters: params,
+            effectiveThreadCount: 1,
+            effectiveBatchSize: 10
+        )
+
+        #expect(tasks.count == 1)
+        #expect(tasks[0].duplicateBaseNames.isEmpty)
+    }
+
+    @Test("大小写不敏感：cover.jpg 与 cover.JPG 应被识别为重名")
+    func testDuplicateDetectionIsCaseInsensitive() {
+        let logger = MockProcessingLogger()
+        let organizer = BatchTaskOrganizer(logger: logger)
+
+        let images = [
+            URL(fileURLWithPath: "/dir/cover.jpg"),
+            URL(fileURLWithPath: "/dir/cover.JPG")   // 大写扩展名 → 同 base name
+        ]
+        let scanResult = DirectoryScanResult(
+            directoryURL: URL(fileURLWithPath: "/dir"),
+            imageFiles: images,
+            category: .isolated,
+            isHighResolution: false
+        )
+        let params = ProcessingParameters(
+            widthThreshold: 3000, resizeHeight: 1800, quality: 85,
+            threadCount: 1,
+            unsharpRadius: 0, unsharpSigma: 0, unsharpAmount: 0, unsharpThreshold: 0,
+            batchSize: 10,
+            useGrayColorspace: false
+        )
+
+        let tasks = organizer.prepareBatchTasks(
+            scanResults: [scanResult],
+            globalBatchImages: [],
+            outputDir: URL(fileURLWithPath: "/output"),
+            parameters: params,
+            effectiveThreadCount: 1,
+            effectiveBatchSize: 10
+        )
+
+        #expect(tasks.count == 1)
+        #expect(tasks[0].duplicateBaseNames.contains("cover"))
+    }
 }

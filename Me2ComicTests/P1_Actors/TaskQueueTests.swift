@@ -18,7 +18,8 @@ struct TaskQueueTests {
             images: (0..<imageCount).map { URL(fileURLWithPath: "/tmp/img\($0)_task\(id).jpg") },
             outputDir: URL(fileURLWithPath: "/tmp/out"),
             batchSize: 40,
-            isGlobal: isGlobal
+            isGlobal: isGlobal,
+            duplicateBaseNames: []
         )
     }
 
