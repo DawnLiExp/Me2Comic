@@ -311,7 +311,8 @@ class ImageProcessor {
                         localResults = BatchResult(
                             processed: localResults.processed + processed,
                             failed: localResults.failed + failed,
-                            isGlobal: task.isGlobal || localResults.isGlobal
+                            isGlobal: task.isGlobal || localResults.isGlobal,
+                            globalProcessed: localResults.globalProcessed + (task.isGlobal ? processed : 0)
                         )
                         
                         #if DEBUG
@@ -336,7 +337,7 @@ class ImageProcessor {
                 )
                 
                 if result.isGlobal {
-                    globalProcessedCount += result.processed
+                    globalProcessedCount += result.globalProcessed
                 }
                 
                 #if DEBUG

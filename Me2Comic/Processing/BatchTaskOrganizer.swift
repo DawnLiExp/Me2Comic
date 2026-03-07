@@ -22,9 +22,10 @@ struct BatchResult {
     let processed: Int
     let failed: [String]
     let isGlobal: Bool
+    let globalProcessed: Int // Images processed from global batch tasks only
     
     static var empty: BatchResult {
-        BatchResult(processed: 0, failed: [], isGlobal: false)
+        BatchResult(processed: 0, failed: [], isGlobal: false, globalProcessed: 0)
     }
 }
 
