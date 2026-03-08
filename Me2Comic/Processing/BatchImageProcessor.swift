@@ -2,7 +2,7 @@
 //  BatchImageProcessor.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/6/19.
+//  批处理协调器：组件协调、流程控制、结果汇总
 //
 
 import Foundation
@@ -77,8 +77,10 @@ struct BatchImageProcessor {
     /// - Parameters:
     ///   - images: Array of image URLs to process
     ///   - outputDir: Output directory for processed images
+    ///   - duplicateBaseNames: Pre-computed set of base names appearing more than once
+    ///     across the full source directory. Must be computed before batch splitting.
     /// - Returns: Tuple of (processed count, failed filenames)
-    func processBatch(images: [URL], outputDir: URL) async -> (processed: Int, failed: [String]) {
+    func processBatch(images: [URL], outputDir: URL, duplicateBaseNames: Set<String>) async -> (processed: Int, failed: [String]) {
         guard !images.isEmpty, !Task.isCancelled else {
             return (0, [])
         }
@@ -108,7 +110,8 @@ struct BatchImageProcessor {
         return await executeBatch(
             images: images,
             dimensions: dimensions,
-            outputDir: outputDir
+            outputDir: outputDir,
+            duplicateBaseNames: duplicateBaseNames
         )
     }
     
@@ -118,7 +121,8 @@ struct BatchImageProcessor {
     private func executeBatch(
         images: [URL],
         dimensions: [String: (width: Int, height: Int)],
-        outputDir: URL
+        outputDir: URL,
+        duplicateBaseNames: Set<String>
     ) async -> (processed: Int, failed: [String]) {
         let pathManager = PathCollisionManager(logger: logger)
         
@@ -129,7 +133,8 @@ struct BatchImageProcessor {
                 images: images,
                 dimensions: dimensions,
                 outputDir: outputDir,
-                pathManager: pathManager
+                pathManager: pathManager,
+                duplicateBaseNames: duplicateBaseNames
             )
         }
         
@@ -158,10 +163,11 @@ struct BatchImageProcessor {
         images: [URL],
         dimensions: [String: (width: Int, height: Int)],
         outputDir: URL,
-        pathManager: PathCollisionManager
+        pathManager: PathCollisionManager,
+        duplicateBaseNames: Set<String>
     ) async -> Result<Void, ProcessingError> {
-        // Analyze duplicate base names
-        let duplicateBaseNames = commandBuilder.analyzeDuplicateBaseNames(images: images)
+        // duplicateBaseNames is pre-computed at directory level in BatchTaskOrganizer
+        // to ensure correctness even when same-named files are split across batches
         
         for image in images {
             guard !Task.isCancelled else {

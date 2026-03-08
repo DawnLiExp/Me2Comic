@@ -814,7 +814,6 @@
         }
       }
     },
-
     "FailedFiles" : {
       "localizations" : {
         "en" : {
@@ -2008,25 +2007,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Completed processing double-page image directory: %@"
+            "value" : "Completed isolated directory: %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "見開き画像ディレクトリの処理が完了しました：%@"
+            "value" : "独立ディレクトリの処理完了：%@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完成处理双页图片目录：%@"
+            "value" : "完成处理独立目录：%@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完成處理雙頁圖片目錄：%@"
+            "value" : "完成處理獨立目錄：%@"
           }
         }
       }
@@ -3065,25 +3064,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Processing double-page image directory: %@"
+            "value" : "Processing isolated directory: %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "見開き画像ディレクトリを処理中：%@"
+            "value" : "独立ディレクトリを処理中：%@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "开始处理双页图片目录：%@"
+            "value" : "开始处理独立目录：%@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開始處理雙頁圖片目錄：%@"
+            "value" : "開始處理獨立目錄：%@"
           }
         }
       }

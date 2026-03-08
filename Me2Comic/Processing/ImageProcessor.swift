@@ -301,7 +301,8 @@ class ImageProcessor {
                         let (processed, failed) = await self.processBatch(
                             images: task.images,
                             outputDir: task.outputDir,
-                            parameters: parameters
+                            parameters: parameters,
+                            duplicateBaseNames: task.duplicateBaseNames
                         )
                         
                         // Mark task completed
@@ -368,7 +369,8 @@ class ImageProcessor {
     private func processBatch(
         images: [URL],
         outputDir: URL,
-        parameters: ProcessingParameters
+        parameters: ProcessingParameters,
+        duplicateBaseNames: Set<String>
     ) async -> (processed: Int, failed: [String]) {
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         
@@ -387,7 +389,8 @@ class ImageProcessor {
         
         return await processor.processBatch(
             images: images,
-            outputDir: outputDir
+            outputDir: outputDir,
+            duplicateBaseNames: duplicateBaseNames
         )
     }
     

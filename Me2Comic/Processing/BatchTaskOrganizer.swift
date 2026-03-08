@@ -2,7 +2,7 @@
 //  BatchTaskOrganizer.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/8/29.
+//  批任务组织：任务拆分、批大小计算、独立目录优化分配
 //
 
 import Foundation
@@ -15,6 +15,10 @@ struct BatchTask {
     let outputDir: URL
     let batchSize: Int
     let isGlobal: Bool
+    /// Pre-computed duplicate base names across the full source directory,
+    /// not just this batch slice. Ensures correct safe naming even when
+    /// same-named files are split across multiple batches.
+    let duplicateBaseNames: Set<String>
 }
 
 /// Batch processing result
@@ -85,8 +89,12 @@ class BatchTaskOrganizer {
                 defaultSize: parameters.batchSize
             )
             
+            // Compute BEFORE splitting so all batches from this directory share
+            // the same duplicate set, preventing cross-batch naming inconsistency
+            let dirDuplicates = computeDuplicateBaseNames(from: result.imageFiles)
+            
             #if DEBUG
-            logger.logDebug("Isolated directory \(subName): \(result.imageFiles.count) images, batch size \(batchSize)", source: "BatchTaskOrganizer")
+            logger.logDebug("Isolated directory \(subName): \(result.imageFiles.count) images, batch size \(batchSize), duplicates: \(dirDuplicates)", source: "BatchTaskOrganizer")
             #endif
             
             let batches = splitIntoBatches(result.imageFiles, batchSize: batchSize)
@@ -100,7 +108,8 @@ class BatchTaskOrganizer {
                     images: batch,
                     outputDir: outputSubdir,
                     batchSize: batchSize,
-                    isGlobal: false
+                    isGlobal: false,
+                    duplicateBaseNames: dirDuplicates
                 ))
             }
         }
@@ -123,6 +132,11 @@ class BatchTaskOrganizer {
             
             logger.appendLog(String(localized: "StartProcessingGlobalBatch"))
             
+            // Union per-directory duplicates so cross-batch splits don't break safe naming
+            let highResDuplicates = highResGlobalResults.reduce(into: Set<String>()) { acc, result in
+                acc.formUnion(computeDuplicateBaseNames(from: result.imageFiles))
+            }
+            
             let highResBatchSize = calculateGlobalBatchSize(
                 imageCount: highResImages.count,
                 threadCount: effectiveThreadCount,
@@ -136,7 +150,8 @@ class BatchTaskOrganizer {
                     images: batch,
                     outputDir: outputDir,
                     batchSize: highResBatchSize,
-                    isGlobal: true
+                    isGlobal: true,
+                    duplicateBaseNames: highResDuplicates
                 ))
             }
         }
@@ -153,6 +168,11 @@ class BatchTaskOrganizer {
                 logger.appendLog(String(localized: "StartProcessingGlobalBatch"))
             }
             
+            // Union per-directory duplicates so cross-batch splits don't break safe naming
+            let normalDuplicates = normalGlobalResults.reduce(into: Set<String>()) { acc, result in
+                acc.formUnion(computeDuplicateBaseNames(from: result.imageFiles))
+            }
+            
             let normalBatchSize = calculateGlobalBatchSize(
                 imageCount: normalImages.count,
                 threadCount: effectiveThreadCount,
@@ -166,7 +186,8 @@ class BatchTaskOrganizer {
                     images: batch,
                     outputDir: outputDir,
                     batchSize: normalBatchSize,
-                    isGlobal: true
+                    isGlobal: true,
+                    duplicateBaseNames: normalDuplicates
                 ))
             }
         }
@@ -327,5 +348,16 @@ class BatchTaskOrganizer {
         #endif
         
         return result
+    }
+    
+    /// Compute the set of base names that appear more than once across the given files
+    /// Used at directory level so the result is stable regardless of how files are split into batches
+    private func computeDuplicateBaseNames(from imageFiles: [URL]) -> Set<String> {
+        var counts: [String: Int] = [:]
+        for url in imageFiles {
+            let base = url.deletingPathExtension().lastPathComponent.lowercased()
+            counts[base, default: 0] += 1
+        }
+        return Set(counts.compactMap { $0.value > 1 ? $0.key : nil })
     }
 }
