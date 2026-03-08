@@ -1,6 +1,7 @@
 # Me2Comic
 
 [![build](https://github.com/DawnLiExplorer/Me2Comic/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DawnLiExplorer/Me2Comic/actions/workflows/ci.yml)
+[![Swift-6](https://img.shields.io/badge/Swift-6-orange?logo=swift&logoColor=orange)](#)
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
 
 [English](../README.md) | [中文](README_zh.md) | [日本語](README_ja.md)
