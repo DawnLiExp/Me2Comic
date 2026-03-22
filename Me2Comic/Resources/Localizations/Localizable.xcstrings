@@ -1328,30 +1328,29 @@
       }
     },
     "Input Directory Placeholder" : {
-      "comment" : "选择包含子文件夹的图片目录",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Select a directory containing image subfolders. The application will automatically process image files in all first-level subfolders."
+            "value" : "Two modes supported: ① Select a directory containing image subfolders — all first-level subfolders will be processed automatically. ② Select a directory containing images directly — all images will be processed as a single batch."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "画像サブフォルダを含むディレクトリを選択します。アプリケーションは第一階層のすべてのサブフォルダ内の画像ファイルを自動的に処理します。"
+            "value" : "2つのモードに対応：①画像サブフォルダを含むディレクトリを選択すると、第一階層のサブフォルダ内の画像を自動処理します。②画像ファイルを直接含むディレクトリを選択すると、単一バッチとして直接処理します。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择包含图片子文件夹的目录，程序将自动处理该目录下所有第一层级子文件夹内的图片文件"
+            "value" : "支持两种模式：①选择包含图片子文件夹的目录，程序将自动处理所有第一层级子文件夹内的图片；②选择直接包含图片的目录，所有图片将作为单一批次直接处理。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選擇包含圖片子資料夾的目錄，程式將自動處理該目錄下所有第一層級子資料夾內的圖片檔案"
+            "value" : "支援兩種模式：①選擇包含圖片子資料夾的目錄，程式將自動處理所有第一層級子資料夾內的圖片；②選擇直接包含圖片的目錄，所有圖片將作為單一批次直接處理。"
           }
         }
       }

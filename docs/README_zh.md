@@ -38,26 +38,57 @@ Me2Comic 是一款 macOS 图形界面工具，调用 GraphicsMagick 批量转换
 brew install graphicsmagick
 ```
 ## 目录结构示意图
-### - 输入目录结构示意：
 
+支持两种输入模式：
+
+### 模式 A — 包含图片子文件夹的目录（原有行为）
+
+每个第一层级子文件夹作为独立批次处理。
+
+**输入**
 <pre>
 /Volumes/漫画目录/待处理漫画目录/
-├── CITY HUNTER Vol.xx
-├── One Piece Vol.xx
-└── 漫画3
+├── CITY HUNTER Vol.xx/
+│   ├── page001.jpg
+│   └── page002.jpg ...
+├── One Piece Vol.xx/
+│   └── ...
+└── 漫画3/
+    └── ...
 </pre>
 
-### - 完成后结构：
-
+**输出**
 <pre>
 /Volumes/漫画目录/搞完目录/
-├── CITY HUNTER Vol.xx
-│   ├── CITY.HUNTER.CE.1-1.jpg / CITY.HUNTER.CE.1-2.jpg (大于指定参数分切，右侧命名靠前)
-│   └── CITY.HUNTER.CE.2...
-├── One Piece Vol.xx
-│   ├── One Piece Vol.1.jpg (小于指定参数不分切)
-│   └── One Piece Vol.2...
-└── 漫画3
+├── CITY HUNTER Vol.xx/
+│   ├── CITY.HUNTER.CE.1-1.jpg  （超出阈值则分切，右侧命名靠前）
+│   ├── CITY.HUNTER.CE.1-2.jpg  （左侧）
+│   └── CITY.HUNTER.CE.2.jpg    （未超出阈值则直接转换）
+├── One Piece Vol.xx/
+│   └── ...
+└── 漫画3/
+    └── ...
+</pre>
+
+### 模式 B — 直接包含图片的目录（单批次模式）
+
+若所选目录本身包含图片文件，所有图片将作为单一批次直接处理，子目录会被忽略。
+
+**输入**
+<pre>
+/Volumes/漫画目录/CITY HUNTER Vol.xx/
+├── page001.jpg
+├── page002.jpg
+└── page003.jpg ...
+</pre>
+
+**输出**
+<pre>
+/Volumes/漫画目录/搞完目录/
+├── page001-1.jpg  （超出阈值则分切，右侧命名靠前）
+├── page001-2.jpg  （左侧）
+├── page002.jpg    （未超出阈值则直接转换）
+└── ...
 </pre>
 
 ## 构建与发布:

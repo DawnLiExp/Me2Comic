@@ -37,26 +37,57 @@ Me2Comic is a macOS GUI tool that calls GraphicsMagick to batch convert and crop
 ```
 
 ## Directory Structure Diagram
-### Input Directory Structure
 
+Two input modes are supported:
+
+### Mode A — Directory containing image subfolders (original behavior)
+
+Each first-level subdirectory is processed as an independent batch.
+
+**Input**
 <pre>
 /Volumes/Comics/ToProcess/
-├── CITY HUNTER Vol.xx
-├── One Piece Vol.xx
-└── Comic 3
+├── CITY HUNTER Vol.xx/
+│   ├── page001.jpg
+│   └── page002.jpg ...
+├── One Piece Vol.xx/
+│   └── ...
+└── Comic 3/
+    └── ...
 </pre>
 
-### Structure After Completion
-
+**Output**
 <pre>
-Volumes/Comics/Done/
-├── CITY HUNTER Vol.xx
-│   ├── CITY.HUNTER.CE.1-1.jpg / CITY.HUNTER.CE.1-2.jpg (Split if oversized, right side first)
-│   └── CITY.HUNTER.CE.2...
-├── One Piece Vol.xx
-│   ├── One Piece Vol.1.jpg (Not split if smaller than specified parameter)
-│   └── One Piece Vol.2...
-└── Comic 3
+/Volumes/Comics/Done/
+├── CITY HUNTER Vol.xx/
+│   ├── CITY.HUNTER.CE.1-1.jpg  (split right half, if oversized)
+│   ├── CITY.HUNTER.CE.1-2.jpg  (split left half)
+│   └── CITY.HUNTER.CE.2.jpg    (direct convert, if not oversized)
+├── One Piece Vol.xx/
+│   └── ...
+└── Comic 3/
+    └── ...
+</pre>
+
+### Mode B — Directory containing images directly (single-batch mode)
+
+If the selected directory itself contains image files, all images are processed as one batch. Any subdirectories are ignored.
+
+**Input**
+<pre>
+/Volumes/Comics/CITY HUNTER Vol.xx/
+├── page001.jpg
+├── page002.jpg
+└── page003.jpg ...
+</pre>
+
+**Output**
+<pre>
+/Volumes/Comics/Done/
+├── page001-1.jpg  (split right half, if oversized)
+├── page001-2.jpg  (split left half)
+├── page002.jpg    (direct convert, if not oversized)
+└── ...
 </pre>
 
 ## Build & Release:
