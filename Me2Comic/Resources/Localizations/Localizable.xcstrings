@@ -1713,6 +1713,62 @@
         }
       }
     },
+    "ModeBDetected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected %1$d images in '%2$@', processing directly"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'%2$@' 内に %1$d 枚の画像を検出、直接処理します"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 '%2$@' 中检测到 %1$d 张图片，直接处理"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 '%2$@' 中偵測到 %1$d 張圖片，直接處理"
+          }
+        }
+      }
+    },
+    "ModeBSubdirIgnored" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Root-level images detected; %d subdirectory(ies) will be ignored"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ルート直下に画像が見つかりました。%d 個のサブディレクトリは無視されます"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检测到一级图片，%d 个子目录将被忽略"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "偵測到一級圖片，%d 個子目錄將被忽略"
+          }
+        }
+      }
+    },
     "NoImagesInDir" : {
       "localizations" : {
         "en" : {

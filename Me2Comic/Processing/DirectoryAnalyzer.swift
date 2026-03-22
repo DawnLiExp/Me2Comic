@@ -2,7 +2,8 @@
 //  DirectoryAnalyzer.swift
 //  Me2Comic
 //
-//  Created by Me2 on 2025/7/9.
+//  目录扫描：子目录枚举、图片分类、采样检测
+//  支持 Mode A（子目录模式）和 Mode B（根目录直含图片模式）
 //
 
 import Foundation
@@ -55,18 +56,58 @@ final class DirectoryAnalyzer: Sendable {
     
     // MARK: - Public Methods
     
-    /// Analyze input directory and categorize subdirectories
+    /// Analyze input directory and categorize subdirectories.
+    ///
+    /// - Mode B: If the input directory itself contains supported image files,
+    ///   treat it as a single processing unit (subdirectories are ignored).
+    /// - Mode A: Otherwise, enumerate first-level subdirectories as usual.
+    ///
     /// - Parameters:
-    ///   - inputDir: Parent directory containing subdirectories
+    ///   - inputDir: Parent directory containing subdirectories or images directly
     ///   - widthThreshold: Threshold for determining if images need splitting
     /// - Returns: Array of scan results
     func analyzeAsync(inputDir: URL, widthThreshold: Int) async -> [DirectoryScanResult] {
         #if DEBUG
         logHandler("Starting directory analysis for: \(inputDir.path)", .debug, "DirectoryAnalyzer")
         #endif
-        
+
+        // ── Mode B Detection ─────────────────────────────────────────────────
+        let rootImages = detectRootImages(in: inputDir)
+
+        if !rootImages.isEmpty {
+            logHandler(
+                String(format: String(localized: "ModeBDetected"), rootImages.count, inputDir.lastPathComponent),
+                .info,
+                "DirectoryAnalyzer"
+            )
+
+            // Warn if subdirectories also exist (they will be silently ignored)
+            let fileManager = FileManager.default
+            let subdirectoriesResult = getSubdirectories(in: inputDir, fileManager: fileManager)
+            if case .success(let subdirs) = subdirectoriesResult, !subdirs.isEmpty {
+                logHandler(
+                    String(format: String(localized: "ModeBSubdirIgnored"), subdirs.count),
+                    .warning,
+                    "DirectoryAnalyzer"
+                )
+            }
+
+            let (category, isHighResolution) = await categorizeDirectory(
+                imageFiles: rootImages,
+                widthThreshold: widthThreshold,
+                directoryName: inputDir.lastPathComponent
+            )
+
+            return [DirectoryScanResult(
+                directoryURL: inputDir,
+                imageFiles: rootImages,
+                category: category,
+                isHighResolution: isHighResolution
+            )]
+        }
+
+        // ── Mode A: Original subdirectory logic (unchanged) ──────────────────
         let fileManager = FileManager.default
-        
         let subdirectoriesResult = getSubdirectories(in: inputDir, fileManager: fileManager)
         
         switch subdirectoriesResult {
@@ -92,7 +133,13 @@ final class DirectoryAnalyzer: Sendable {
     }
     
     // MARK: - Private Methods
-    
+
+    /// Detect supported image files directly inside the given directory (non-recursive).
+    /// Reuses `getImageFiles(in:)` which already applies `skipsSubdirectoryDescendants`.
+    private func detectRootImages(in directory: URL) -> [URL] {
+        getImageFiles(in: directory)
+    }
+
     /// Get subdirectories from parent directory
     private func getSubdirectories(
         in directory: URL,
@@ -241,7 +288,7 @@ final class DirectoryAnalyzer: Sendable {
         return (category, isHighResolution)
     }
     
-    /// Get image files from directory
+    /// Get image files from directory (non-recursive)
     private func getImageFiles(in directory: URL) -> [URL] {
         guard let enumerator = FileManager.default.enumerator(
             at: directory,
