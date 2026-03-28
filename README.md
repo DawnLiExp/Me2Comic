@@ -56,19 +56,6 @@ Each first-level subdirectory is processed as an independent batch.
     └── ...
 </pre>
 
-**Output**
-<pre>
-/Volumes/Comics/Done/
-├── CITY HUNTER Vol.xx/
-│   ├── CITY.HUNTER.CE.1-1.jpg  (split right half, if oversized)
-│   ├── CITY.HUNTER.CE.1-2.jpg  (split left half)
-│   └── CITY.HUNTER.CE.2.jpg    (direct convert, if not oversized)
-├── One Piece Vol.xx/
-│   └── ...
-└── Comic 3/
-    └── ...
-</pre>
-
 ### Mode B — Directory containing images directly (single-batch mode)
 
 If the selected directory itself contains image files, all images are processed as one batch. Any subdirectories are ignored.
@@ -81,14 +68,21 @@ If the selected directory itself contains image files, all images are processed 
 └── page003.jpg ...
 </pre>
 
-**Output**
+### **Output**
 <pre>
 /Volumes/Comics/Done/
-├── page001-1.jpg  (split right half, if oversized)
-├── page001-2.jpg  (split left half)
-├── page002.jpg    (direct convert, if not oversized)
-└── ...
+├── CITY HUNTER Vol.xx/
+│   ├── CITY.HUNTER.CE.1-1.jpg  (Split if oversized, right half named first)
+│   ├── CITY.HUNTER.CE.1-2.jpg  (Left half)
+│   └── CITY.HUNTER.CE.2.jpg    (Converted directly if not oversized)
+├── One Piece Vol.xx/
+│   └── ...
+└── Comic 3/
+    └── ...
 </pre>
+
+Processed images are packed into MOBI comic files using [Me2Press](https://github.com/DawnLiExp/Me2Press).
+
 
 ## Build & Release:
 

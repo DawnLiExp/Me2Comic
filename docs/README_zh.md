@@ -57,19 +57,6 @@ brew install graphicsmagick
     └── ...
 </pre>
 
-**输出**
-<pre>
-/Volumes/漫画目录/搞完目录/
-├── CITY HUNTER Vol.xx/
-│   ├── CITY.HUNTER.CE.1-1.jpg  （超出阈值则分切，右侧命名靠前）
-│   ├── CITY.HUNTER.CE.1-2.jpg  （左侧）
-│   └── CITY.HUNTER.CE.2.jpg    （未超出阈值则直接转换）
-├── One Piece Vol.xx/
-│   └── ...
-└── 漫画3/
-    └── ...
-</pre>
-
 ### 模式 B — 直接包含图片的目录（单批次模式）
 
 若所选目录本身包含图片文件，所有图片将作为单一批次直接处理，子目录会被忽略。
@@ -82,14 +69,21 @@ brew install graphicsmagick
 └── page003.jpg ...
 </pre>
 
-**输出**
+### **输出**
 <pre>
 /Volumes/漫画目录/搞完目录/
-├── page001-1.jpg  （超出阈值则分切，右侧命名靠前）
-├── page001-2.jpg  （左侧）
-├── page002.jpg    （未超出阈值则直接转换）
-└── ...
+├── CITY HUNTER Vol.xx/
+│   ├── CITY.HUNTER.CE.1-1.jpg  （超出阈值则分切，右侧命名靠前）
+│   ├── CITY.HUNTER.CE.1-2.jpg  （左侧）
+│   └── CITY.HUNTER.CE.2.jpg    （未超出阈值则直接转换）
+├── One Piece Vol.xx/
+│   └── ...
+└── 漫画3/
+    └── ...
 </pre>
+
+处理好的图片，我使用 [Me2Press](https://github.com/DawnLiExp/Me2Press) 打包为 mobi 漫画文件。
+
 
 ## 构建与发布:
 
