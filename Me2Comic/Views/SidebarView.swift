@@ -205,40 +205,40 @@ struct NavigationItem: View {
     @State private var isHovered = false
     
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: isSelected ? .medium : .regular))
-                .foregroundColor(isSelected ? .accentGreen : .textMuted)
-                .frame(width: 24)
-            
-            Text(title)
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                .foregroundColor(isSelected ? .textLight : .textMuted)
-            
-            Spacer()
-            
-            if isSelected {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.accentGreen)
-                    .frame(width: 3, height: 16)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .trailing).combined(with: .opacity),
-                        removal: .opacity
-                    ))
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: isSelected ? .medium : .regular))
+                    .foregroundColor(isSelected ? .accentGreen : .textMuted)
+                    .frame(width: 24)
+                
+                Text(title)
+                    .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                    .foregroundColor(isSelected ? .textLight : .textMuted)
+                
+                Spacer()
+                
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.accentGreen)
+                        .frame(width: 3, height: 16)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .opacity
+                        ))
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.accentGreen.opacity(0.15) : (isHovered ? Color.bgTertiary.opacity(0.2) : Color.clear))
+                    .animation(.easeInOut(duration: 0.15), value: isSelected)
+                    .animation(.easeInOut(duration: 0.1), value: isHovered)
+            )
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentGreen.opacity(0.15) : (isHovered ? Color.bgTertiary.opacity(0.2) : Color.clear))
-                .animation(.easeInOut(duration: 0.15), value: isSelected)
-                .animation(.easeInOut(duration: 0.1), value: isHovered)
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            action()
-        }
+        .buttonStyle(PlainButtonStyle())
         .onHover { hovering in
             isHovered = hovering
         }

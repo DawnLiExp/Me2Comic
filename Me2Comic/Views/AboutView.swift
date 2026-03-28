@@ -336,43 +336,19 @@ struct AboutView: View {
             UserDefaults.standard.removeObject(forKey: "Me2Comic.pendingLanguage")
         }
         
-        // Restart application
+        // Restart application via LaunchServices to preserve activation/focus behavior.
         let bundleURL = Bundle.main.bundleURL
-        
-        // Try direct executable launch
-        let execURL = Bundle.main.executableURL
-            ?? bundleURL
-            .appendingPathComponent("Contents")
-            .appendingPathComponent("MacOS")
-            .appendingPathComponent(Bundle.main.infoDictionary?["CFBundleExecutable"] as? String ?? "")
-        
-        if FileManager.default.fileExists(atPath: execURL.path) {
-            let process = Process()
-            process.executableURL = execURL
-            process.arguments = []
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = FileHandle.nullDevice
-            process.environment = ProcessInfo.processInfo.environment
-            
-            do {
-                try process.run()
-                NSApplication.shared.terminate(nil)
-                return
-            } catch {
-                NSLog("Direct launch failed: \(error)")
-            }
-        }
-        
-        // Fallback: NSWorkspace
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         configuration.addsToRecentItems = false
+        configuration.createsNewApplicationInstance = true
         
         do {
-            _ = try await NSWorkspace.shared.openApplication(
+            let runningApp = try await NSWorkspace.shared.openApplication(
                 at: bundleURL,
                 configuration: configuration
             )
+            runningApp.activate(options: [.activateAllWindows])
             NSApplication.shared.terminate(nil)
         } catch {
             NSLog("NSWorkspace launch failed: \(error)")
@@ -380,7 +356,7 @@ struct AboutView: View {
             // Final fallback: open command
             let task = Process()
             task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            task.arguments = ["-n", bundleURL.path]
+            task.arguments = ["-n", "-a", bundleURL.path]
             task.standardOutput = FileHandle.nullDevice
             task.standardError = FileHandle.nullDevice
             
