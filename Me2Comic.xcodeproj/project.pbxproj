@@ -24,6 +24,8 @@
 		FC9092EC2DFEC37700867319 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9092EB2DFEC37700867319 /* ImageIO.framework */; };
 		FC91CC6C2EA522BB00955736 /* CPUMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC91CC6B2EA522BB00955736 /* CPUMonitor.swift */; };
 		FC91CC6E2EA522D900955736 /* CPUUsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC91CC6D2EA522D900955736 /* CPUUsageChartView.swift */; };
+		FC9B10012F9D000100CA11CE /* ProcessingCancellationToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9B10002F9D000100CA11CE /* ProcessingCancellationToken.swift */; };
+		FC9B10032F9D000100CA11CE /* ProcessingCancellationTokenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9B10022F9D000100CA11CE /* ProcessingCancellationTokenTests.swift */; };
 		FCA94A172E43C43A00CC23BC /* ParametersValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA94A162E43C43600CC23BC /* ParametersValidator.swift */; };
 		FCB5716B2E019566004A6D48 /* ImageIOHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */; };
 		FCB9B0C82DBDFD4500110511 /* Me2ComicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB9B0C72DBDFD4500110511 /* Me2ComicApp.swift */; };
@@ -87,6 +89,8 @@
 		FC9092EB2DFEC37700867319 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
 		FC91CC6B2EA522BB00955736 /* CPUMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUMonitor.swift; sourceTree = "<group>"; };
 		FC91CC6D2EA522D900955736 /* CPUUsageChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUUsageChartView.swift; sourceTree = "<group>"; };
+		FC9B10002F9D000100CA11CE /* ProcessingCancellationToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingCancellationToken.swift; sourceTree = "<group>"; };
+		FC9B10022F9D000100CA11CE /* ProcessingCancellationTokenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingCancellationTokenTests.swift; sourceTree = "<group>"; };
 		FCA94A162E43C43600CC23BC /* ParametersValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParametersValidator.swift; sourceTree = "<group>"; };
 		FCB5716A2E01955E004A6D48 /* ImageIOHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageIOHelper.swift; sourceTree = "<group>"; };
 		FCB9B0C42DBDFD4500110511 /* Me2Comic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Me2Comic.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -177,6 +181,7 @@
 				FCEAFA632E60DAAB008575D6 /* BatchTaskOrganizer.swift */,
 				FCFCBCE72E24D92C00312F32 /* DirectoryAnalyzer.swift */,
 				FCED852F2DD1B89500E299D1 /* ImageProcessor.swift */,
+				FC9B10002F9D000100CA11CE /* ProcessingCancellationToken.swift */,
 				FCEAFA5F2E60DA78008575D6 /* ProcessingStateManager.swift */,
 				FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */,
 			);
@@ -273,6 +278,7 @@
 				FCE51AB92F59DBAA005E37D2 /* AsyncSemaphoreTests.swift */,
 				FCE51ABA2F59DBAA005E37D2 /* PathCollisionManagerTests.swift */,
 				FC2A90022F8A000100ABCDEF /* ProcessOutputCollectorTests.swift */,
+				FC9B10022F9D000100CA11CE /* ProcessingCancellationTokenTests.swift */,
 				FCE51ABB2F59DBAA005E37D2 /* TaskQueueTests.swift */,
 			);
 			path = P1_Actors;
@@ -424,6 +430,7 @@
 				FCE51AC62F59DBAA005E37D2 /* AsyncSemaphoreTests.swift in Sources */,
 				FCE51AC72F59DBAA005E37D2 /* PathCollisionManagerTests.swift in Sources */,
 				FC2A90012F8A000100ABCDEF /* ProcessOutputCollectorTests.swift in Sources */,
+				FC9B10032F9D000100CA11CE /* ProcessingCancellationTokenTests.swift in Sources */,
 				FCE51AC82F59DBAA005E37D2 /* TaskQueueTests.swift in Sources */,
 				FCE51AC92F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift in Sources */,
 				FCE51ACA2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift in Sources */,
@@ -442,6 +449,7 @@
 				FCEAFA682E60DD11008575D6 /* ProcessingTypes.swift in Sources */,
 				FCD6E2E42E7305AB006E3B1E /* ProcessButtonView.swift in Sources */,
 				FC91CC6E2EA522D900955736 /* CPUUsageChartView.swift in Sources */,
+				FC9B10012F9D000100CA11CE /* ProcessingCancellationToken.swift in Sources */,
 				FC7950BC2E68C17F00F891B3 /* GMCommandBuilder.swift in Sources */,
 				FCEAFA642E60DAAD008575D6 /* BatchTaskOrganizer.swift in Sources */,
 				FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */,
