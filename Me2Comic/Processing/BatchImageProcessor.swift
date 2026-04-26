@@ -20,6 +20,7 @@ struct BatchImageProcessor {
     private let unsharpAmount: Float
     private let unsharpThreshold: Float
     private let useGrayColorspace: Bool
+    private let cancellationCheck: @Sendable () async -> Bool
     private let logger: (@Sendable (String, LogLevel, String?) -> Void)?
     
     // MARK: - Components
@@ -39,6 +40,7 @@ struct BatchImageProcessor {
         unsharpAmount: Float,
         unsharpThreshold: Float,
         useGrayColorspace: Bool,
+        cancellationCheck: @escaping @Sendable () async -> Bool = { !Task.isCancelled },
         logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil
     ) {
         self.gmPath = gmPath
@@ -50,6 +52,7 @@ struct BatchImageProcessor {
         self.unsharpAmount = unsharpAmount
         self.unsharpThreshold = unsharpThreshold
         self.useGrayColorspace = useGrayColorspace
+        self.cancellationCheck = cancellationCheck
         self.logger = logger
         
         // Initialize components
@@ -92,11 +95,11 @@ struct BatchImageProcessor {
         // Fetch image dimensions
         let dimensions = await ImageIOHelper.getBatchImageDimensionsAsync(
             imagePaths: images.map(\.path),
-            asyncCancellationCheck: { !Task.isCancelled },
+            asyncCancellationCheck: cancellationCheck,
             logger: logger
         )
         
-        guard !Task.isCancelled, !dimensions.isEmpty else {
+        guard await cancellationCheck(), !dimensions.isEmpty else {
             #if DEBUG
             logger?("Batch processing cancelled or no dimensions retrieved", .debug, "BatchImageProcessor")
             #endif
@@ -170,7 +173,7 @@ struct BatchImageProcessor {
         // to ensure correctness even when same-named files are split across batches
         
         for image in images {
-            guard !Task.isCancelled else {
+            guard await cancellationCheck() else {
                 return .failure(.processingCancelled)
             }
             

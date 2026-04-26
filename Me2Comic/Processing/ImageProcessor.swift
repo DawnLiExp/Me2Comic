@@ -22,6 +22,7 @@ class ImageProcessor {
     
     private var gmPath = ""
     private var activeProcessingTask: Task<Void, Never>?
+    private var activeCancellationToken: ProcessingCancellationToken?
     
     var gmReady = false
     
@@ -73,7 +74,13 @@ class ImageProcessor {
         #endif
         
         activeProcessingTask?.cancel()
+        let cancellationToken = activeCancellationToken
         activeProcessingTask = nil
+        activeCancellationToken = nil
+
+        Task {
+            await cancellationToken?.cancel()
+        }
         
         logger.log(String(localized: "ProcessingStopRequested"), level: .warning, source: "ImageProcessor")
         logger.log(String(localized: "ProcessingStopped"), level: .warning, source: "ImageProcessor")
@@ -90,6 +97,8 @@ class ImageProcessor {
         #endif
         
         activeProcessingTask?.cancel()
+        let cancellationToken = ProcessingCancellationToken()
+        activeCancellationToken = cancellationToken
         
         stateManager.startProcessing()
         logger.logStartParameters(parameters)
@@ -98,7 +107,8 @@ class ImageProcessor {
             await processImagesAsync(
                 inputDir: inputDir,
                 outputDir: outputDir,
-                parameters: parameters
+                parameters: parameters,
+                cancellationToken: cancellationToken
             )
         }
     }
@@ -106,7 +116,12 @@ class ImageProcessor {
     // MARK: - Private Processing Methods
     
     /// Main async processing implementation
-    private func processImagesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
+    private func processImagesAsync(
+        inputDir: URL,
+        outputDir: URL,
+        parameters: ProcessingParameters,
+        cancellationToken: ProcessingCancellationToken
+    ) async {
         guard gmReady else {
             logger.logError(String(localized: "GMNotReady"), source: "ImageProcessor")
             stateManager.stopProcessing()
@@ -134,21 +149,24 @@ class ImageProcessor {
         await processDirectoriesAsync(
             inputDir: inputDir,
             outputDir: outputDir,
-            parameters: parameters
+            parameters: parameters,
+            cancellationToken: cancellationToken
         )
     }
     
     /// Process directories with categorization
-    private func processDirectoriesAsync(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) async {
+    private func processDirectoriesAsync(
+        inputDir: URL,
+        outputDir: URL,
+        parameters: ProcessingParameters,
+        cancellationToken: ProcessingCancellationToken
+    ) async {
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         
         let analyzer = DirectoryAnalyzer(
             logHandler: loggerClosure,
-            isProcessingCheck: { @Sendable [weak self] in
-                guard let self else { return false }
-                return await MainActor.run {
-                    self.stateManager.isProcessing && !Task.isCancelled
-                }
+            isProcessingCheck: { @Sendable in
+                await cancellationToken.canContinue()
             }
         )
         
@@ -209,7 +227,8 @@ class ImageProcessor {
             outputDir: outputDir,
             parameters: parameters,
             effectiveThreadCount: effectiveThreadCount,
-            effectiveBatchSize: effectiveBatchSize
+            effectiveBatchSize: effectiveBatchSize,
+            cancellationToken: cancellationToken
         )
     }
     
@@ -220,7 +239,8 @@ class ImageProcessor {
         outputDir: URL,
         parameters: ProcessingParameters,
         effectiveThreadCount: Int,
-        effectiveBatchSize: Int
+        effectiveBatchSize: Int,
+        cancellationToken: ProcessingCancellationToken
     ) async {
         guard stateManager.isProcessing, !Task.isCancelled else {
             #if DEBUG
@@ -302,7 +322,8 @@ class ImageProcessor {
                             images: task.images,
                             outputDir: task.outputDir,
                             parameters: parameters,
-                            duplicateBaseNames: task.duplicateBaseNames
+                            duplicateBaseNames: task.duplicateBaseNames,
+                            cancellationCheck: { await cancellationToken.canContinue() }
                         )
                         
                         // Mark task completed
@@ -370,7 +391,8 @@ class ImageProcessor {
         images: [URL],
         outputDir: URL,
         parameters: ProcessingParameters,
-        duplicateBaseNames: Set<String>
+        duplicateBaseNames: Set<String>,
+        cancellationCheck: @escaping @Sendable () async -> Bool
     ) async -> (processed: Int, failed: [String]) {
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         
@@ -384,6 +406,7 @@ class ImageProcessor {
             unsharpAmount: parameters.unsharpAmount,
             unsharpThreshold: parameters.unsharpThreshold,
             useGrayColorspace: parameters.useGrayColorspace,
+            cancellationCheck: cancellationCheck,
             logger: loggerClosure
         )
         
