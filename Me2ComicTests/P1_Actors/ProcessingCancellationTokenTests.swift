@@ -5,6 +5,7 @@
 //  P1 Actor concurrency tests for ProcessingCancellationToken
 //
 
+import Foundation
 import Testing
 @testable import Me2Comic
 
@@ -27,5 +28,48 @@ struct ProcessingCancellationTokenTests {
         let canContinue = await token.canContinue()
 
         #expect(!canContinue)
+    }
+
+    @Test("并发取消后应稳定停止继续")
+    func concurrentCancellationStopsContinuation() async {
+        let token = ProcessingCancellationToken()
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<20 {
+                group.addTask {
+                    await token.cancel()
+                }
+            }
+        }
+
+        let canContinue = await token.canContinue()
+
+        #expect(!canContinue)
+    }
+
+    @Test("批处理取消检查失败时应提前停止")
+    func batchProcessorStopsWhenCancellationCheckFails() async {
+        let processor = BatchImageProcessor(
+            gmPath: "/path/does/not/exist/gm",
+            widthThreshold: 3000,
+            resizeHeight: 1648,
+            quality: 85,
+            unsharpRadius: 1.5,
+            unsharpSigma: 1,
+            unsharpAmount: 0.7,
+            unsharpThreshold: 0.02,
+            useGrayColorspace: true,
+            cancellationCheck: { false }
+        )
+        let image = URL(fileURLWithPath: "/tmp/cancelled-test-image.jpg")
+
+        let result = await processor.processBatch(
+            images: [image],
+            outputDir: URL(fileURLWithPath: "/tmp/out"),
+            duplicateBaseNames: []
+        )
+
+        #expect(result.processed == 0)
+        #expect(result.failed == ["cancelled-test-image.jpg"])
     }
 }
