@@ -67,11 +67,6 @@ actor ProcessOutputCollector {
         )
     }
     
-    /// Retrieve legacy output shape during executor migration.
-    func getOutput() -> (stdout: Data, stderr: Data) {
-        return (Data(), stderrTail)
-    }
-    
     /// Clear collected summary state.
     func reset() {
         stdoutBytesRead = 0

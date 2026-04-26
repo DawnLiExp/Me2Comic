@@ -38,10 +38,10 @@ struct GMProcessExecutor {
     /// - Parameters:
     ///   - commands: Commands to execute
     ///   - commandGenerator: Async closure that generates and writes commands
-    /// - Returns: Result indicating success or collected output
+    /// - Returns: Result indicating success or execution failure
     func executeBatch(
         commandGenerator: @escaping (FileHandle) async -> Result<Void, ProcessingError>
-    ) async -> Result<(stdout: Data, stderr: Data), ProcessingError> {
+    ) async -> Result<Void, ProcessingError> {
         let outputCollector = ProcessOutputCollector(logger: logger)
         
         // Setup process
@@ -127,7 +127,7 @@ struct GMProcessExecutor {
         inputPipe: Pipe,
         outputCollector: ProcessOutputCollector,
         commandGenerator: @escaping (FileHandle) async -> Result<Void, ProcessingError>
-    ) async -> Result<(stdout: Data, stderr: Data), ProcessingError> {
+    ) async -> Result<Void, ProcessingError> {
         do {
             #if DEBUG
             logger?("Starting GraphicsMagick batch process", .debug, "GMProcessExecutor")
@@ -171,10 +171,12 @@ struct GMProcessExecutor {
             logger?("GraphicsMagick process completed with exit code: \(exitCode)", .debug, "GMProcessExecutor")
             #endif
             
-            let output = await outputCollector.getOutput()
+            let output = await outputCollector.getSummary()
             
             if exitCode != 0, !Task.isCancelled {
-                let stderrString = String(data: output.stderr, encoding: .utf8)
+                let stderrString = output.stderrTail.isEmpty
+                    ? nil
+                    : String(decoding: output.stderrTail, as: UTF8.self)
                 let error = ProcessingError.graphicsMagickExecutionFailed(
                     exitCode: exitCode,
                     stderr: stderrString
@@ -183,7 +185,7 @@ struct GMProcessExecutor {
                 return .failure(error)
             }
             
-            return .success(output)
+            return .success(())
             
         } catch {
             #if DEBUG
