@@ -293,37 +293,36 @@ class ImageProcessor {
         let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
         let taskQueue = TaskQueue(logger: loggerClosure)
         await taskQueue.initialize(with: batchTasks, highResGlobalIndices: highResGlobalIndices)
+        let gmPath = self.gmPath
+        let batchParameters = parameters
+        let cancellationCheck: @Sendable () async -> Bool = {
+            await cancellationToken.canContinue()
+        }
         
         var globalProcessedCount = 0
         
         await withTaskGroup(of: BatchResult.self) { group in
             // Start worker threads
             for threadId in 0 ..< effectiveThreadCount {
-                group.addTask { [weak self] in
-                    guard let self else { return BatchResult.empty }
-                    
+                group.addTask {
                     var localResults = BatchResult.empty
                     
                     // Work-stealing loop: keep processing until no tasks remain
                     while !Task.isCancelled {
-                        // Check processing state
-                        let shouldContinue = await MainActor.run {
-                            self.stateManager.isProcessing
-                        }
-                        guard shouldContinue else { break }
-                        
                         // Get next task from queue (work-stealing enabled)
                         guard let task = await taskQueue.getNextTask(threadId: threadId) else {
                             break // No more tasks available
                         }
                         
                         // Process the task
-                        let (processed, failed) = await self.processBatch(
+                        let (processed, failed) = await ImageProcessor.processBatch(
+                            gmPath: gmPath,
                             images: task.images,
                             outputDir: task.outputDir,
-                            parameters: parameters,
+                            parameters: batchParameters,
                             duplicateBaseNames: task.duplicateBaseNames,
-                            cancellationCheck: { await cancellationToken.canContinue() }
+                            cancellationCheck: cancellationCheck,
+                            logger: loggerClosure
                         )
                         
                         // Mark task completed
@@ -339,9 +338,11 @@ class ImageProcessor {
                         
                         #if DEBUG
                         let progress = await taskQueue.getProgress()
-                        await MainActor.run {
-                            self.logger.logDebug("Thread \(threadId) completed task: \(progress.completed)/\(progress.total) done, \(progress.remaining) remaining", source: "ImageProcessor")
-                        }
+                        loggerClosure(
+                            "Thread \(threadId) completed task: \(progress.completed)/\(progress.total) done, \(progress.remaining) remaining",
+                            .debug,
+                            "ImageProcessor"
+                        )
                         #endif
                     }
                     
@@ -387,15 +388,15 @@ class ImageProcessor {
     }
     
     /// Process single batch
-    private func processBatch(
+    nonisolated private static func processBatch(
+        gmPath: String,
         images: [URL],
         outputDir: URL,
         parameters: ProcessingParameters,
         duplicateBaseNames: Set<String>,
-        cancellationCheck: @escaping @Sendable () async -> Bool
+        cancellationCheck: @escaping @Sendable () async -> Bool,
+        logger: (@Sendable (String, LogLevel, String?) -> Void)?
     ) async -> (processed: Int, failed: [String]) {
-        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
-        
         let processor = BatchImageProcessor(
             gmPath: gmPath,
             widthThreshold: parameters.widthThreshold,
@@ -407,7 +408,7 @@ class ImageProcessor {
             unsharpThreshold: parameters.unsharpThreshold,
             useGrayColorspace: parameters.useGrayColorspace,
             cancellationCheck: cancellationCheck,
-            logger: loggerClosure
+            logger: logger
         )
         
         return await processor.processBatch(
