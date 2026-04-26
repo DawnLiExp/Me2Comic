@@ -7,44 +7,75 @@
 
 import Foundation
 
+struct ProcessOutputSummary: Sendable {
+    let stdoutBytesRead: Int
+    let stderrBytesRead: Int
+    let stderrTail: Data
+}
+
 /// Thread-safe collection of external process output
 actor ProcessOutputCollector {
-    private var stdout = Data()
-    private var stderr = Data()
+    private enum Constants {
+        static let stderrTailCapacity = 64 * 1024
+    }
+    
+    private var stdoutBytesRead = 0
+    private var stderrBytesRead = 0
+    private var stderrTail = Data()
     private let logger: (@Sendable (String, LogLevel, String?) -> Void)?
     
     init(logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil) {
         self.logger = logger
     }
     
-    /// Append data to stdout buffer
+    /// Count stdout bytes without retaining stdout content.
     func appendStdout(_ data: Data) {
-        stdout.append(data)
+        stdoutBytesRead += data.count
         #if DEBUG
         if !data.isEmpty {
-            logger?("Collected \(data.count) bytes of stdout", .debug, "ProcessOutputCollector")
+            logger?("Read \(data.count) bytes of stdout; total=\(stdoutBytesRead)", .debug, "ProcessOutputCollector")
         }
         #endif
     }
     
-    /// Append data to stderr buffer
+    /// Keep only the bounded stderr tail needed for failure diagnostics.
     func appendStderr(_ data: Data) {
-        stderr.append(data)
+        stderrBytesRead += data.count
+        
+        if data.count >= Constants.stderrTailCapacity {
+            stderrTail = Data(data.suffix(Constants.stderrTailCapacity))
+        } else {
+            stderrTail.append(data)
+            if stderrTail.count > Constants.stderrTailCapacity {
+                stderrTail = Data(stderrTail.suffix(Constants.stderrTailCapacity))
+            }
+        }
+        
         #if DEBUG
         if !data.isEmpty {
-            logger?("Collected \(data.count) bytes of stderr", .debug, "ProcessOutputCollector")
+            logger?("Read \(data.count) bytes of stderr; total=\(stderrBytesRead), retained=\(stderrTail.count)", .debug, "ProcessOutputCollector")
         }
         #endif
     }
     
-    /// Retrieve collected output
-    func getOutput() -> (stdout: Data, stderr: Data) {
-        return (stdout, stderr)
+    /// Retrieve bounded output summary.
+    func getSummary() -> ProcessOutputSummary {
+        ProcessOutputSummary(
+            stdoutBytesRead: stdoutBytesRead,
+            stderrBytesRead: stderrBytesRead,
+            stderrTail: stderrTail
+        )
     }
     
-    /// Clear collected buffers
+    /// Retrieve legacy output shape during executor migration.
+    func getOutput() -> (stdout: Data, stderr: Data) {
+        return (Data(), stderrTail)
+    }
+    
+    /// Clear collected summary state.
     func reset() {
-        stdout.removeAll()
-        stderr.removeAll()
+        stdoutBytesRead = 0
+        stderrBytesRead = 0
+        stderrTail.removeAll()
     }
 }
