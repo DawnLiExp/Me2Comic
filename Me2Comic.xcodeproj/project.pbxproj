@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		FC00E6772E6D74D700C3ABB2 /* TaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */; };
 		FC141A3C2F583D9600C85663 /* AppSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC141A3B2F583D9600C85663 /* AppSettingsStore.swift */; };
+		FC2A90012F8A000100ABCDEF /* ProcessOutputCollectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC2A90022F8A000100ABCDEF /* ProcessOutputCollectorTests.swift */; };
 		FC38F2E92E03F31C00FBB3B2 /* BatchImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */; };
 		FC40C69E2F55C5EA00B96519 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FC40C69D2F55C5EA00B96519 /* Localizable.xcstrings */; };
 		FC460C3E2E6C92D200C1E621 /* SystemInfoHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */; };
@@ -44,7 +45,6 @@
 		FCE51AC62F59DBAA005E37D2 /* AsyncSemaphoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51AB92F59DBAA005E37D2 /* AsyncSemaphoreTests.swift */; };
 		FCE51AC72F59DBAA005E37D2 /* PathCollisionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABA2F59DBAA005E37D2 /* PathCollisionManagerTests.swift */; };
 		FCE51AC82F59DBAA005E37D2 /* TaskQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABB2F59DBAA005E37D2 /* TaskQueueTests.swift */; };
-		FC2A90012F8A000100ABCDEF /* ProcessOutputCollectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC2A90022F8A000100ABCDEF /* ProcessOutputCollectorTests.swift */; };
 		FCE51AC92F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABD2F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift */; };
 		FCE51ACA2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51ABE2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift */; };
 		FCE51ACB2F59DBAA005E37D2 /* GMCommandBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE51AC02F59DBAA005E37D2 /* GMCommandBuilderTests.swift */; };
@@ -74,6 +74,7 @@
 		FC00E6762E6D74D500C3ABB2 /* TaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueue.swift; sourceTree = "<group>"; };
 		FC141A3B2F583D9600C85663 /* AppSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsStore.swift; sourceTree = "<group>"; };
 		FC141A512F585BAA00C85663 /* Me2ComicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Me2ComicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC2A90022F8A000100ABCDEF /* ProcessOutputCollectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessOutputCollectorTests.swift; sourceTree = "<group>"; };
 		FC38F2E82E03F31A00FBB3B2 /* BatchImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImageProcessor.swift; sourceTree = "<group>"; };
 		FC40C69D2F55C5EA00B96519 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		FC460C3D2E6C92CA00C1E621 /* SystemInfoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInfoHelper.swift; sourceTree = "<group>"; };
@@ -111,7 +112,6 @@
 		FCE51AB92F59DBAA005E37D2 /* AsyncSemaphoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphoreTests.swift; sourceTree = "<group>"; };
 		FCE51ABA2F59DBAA005E37D2 /* PathCollisionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathCollisionManagerTests.swift; sourceTree = "<group>"; };
 		FCE51ABB2F59DBAA005E37D2 /* TaskQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueueTests.swift; sourceTree = "<group>"; };
-		FC2A90022F8A000100ABCDEF /* ProcessOutputCollectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessOutputCollectorTests.swift; sourceTree = "<group>"; };
 		FCE51ABD2F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoParameterCalculatorTests.swift; sourceTree = "<group>"; };
 		FCE51ABE2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchTaskOrganizerTests.swift; sourceTree = "<group>"; };
 		FCE51AC02F59DBAA005E37D2 /* GMCommandBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GMCommandBuilderTests.swift; sourceTree = "<group>"; };
@@ -696,7 +696,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.9.7;
+				MARKETING_VERSION = 0.9.8;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = me2.comic.me2comic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -736,7 +736,7 @@
 				);
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.9.7;
+				MARKETING_VERSION = 0.9.8;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = me2.comic.me2comic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
