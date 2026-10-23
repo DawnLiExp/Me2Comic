@@ -122,24 +122,20 @@ final class AppSettingsStore {
 
     // MARK: - Parameter Building
 
-    /// Validates current state and constructs a `ProcessingParameters` value.
-    /// Applies `enableUnsharp` logic: passes "0" as unsharpAmount when sharpening is disabled.
-    /// - Throws: `ProcessingParameterError` if any field is invalid
-    func buildParameters() throws -> ProcessingParameters {
-        try ProcessingParametersValidator.validateAndCreateParameters(
-            inputDirectory: inputDirectory,
-            outputDirectory: outputDirectory,
-            widthThreshold: widthThreshold,
-            resizeHeight: resizeHeight,
-            quality: quality,
-            threadCount: threadCount,
-            unsharpRadius: unsharpRadius,
-            unsharpSigma: unsharpSigma,
-            unsharpAmount: enableUnsharp ? unsharpAmount : "0",
-            unsharpThreshold: unsharpThreshold,
-            batchSize: batchSize,
-            useGrayColorspace: useGrayColorspace
+    func validationReport() -> ParameterValidationReport {
+        ProcessingParametersValidator.evaluate(
+            inputDirectory: inputDirectory, outputDirectory: outputDirectory,
+            widthThreshold: widthThreshold, resizeHeight: resizeHeight, quality: quality, threadCount: threadCount,
+            unsharpRadius: unsharpRadius, unsharpSigma: unsharpSigma, unsharpAmount: unsharpAmount,
+            unsharpThreshold: unsharpThreshold, batchSize: batchSize, useGrayColorspace: useGrayColorspace,
+            enableUnsharp: enableUnsharp
         )
+    }
+
+    func buildParameters() throws -> ProcessingParameters {
+        let report = validationReport()
+        if let error = report.issues.first?.error { throw error }
+        return report.parameters!
     }
 
     // MARK: - Private Load

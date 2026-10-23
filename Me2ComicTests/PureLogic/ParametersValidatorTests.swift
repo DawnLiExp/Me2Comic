@@ -220,3 +220,48 @@ struct ParametersValidatorTests {
         )
     }
 }
+
+@Suite("按生效状态校验参数")
+struct ActiveParameterValidationTests {
+    private func report(auto: Bool = false, sharpen: Bool = true, batch: String = "40", radius: String = "1.5", quality: String = "85") -> ParameterValidationReport {
+        ProcessingParametersValidator.evaluate(
+            inputDirectory: URL(fileURLWithPath: "/tmp/in"), outputDirectory: URL(fileURLWithPath: "/tmp/out"),
+            widthThreshold: "3000", resizeHeight: "1648", quality: quality, threadCount: auto ? 0 : 1,
+            unsharpRadius: radius, unsharpSigma: "1", unsharpAmount: "0.7", unsharpThreshold: "0.02",
+            batchSize: batch, useGrayColorspace: true, enableUnsharp: sharpen
+        )
+    }
+
+    @Test("自动模式忽略禁用批大小，手动模式恢复校验")
+    func automaticBatch() {
+        #expect(report(auto: true, batch: "bad").parameters?.batchSize == 40)
+        #expect(report(batch: "bad").issues.map(\.field) == [.batchSize])
+    }
+
+    @Test("关闭锐化忽略隐藏字段且不生成锐化指令")
+    func disabledSharpening() throws {
+        let params = try #require(report(sharpen: false, radius: "bad").parameters)
+        #expect(params.unsharpAmount == 0)
+        let command = GraphicsMagickHelper.buildConvertCommand(
+            inputPath: "/tmp/in.jpg", outputPath: "/tmp/out.jpg", cropParams: nil, resizeHeight: params.resizeHeight,
+            quality: params.quality, unsharpRadius: params.unsharpRadius, unsharpSigma: params.unsharpSigma,
+            unsharpAmount: params.unsharpAmount, unsharpThreshold: params.unsharpThreshold,
+            useGrayColorspace: params.useGrayColorspace
+        )
+        #expect(!command.contains("-unsharp"))
+        #expect(report(radius: "bad").issues.map(\.field) == [.unsharpRadius])
+    }
+
+    @Test("非有限浮点值被拒绝", arguments: ["nan", "inf", "1e100"])
+    func finiteNumbers(value: String) {
+        #expect(report(radius: value).issues.map(\.field) == [.unsharpRadius])
+    }
+
+    @Test("收集跨页错误并按页面字段顺序定位")
+    func multipleErrors() {
+        let result = report(batch: "0", radius: "bad", quality: "101")
+        #expect(result.parameters == nil)
+        #expect(result.issues.map(\.field) == [.quality, .unsharpRadius, .batchSize])
+        #expect(result.issues.first?.field.tab == "basic")
+    }
+}

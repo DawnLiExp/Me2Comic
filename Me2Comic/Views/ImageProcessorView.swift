@@ -29,6 +29,9 @@ struct ImageProcessorView: View {
 
     @State private var selectedTab = "basic"
     @State private var showLogs = true
+    @State private var validationAttempted = false
+    @State private var validationIssues: [ParameterIssue] = []
+    @State private var focusRequest: ParameterFocusRequest?
 
     /// Distinguishes user-initiated directory selections from programmatic loads (for logging)
     @State private var isUserSelection = false
@@ -51,7 +54,8 @@ struct ImageProcessorView: View {
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(
-                gmReady: $imageProcessor.gmReady,
+                gmStatus: imageProcessor.gmStatus,
+                onRetryDetection: { imageProcessor.retryGraphicsMagickDetection() },
                 isProcessing: stateManager.isProcessing,
                 selectedTab: $selectedTab,
                 showLogs: $showLogs,
@@ -89,6 +93,9 @@ struct ImageProcessorView: View {
                     MainContentView(
                         settings: settings,
                         selectedTab: selectedTab,
+                        issues: validationIssues,
+                        focusRequest: focusRequest,
+                        toolReady: imageProcessor.gmStatus.isReady && !imageProcessor.hasActiveWork,
                         onProcess: { startProcessing() },
                         onDirectorySelect: { handleDirectorySelectStart() }
                     )
@@ -115,18 +122,22 @@ struct ImageProcessorView: View {
     // MARK: - Processing
 
     private func startProcessing() {
-        do {
-            let parameters = try settings.buildParameters()
-            withAnimation(.spring()) {
-                imageProcessor.processImages(
-                    inputDir: settings.inputDirectory!,
-                    outputDir: settings.outputDirectory!,
-                    parameters: parameters
-                )
-            }
-        } catch {
-            logger.logError(error.localizedDescription, source: "ImageProcessorView")
+        validationAttempted = true
+        let report = settings.validationReport()
+        validationIssues = report.issues
+        if let first = report.issues.first {
+            selectedTab = first.field.tab
+            focusRequest = ParameterFocusRequest(field: first.field)
+            for issue in report.issues { logger.logError(issue.message, source: "ImageProcessorView") }
+            return
         }
+        guard let parameters = report.parameters,
+              let input = settings.inputDirectory, let output = settings.outputDirectory else { return }
+        imageProcessor.processImages(inputDir: input, outputDir: output, parameters: parameters)
+    }
+
+    private func refreshValidation() {
+        if validationAttempted { validationIssues = settings.validationReport().issues }
     }
 
     // MARK: - Directory Handling
@@ -157,6 +168,7 @@ struct ImageProcessorView: View {
     }
 
     private func handleInputDirectoryChange() {
+        refreshValidation()
         settings.saveDirectory(settings.inputDirectory, forKey: .input)
         if isUserSelection, let url = settings.inputDirectory {
             logger.log(
@@ -168,6 +180,7 @@ struct ImageProcessorView: View {
     }
 
     private func handleOutputDirectoryChange() {
+        refreshValidation()
         settings.saveDirectory(settings.outputDirectory, forKey: .output)
         if isUserSelection, let url = settings.outputDirectory {
             logger.log(
@@ -182,6 +195,7 @@ struct ImageProcessorView: View {
 
     /// Debounced save: waits 500ms after last change before writing to UserDefaults
     private func handleParametersChange() {
+        refreshValidation()
         parameterSaveTask?.cancel()
         parameterSaveTask = Task {
             try? await Task.sleep(for: .milliseconds(500))

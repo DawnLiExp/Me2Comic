@@ -12,6 +12,9 @@ import SwiftUI
 struct MainContentView: View {
     @Bindable var settings: AppSettingsStore
     let selectedTab: String
+    var issues: [ParameterIssue] = []
+    var focusRequest: ParameterFocusRequest?
+    var toolReady = true
     let onProcess: () -> Void
     let onDirectorySelect: () -> Void
 
@@ -27,114 +30,127 @@ struct MainContentView: View {
     private let parameterAreaHeight: CGFloat = 360
 
     var body: some View {
-        VStack(spacing: 9) {
-            // Directory Selection
-            VStack(spacing: 16) {
-                HStack(spacing: 4) {
-                    Text(String(localized: "Input Directory"))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.textLight)
+        VStack(spacing: 12) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 9) {
+                        // Directory Selection
+                        VStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Text(String(localized: "Input Directory"))
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.textLight)
 
-                    Button(action: { showInputTip.toggle() }) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 12))
-                            .foregroundColor(.textMuted.opacity(0.5))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .popover(isPresented: $showInputTip) {
-                        Text(String(localized: "Input Directory Placeholder"))
-                            .padding()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                                Button(action: { showInputTip.toggle() }) {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.textMuted.opacity(0.5))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .popover(isPresented: $showInputTip) {
+                                    Text(String(localized: "Input Directory Placeholder"))
+                                        .padding()
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                MinimalDirectorySelector(
-                    title: settings.inputDirectory?.lastPathComponent ?? String(localized: "InputNotSelected"),
-                    subtitle: settings.inputDirectory?.path ?? "",
-                    path: settings.inputDirectory?.path,
-                    icon: "folder",
-                    accentColor: .accentGreen,
-                    onSelect: {
-                        onDirectorySelect()
-                        settings.inputDirectory = $0
-                    }
-                )
+                            MinimalDirectorySelector(
+                                title: settings.inputDirectory?.lastPathComponent ?? String(localized: "InputNotSelected"),
+                                subtitle: settings.inputDirectory?.path ?? "",
+                                path: settings.inputDirectory?.path,
+                                icon: "folder",
+                                accentColor: .accentGreen,
+                                onSelect: {
+                                    onDirectorySelect()
+                                    settings.inputDirectory = $0
+                                }
+                            )
 
-                HStack(spacing: 4) {
-                    Text(String(localized: "Output Directory"))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.textLight)
+                            HStack(spacing: 4) {
+                                Text(String(localized: "Output Directory"))
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.textLight)
 
-                    Button(action: { showOutputTip.toggle() }) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 12))
-                            .foregroundColor(.textMuted.opacity(0.5))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .popover(isPresented: $showOutputTip) {
-                        Text(String(localized: "Output Directory Placeholder"))
-                            .padding()
-                    }
+                                Button(action: { showOutputTip.toggle() }) {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.textMuted.opacity(0.5))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .popover(isPresented: $showOutputTip) {
+                                    Text(String(localized: "Output Directory Placeholder"))
+                                        .padding()
+                                }
 
-                    Spacer()
+                                Spacer()
 
-                    if settings.outputDirectory != nil {
-                        Button(action: showOutputInFinder) {
-                            Image(systemName: "magnifyingglass.circle")
-                                .font(.system(size: 16))
-                                .foregroundColor(isShowInFinderHovered ? .accentOrange : .textMuted)
-                                .padding(.leading, 4)
-                                .padding(.trailing, 12)
-                                .padding(.vertical, 4)
+                                if settings.outputDirectory != nil {
+                                    Button(action: showOutputInFinder) {
+                                        Image(systemName: "magnifyingglass.circle")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(isShowInFinderHovered ? .accentOrange : .textMuted)
+                                            .padding(.leading, 4)
+                                            .padding(.trailing, 12)
+                                            .padding(.vertical, 4)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .onHover { hovering in
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            isShowInFinderHovered = hovering
+                                        }
+                                    }
+                                    .transition(.opacity.combined(with: .scale))
+                                    .animation(.spring(response: 0.3), value: settings.outputDirectory != nil)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            MinimalDirectorySelector(
+                                title: settings.outputDirectory?.lastPathComponent ?? String(localized: "OutputNotSelected"),
+                                subtitle: settings.outputDirectory?.path ?? "",
+                                path: settings.outputDirectory?.path,
+                                icon: "folder.badge.plus",
+                                accentColor: .accentOrange,
+                                onSelect: {
+                                    onDirectorySelect()
+                                    settings.outputDirectory = $0
+                                }
+                            )
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .onHover { hovering in
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                isShowInFinderHovered = hovering
+                        .padding(.horizontal, 60)
+
+                        // Parameter cards can grow to accommodate validation messages.
+                        Group {
+                            if selectedTab == "basic" {
+                                BasicParametersView(settings: settings)
+                            } else {
+                                AdvancedParametersView(settings: settings)
                             }
                         }
-                        .transition(.opacity.combined(with: .scale))
-                        .animation(.spring(response: 0.3), value: settings.outputDirectory != nil)
+                        .padding(.horizontal, 60)
+                        .frame(minHeight: parameterAreaHeight)
                     }
+                    .padding(.vertical, 20)
+                    .frame(maxWidth: .infinity)
+                    .environment(\.parameterIssues, issues)
+                    .environment(\.parameterFocusRequest, focusRequest)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                MinimalDirectorySelector(
-                    title: settings.outputDirectory?.lastPathComponent ?? String(localized: "OutputNotSelected"),
-                    subtitle: settings.outputDirectory?.path ?? "",
-                    path: settings.outputDirectory?.path,
-                    icon: "folder.badge.plus",
-                    accentColor: .accentOrange,
-                    onSelect: {
-                        onDirectorySelect()
-                        settings.outputDirectory = $0
-                    }
-                )
-            }
-            .padding(.horizontal, 60)
-
-            // Parameter Configuration Area
-            ZStack {
-                if selectedTab == "basic" {
-                    BasicParametersView(settings: settings)
-                        .transition(.asymmetric(
-                            insertion: .opacity.animation(.easeIn(duration: 0.15)),
-                            removal: .identity
-                        ))
-                } else {
-                    AdvancedParametersView(settings: settings)
-                        .transition(.asymmetric(
-                            insertion: .opacity.animation(.easeIn(duration: 0.15)),
-                            removal: .identity
-                        ))
+                .task(id: focusRequest) {
+                    guard let focusRequest else { return }
+                    await Task.yield()
+                    guard !Task.isCancelled else { return }
+                    proxy.scrollTo(focusRequest.field, anchor: .center)
                 }
             }
-            .padding(.horizontal, 60)
-            .frame(height: parameterAreaHeight)
-            .animation(.easeInOut(duration: 0.18), value: selectedTab)
+            if !issues.isEmpty {
+                Label("FixParametersBeforeStarting", systemImage: "exclamationmark.circle.fill")
+                    .font(.system(size: 12)).foregroundStyle(Color.errorRed)
+                    .padding(.horizontal, 24)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             ProcessButton(
-                enabled: settings.inputDirectory != nil && settings.outputDirectory != nil,
+                enabled: toolReady && settings.inputDirectory != nil && settings.outputDirectory != nil,
                 action: onProcess
             )
             .padding(.horizontal, 60)
@@ -172,6 +188,7 @@ struct BasicParametersView: View {
                 MinimalParameterField(
                     label: String(localized: "WidthUnder"),
                     value: $settings.widthThreshold,
+                    field: .widthThreshold,
                     unit: String(localized: "pxUnit"),
                     hint: String(localized: "UnderWidthDesc")
                 )
@@ -179,6 +196,7 @@ struct BasicParametersView: View {
                 MinimalParameterField(
                     label: String(localized: "ResizeHeight"),
                     value: $settings.resizeHeight,
+                    field: .resizeHeight,
                     unit: String(localized: "pxUnit"),
                     hint: String(localized: "ResizeHDesc")
                 )
@@ -186,6 +204,7 @@ struct BasicParametersView: View {
                 MinimalParameterField(
                     label: String(localized: "OutputQuality"),
                     value: $settings.quality,
+                    field: .quality,
                     unit: "%",
                     hint: String(localized: "QualityDesc")
                 )
@@ -319,6 +338,7 @@ struct AdvancedParametersView: View {
                     MinimalParameterField(
                         label: "Radius",
                         value: $settings.unsharpRadius,
+                    field: .unsharpRadius,
                         unit: "",
                         hint: String(localized: "RadiusDesc")
                     )
@@ -326,6 +346,7 @@ struct AdvancedParametersView: View {
                     MinimalParameterField(
                         label: "Sigma",
                         value: $settings.unsharpSigma,
+                    field: .unsharpSigma,
                         unit: "",
                         hint: String(localized: "SigmaDesc")
                     )
@@ -333,6 +354,7 @@ struct AdvancedParametersView: View {
                     MinimalParameterField(
                         label: "Amount",
                         value: $settings.unsharpAmount,
+                    field: .unsharpAmount,
                         unit: "",
                         hint: String(localized: "AmountDesc")
                     )
@@ -340,6 +362,7 @@ struct AdvancedParametersView: View {
                     MinimalParameterField(
                         label: "Threshold",
                         value: $settings.unsharpThreshold,
+                    field: .unsharpThreshold,
                         unit: "",
                         hint: String(localized: "ThreshDesc")
                     )
@@ -353,6 +376,7 @@ struct AdvancedParametersView: View {
             MinimalParameterField(
                 label: String(localized: "BatchSize"),
                 value: $settings.batchSize,
+                    field: .batchSize,
                 unit: String(localized: "ImagesPerBatch"),
                 hint: String(localized: "BatchSizeDesc"),
                 isInputDisabled: settings.threadCount == 0
@@ -375,62 +399,99 @@ struct AdvancedParametersView: View {
 struct MinimalParameterField: View {
     let label: String
     @Binding var value: String
+    let field: ParameterField
     let unit: String
     let hint: String
     var isInputDisabled: Bool = false
 
     @State private var showHint = false
+    @FocusState private var isFocused: Bool
+    @Environment(\.parameterIssues) private var issues
+    @Environment(\.parameterFocusRequest) private var focusRequest
+
+    private var errorMessage: String? { issues.first { $0.field == field }?.message }
 
     var body: some View {
-        HStack {
-            HStack(spacing: 6) {
-                Text(label)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.textLight)
-
-                Button(action: { showHint.toggle() }) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 10))
-                        .foregroundColor(.textMuted.opacity(0.5))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .popover(isPresented: $showHint) {
-                    Text(hint)
-                        .font(.system(size: 11))
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                HStack(spacing: 6) {
+                    Text(label)
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.textLight)
-                        .padding(10)
-                        .background(Color.bgTertiary)
+
+                    Button(action: { showHint.toggle() }) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 10))
+                            .foregroundColor(.textMuted.opacity(0.5))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .popover(isPresented: $showHint) {
+                        Text(hint)
+                            .font(.system(size: 11))
+                            .foregroundColor(.textLight)
+                            .padding(10)
+                            .background(Color.bgTertiary)
+                    }
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    TextField(label, text: $value)
+                    .labelsHidden()
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .foregroundColor(isInputDisabled ? .textMuted : .textLight)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 60)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.bgSecondary.opacity(isInputDisabled ? 0.3 : 0.5))
+                    )
+                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(
+                        errorMessage != nil ? Color.errorRed : (isFocused ? Color.accentGreen : .clear), lineWidth: 1
+                    ))
+                    .focused($isFocused)
+                    .disabled(isInputDisabled)
+
+                    if !unit.isEmpty {
+                        Text(unit)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(isInputDisabled ? .textMuted.opacity(0.5) : .textMuted)
+                            .frame(width: 25, alignment: .leading)
+                    }
                 }
             }
-
-            Spacer()
-
-            HStack(spacing: 4) {
-                TextField(text: $value) {
-                    EmptyView()
-                }
-                .labelsHidden()
-                .textFieldStyle(PlainTextFieldStyle())
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .foregroundColor(isInputDisabled ? .textMuted : .textLight)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 60)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.bgSecondary.opacity(isInputDisabled ? 0.3 : 0.5))
-                )
-                .focusable(false)
-                .disabled(isInputDisabled)
-
-                if !unit.isEmpty {
-                    Text(unit)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(isInputDisabled ? .textMuted.opacity(0.5) : .textMuted)
-                        .frame(width: 25, alignment: .leading)
-                }
+            if let errorMessage {
+                Text(errorMessage).font(.system(size: 11)).foregroundStyle(Color.errorRed)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .id(field)
+        .task(id: focusRequest) {
+            guard focusRequest?.field == field, !isInputDisabled else { return }
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            isFocused = true
+        }
+    }
+}
+
+private struct ParameterIssuesKey: EnvironmentKey {
+    static let defaultValue: [ParameterIssue] = []
+}
+private struct ParameterFocusKey: EnvironmentKey {
+    static let defaultValue: ParameterFocusRequest? = nil
+}
+private extension EnvironmentValues {
+    var parameterIssues: [ParameterIssue] {
+        get { self[ParameterIssuesKey.self] }
+        set { self[ParameterIssuesKey.self] = newValue }
+    }
+    var parameterFocusRequest: ParameterFocusRequest? {
+        get { self[ParameterFocusKey.self] }
+        set { self[ParameterFocusKey.self] = newValue }
     }
 }

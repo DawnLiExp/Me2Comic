@@ -12,7 +12,8 @@ import SwiftUI
 
 /// Navigation sidebar containing app branding, system status, and controls
 struct SidebarView: View {
-    @Binding var gmReady: Bool
+    let gmStatus: GraphicsMagickStatus
+    let onRetryDetection: () -> Void
     let isProcessing: Bool
     @Binding var selectedTab: String
     @Binding var showLogs: Bool
@@ -51,7 +52,7 @@ struct SidebarView: View {
                 }
                 .padding(.vertical, 30)
                 
-                StatusIndicator(gmReady: gmReady, isVisible: !isProcessing)
+                StatusIndicator(status: gmStatus, onRetry: onRetryDetection)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 20)
                 
@@ -138,59 +139,46 @@ struct SidebarView: View {
 // MARK: - Status Indicator
 
 struct StatusIndicator: View {
-    let gmReady: Bool
-    let isVisible: Bool
-    @State private var pulse = false
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(gmReady ? Color.successGreen : Color.warningOrange)
-                .frame(width: 8, height: 8)
-                .overlay(
-                    Circle()
-                        .stroke(gmReady ? Color.successGreen : Color.warningOrange, lineWidth: 8)
-                        .opacity(pulse && isVisible ? 0 : 0.5)
-                        .scaleEffect(pulse && isVisible ? 2 : 1)
-                        .animation(
-                            isVisible ? .easeOut(duration: 1).repeatForever(autoreverses: false) : .default,
-                            value: pulse
-                        )
-                )
-                .onAppear {
-                    if isVisible {
-                        pulse = true
-                    }
-                }
-                .onChange(of: isVisible) { _, newValue in
-                    pulse = newValue
-                }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("GraphicsMagick")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.textLight)
-                Text(gmReady ? String(localized: "Ready") : String(localized: "Detecting"))
-                    .font(.system(size: 10))
-                    .foregroundColor(.textMuted)
-            }
-            
-            Spacer()
+    let status: GraphicsMagickStatus
+    let onRetry: () -> Void
+    @State private var showDetails = false
+
+    private var color: Color {
+        switch status {
+        case .checking: .textMuted
+        case .ready: .successGreen
+        case .failed: .errorRed
         }
-        .padding(.leading, 6)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.bgTertiary.opacity(0.2))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(
-                            gmReady ? Color.successGreen.opacity(0.3) : Color.warningOrange.opacity(0.3),
-                            lineWidth: 1
-                        )
-                )
-        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: status.isReady ? "checkmark.circle.fill" : (status.isChecking ? "clock" : "exclamationmark.triangle.fill"))
+                    .foregroundStyle(color)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("GraphicsMagick").font(.system(size: 12, weight: .medium)).foregroundStyle(Color.textLight)
+                    Text(status.isReady ? "Ready" : (status.isChecking ? "Detecting" : "GMDetectionFailed"))
+                        .font(.system(size: 11)).foregroundStyle(color)
+                }
+                Spacer(minLength: 0)
+            }
+            if case .failed(let error) = status {
+                HStack {
+                    Button("ErrorDetails") { showDetails = true }
+                        .popover(isPresented: $showDetails) {
+                            Text(error.localizedDescription).textSelection(.enabled)
+                                .frame(maxWidth: 320, alignment: .leading).padding()
+                        }
+                    Spacer(minLength: 0)
+                    Button("RetryDetection", action: onRetry)
+                }
+                .font(.system(size: 11))
+            }
+        }
+        .padding(12)
+        .background(Color.bgTertiary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(color.opacity(0.3)))
     }
 }
 

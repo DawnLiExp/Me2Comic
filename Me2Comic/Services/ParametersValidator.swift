@@ -34,76 +34,90 @@ enum ProcessingParameterError: LocalizedError {
     }
 }
 
-/// Validates processing parameters from string inputs.
+enum ParameterField: String, CaseIterable, Identifiable {
+    case inputDirectory, outputDirectory, widthThreshold, resizeHeight, quality
+    case unsharpRadius, unsharpSigma, unsharpAmount, unsharpThreshold, batchSize
+    var id: String { rawValue }
+    var tab: String {
+        switch self {
+        case .unsharpRadius, .unsharpSigma, .unsharpAmount, .unsharpThreshold, .batchSize: "advanced"
+        default: "basic"
+        }
+    }
+}
+
+struct ParameterIssue: Identifiable {
+    let field: ParameterField
+    let error: ProcessingParameterError
+    var id: ParameterField { field }
+    var message: String { error.localizedDescription }
+}
+
+struct ParameterValidationReport {
+    let parameters: ProcessingParameters?
+    let issues: [ParameterIssue]
+}
+
+struct ParameterFocusRequest: Equatable {
+    let field: ParameterField
+    let id = UUID()
+}
+
 enum ProcessingParametersValidator {
-    /// Validates and converts string parameters to their correct types.
-    /// - Parameters:
-    ///   - inputDirectory: URL of the input directory.
-    ///   - outputDirectory: URL of the output directory.
-    ///   - widthThreshold: String value for width threshold.
-    ///   - resizeHeight: String value for resize height.
-    ///   - quality: String value for quality.
-    ///   - threadCount: Integer value for thread count.
-    ///   - unsharpRadius: String value for unsharp radius.
-    ///   - unsharpSigma: String value for unsharp sigma.
-    ///   - unsharpAmount: String value for unsharp amount.
-    ///   - unsharpThreshold: String value for unsharp threshold.
-    ///   - batchSize: String value for batch size.
-    ///   - useGrayColorspace: Boolean value for grayscale conversion.
-    /// - Returns: A `ProcessingParameters` struct if all validations pass, otherwise throws a `ProcessingParameterError`.
+    static func evaluate(
+        inputDirectory: URL?, outputDirectory: URL?,
+        widthThreshold: String, resizeHeight: String, quality: String, threadCount: Int,
+        unsharpRadius: String, unsharpSigma: String, unsharpAmount: String, unsharpThreshold: String,
+        batchSize: String, useGrayColorspace: Bool, enableUnsharp: Bool = true
+    ) -> ParameterValidationReport {
+        var issues: [ParameterIssue] = []
+        if inputDirectory == nil { issues.append(.init(field: .inputDirectory, error: .noInputOrOutputDirectory)) }
+        if outputDirectory == nil { issues.append(.init(field: .outputDirectory, error: .noInputOrOutputDirectory)) }
+        func integer(_ text: String, field: ParameterField, range: ClosedRange<Int>, error: ProcessingParameterError) -> Int {
+            guard let value = Int(text), range.contains(value) else {
+                issues.append(.init(field: field, error: error))
+                return 0
+            }
+            return value
+        }
+        func decimal(_ text: String, field: ParameterField) -> Float {
+            guard let value = Float(text), value.isFinite, value >= 0 else {
+                issues.append(.init(field: field, error: .invalidUnsharpParameters))
+                return 0
+            }
+            return value
+        }
+        let width = integer(widthThreshold, field: .widthThreshold, range: 1...Int.max, error: .invalidWidthThreshold)
+        let height = integer(resizeHeight, field: .resizeHeight, range: 1...Int.max, error: .invalidResizeHeight)
+        let outputQuality = integer(quality, field: .quality, range: 1...100, error: .invalidQuality)
+        let radius: Float = enableUnsharp ? decimal(unsharpRadius, field: .unsharpRadius) : 0
+        let sigma: Float = enableUnsharp ? decimal(unsharpSigma, field: .unsharpSigma) : 0
+        let amount: Float = enableUnsharp ? decimal(unsharpAmount, field: .unsharpAmount) : 0
+        let threshold: Float = enableUnsharp ? decimal(unsharpThreshold, field: .unsharpThreshold) : 0
+        let batch = threadCount == 0 ? 40 : integer(batchSize, field: .batchSize, range: 1...1000, error: .invalidBatchSize)
+        guard issues.isEmpty else { return .init(parameters: nil, issues: issues) }
+        return .init(parameters: ProcessingParameters(
+            widthThreshold: width, resizeHeight: height, quality: outputQuality, threadCount: threadCount,
+            unsharpRadius: radius, unsharpSigma: sigma, unsharpAmount: amount, unsharpThreshold: threshold,
+            batchSize: batch, useGrayColorspace: useGrayColorspace
+        ), issues: [])
+    }
+
     static func validateAndCreateParameters(
-        inputDirectory: URL?,
-        outputDirectory: URL?,
-        widthThreshold: String,
-        resizeHeight: String,
-        quality: String,
-        threadCount: Int,
-        unsharpRadius: String,
-        unsharpSigma: String,
-        unsharpAmount: String,
-        unsharpThreshold: String,
-        batchSize: String,
-        useGrayColorspace: Bool
+        inputDirectory: URL?, outputDirectory: URL?,
+        widthThreshold: String, resizeHeight: String, quality: String, threadCount: Int,
+        unsharpRadius: String, unsharpSigma: String, unsharpAmount: String, unsharpThreshold: String,
+        batchSize: String, useGrayColorspace: Bool, enableUnsharp: Bool = true
     ) throws -> ProcessingParameters {
-        guard inputDirectory != nil, outputDirectory != nil else {
-            throw ProcessingParameterError.noInputOrOutputDirectory
-        }
-
-        guard let widthThresholdValue = Int(widthThreshold), widthThresholdValue > 0 else {
-            throw ProcessingParameterError.invalidWidthThreshold
-        }
-
-        guard let resizeHeightValue = Int(resizeHeight), resizeHeightValue > 0 else {
-            throw ProcessingParameterError.invalidResizeHeight
-        }
-
-        guard let qualityValue = Int(quality), qualityValue >= 1, qualityValue <= 100 else {
-            throw ProcessingParameterError.invalidQuality
-        }
-
-        guard let unsharpRadiusValue = Float(unsharpRadius), unsharpRadiusValue >= 0,
-              let unsharpSigmaValue = Float(unsharpSigma), unsharpSigmaValue >= 0,
-              let unsharpAmountValue = Float(unsharpAmount), unsharpAmountValue >= 0,
-              let unsharpThresholdValue = Float(unsharpThreshold), unsharpThresholdValue >= 0
-        else {
-            throw ProcessingParameterError.invalidUnsharpParameters
-        }
-
-        guard let batchSizeValue = Int(batchSize), batchSizeValue >= 1, batchSizeValue <= 1000 else {
-            throw ProcessingParameterError.invalidBatchSize
-        }
-
-        return ProcessingParameters(
-            widthThreshold: widthThresholdValue,
-            resizeHeight: resizeHeightValue,
-            quality: qualityValue,
-            threadCount: threadCount,
-            unsharpRadius: unsharpRadiusValue,
-            unsharpSigma: unsharpSigmaValue,
-            unsharpAmount: unsharpAmountValue,
-            unsharpThreshold: unsharpThresholdValue,
-            batchSize: batchSizeValue,
-            useGrayColorspace: useGrayColorspace
+        let report = evaluate(
+            inputDirectory: inputDirectory, outputDirectory: outputDirectory,
+            widthThreshold: widthThreshold, resizeHeight: resizeHeight, quality: quality, threadCount: threadCount,
+            unsharpRadius: unsharpRadius, unsharpSigma: unsharpSigma, unsharpAmount: unsharpAmount,
+            unsharpThreshold: unsharpThreshold, batchSize: batchSize, useGrayColorspace: useGrayColorspace,
+            enableUnsharp: enableUnsharp
         )
+        if let error = report.issues.first?.error { throw error }
+        // A successful report always contains the converted parameters.
+        return report.parameters!
     }
 }

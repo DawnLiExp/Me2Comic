@@ -8,6 +8,15 @@
 import Foundation
 import Observation
 
+enum GraphicsMagickStatus {
+    case checking
+    case ready(path: String)
+    case failed(ProcessingError)
+
+    var isReady: Bool { if case .ready = self { true } else { false } }
+    var isChecking: Bool { if case .checking = self { true } else { false } }
+}
+
 /// Manages the image processing workflow
 @MainActor
 @Observable
@@ -20,28 +29,33 @@ class ImageProcessor {
     private let taskOrganizer: BatchTaskOrganizer
     private let autoCalculator: AutoParameterCalculator
     
-    private var gmPath = ""
+    private let detector: @Sendable () async -> Result<String, ProcessingError>
+    private var detectionTask: Task<Void, Never>?
+    private var detectionID = UUID()
+    private(set) var gmStatus: GraphicsMagickStatus = .checking
+    private var gmPath: String {
+        if case .ready(let path) = gmStatus { path } else { "" }
+    }
     private var activeProcessingTask: Task<Void, Never>?
     private var stopTask: Task<Void, Never>?
     private var activeCancellationToken: ProcessingCancellationToken?
     
-    var gmReady = false
     private(set) var isStopping = false
     var isClosing = false
     var hasActiveWork: Bool { activeProcessingTask != nil || isStopping }
     
     // MARK: - Initialization
     
-    init(stateManager: ProcessingStateManager, logger: ProcessingLogger) {
+    init(stateManager: ProcessingStateManager, logger: ProcessingLogger,
+         detector: (@Sendable () async -> Result<String, ProcessingError>)? = nil) {
         self.stateManager = stateManager
         self.logger = logger
         taskOrganizer = BatchTaskOrganizer(logger: logger)
         autoCalculator = AutoParameterCalculator(logger: logger)
         
-        // Verify GraphicsMagick on initialization
-        Task {
-            await verifyGraphicsMagickStatus()
-        }
+        let log = LoggerFactory.createLoggerClosure(from: logger)
+        self.detector = detector ?? { await GraphicsMagickHelper.verifyGraphicsMagickAsync(logger: log) }
+        retryGraphicsMagickDetection()
         
         #if DEBUG
         logger.logDebug("ImageProcessor initialized", source: "ImageProcessor")
@@ -55,28 +69,41 @@ class ImageProcessor {
         logger.log(message, level: .info, source: "ImageProcessor")
     }
 
-    /// Verifies GraphicsMagick installation status and updates gmReady property.
-    private func verifyGraphicsMagickStatus() async {
-        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
-        let result = await GraphicsMagickHelper.verifyGraphicsMagickAsync(logger: loggerClosure)
-        
-        switch result {
-        case .success(let path):
-            gmReady = true
-            gmPath = path
-            logger.log(String(localized: "GMReady"), level: .success, source: "ImageProcessor")
-        case .failure(let error):
-            gmReady = false
-            logger.logError(error.localizedDescription, source: "ImageProcessor")
+    func retryGraphicsMagickDetection() {
+        guard detectionTask == nil, !hasActiveWork, !isClosing else { return }
+        let requestID = UUID()
+        detectionID = requestID
+        gmStatus = .checking
+        detectionTask = Task {
+            let result = await detector()
+            guard !Task.isCancelled, detectionID == requestID else { return }
+            switch result {
+            case .success(let path):
+                gmStatus = .ready(path: path)
+                logger.log(String(localized: "GMReady"), level: .success, source: "ImageProcessor")
+            case .failure(let error):
+                gmStatus = .failed(error)
+                logger.logError(error.localizedDescription, source: "ImageProcessor")
+            }
+            detectionTask = nil
         }
     }
-    
+
+    func waitForDetection() async { await detectionTask?.value }
+
+    func cancelDetection() {
+        detectionID = UUID()
+        detectionTask?.cancel()
+        detectionTask = nil
+    }
+
     /// Requests cancellation while retaining ownership until all children are reaped.
     func stopProcessing() {
         _ = beginCancellation()
     }
 
     func cancelAndWait() async {
+        cancelDetection()
         await beginCancellation()?.value
     }
 
@@ -108,7 +135,7 @@ class ImageProcessor {
         logger.logDebug("Output: \(outputDir.path)", source: "ImageProcessor")
         #endif
         
-        guard !hasActiveWork, !isClosing else { return }
+        guard !hasActiveWork, !isClosing, gmStatus.isReady else { return }
         let cancellationToken = ProcessingCancellationToken()
         activeCancellationToken = cancellationToken
         
@@ -138,7 +165,7 @@ class ImageProcessor {
         parameters: ProcessingParameters,
         cancellationToken: ProcessingCancellationToken
     ) async {
-        guard gmReady else {
+        guard gmStatus.isReady else {
             logger.logError(String(localized: "GMNotReady"), source: "ImageProcessor")
             stateManager.stopProcessing()
             return

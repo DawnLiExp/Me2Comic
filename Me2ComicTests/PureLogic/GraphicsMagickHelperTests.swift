@@ -70,3 +70,67 @@ struct GraphicsMagickHelperTests {
         #expect(cmd.contains("'/tmp/out'\\''s.jpg'"))
     }
 }
+
+private actor DetectionGate {
+    private var requests: [Int: CheckedContinuation<Result<String, ProcessingError>, Never>] = [:]
+    private var observers: [(Int, CheckedContinuation<Void, Never>)] = []
+    private(set) var calls = 0
+
+    func detect() async -> Result<String, ProcessingError> {
+        calls += 1
+        let index = calls
+        return await withCheckedContinuation { continuation in
+            requests[index] = continuation
+            let ready = observers.filter { $0.0 <= calls }
+            observers.removeAll { $0.0 <= calls }
+            for item in ready { item.1.resume() }
+        }
+    }
+    func waitForCalls(_ count: Int) async {
+        if calls >= count { return }
+        await withCheckedContinuation { observers.append((count, $0)) }
+    }
+    func finish(_ index: Int, result: Result<String, ProcessingError>) {
+        requests.removeValue(forKey: index)?.resume(returning: result)
+    }
+}
+
+@Suite("GraphicsMagick 界面检测状态")
+@MainActor
+struct GraphicsMagickStatusTests {
+    @Test("重复检测合并，失败后可以重新检测")
+    func retry() async {
+        let gate = DetectionGate()
+        let processor = ImageProcessor(stateManager: ProcessingStateManager(), logger: ProcessingLogger(), detector: { await gate.detect() })
+        processor.retryGraphicsMagickDetection()
+        await gate.waitForCalls(1)
+        #expect(processor.gmStatus.isChecking)
+        #expect(await gate.calls == 1)
+        await gate.finish(1, result: .failure(.graphicsMagickNotFound))
+        await processor.waitForDetection()
+        if case .failed = processor.gmStatus {} else { Issue.record("Expected failure") }
+        processor.retryGraphicsMagickDetection()
+        await gate.waitForCalls(2)
+        await gate.finish(2, result: .success("/fixture/gm"))
+        await processor.waitForDetection()
+        if case .ready(let path) = processor.gmStatus { #expect(path == "/fixture/gm") }
+        else { Issue.record("Expected ready") }
+    }
+
+    @Test("已取消检测的旧结果不会覆盖新请求")
+    func obsoleteResult() async {
+        let gate = DetectionGate()
+        let processor = ImageProcessor(stateManager: ProcessingStateManager(), logger: ProcessingLogger(), detector: { await gate.detect() })
+        await gate.waitForCalls(1)
+        processor.cancelDetection()
+        processor.retryGraphicsMagickDetection()
+        await gate.waitForCalls(2)
+        await gate.finish(2, result: .success("/new/gm"))
+        await processor.waitForDetection()
+        await gate.finish(1, result: .failure(.graphicsMagickNotFound))
+        // The old callback must pass its request identity check before any state write.
+        await Task.yield()
+        if case .ready(let path) = processor.gmStatus { #expect(path == "/new/gm") }
+        else { Issue.record("Obsolete request overwrote current state") }
+    }
+}
