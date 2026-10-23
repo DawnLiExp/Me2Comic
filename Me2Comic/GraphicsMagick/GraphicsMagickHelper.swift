@@ -15,51 +15,55 @@ class GraphicsMagickHelper {
     static func verifyGraphicsMagickAsync(
         logger: (@Sendable (String, LogLevel, String?) -> Void)?
     ) async -> Result<String, ProcessingError> {
-        #if DEBUG
-        logger?("Verifying GraphicsMagick installation", .debug, "GraphicsMagickHelper")
-        #endif
-
-        let path = await Task.detached {
-            detectGMPathSafely { message in
-                Task {
-                    logger?(message, .info, "GraphicsMagickHelper")
-                }
+        do {
+            try Task.checkCancellation()
+            let knownPaths = ["/opt/homebrew/bin/gm", "/usr/local/bin/gm", "/usr/bin/gm"]
+            let path: String
+            if let known = knownPaths.first(where: { FileManager.default.fileExists(atPath: $0) }) {
+                path = known
+            } else {
+                var environment = ProcessInfo.processInfo.environment
+                environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (environment["PATH"] ?? "")
+                let result = try await runProbe(executable: "/usr/bin/which", arguments: ["gm"], environment: environment)
+                let found = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard result.status == 0, !found.isEmpty else { return .failure(.graphicsMagickNotFound) }
+                path = found
             }
-        }.value
-
-        guard let path else {
-            #if DEBUG
-            logger?("GraphicsMagick path detection failed", .debug, "GraphicsMagickHelper")
-            #endif
-            return .failure(.graphicsMagickNotFound)
-        }
-
-        #if DEBUG
-        logger?("GraphicsMagick path detected: \(path)", .debug, "GraphicsMagickHelper")
-        #endif
-
-        let verifyResult = await Task.detached {
-            Self.verifyGraphicsMagick(
-                gmPath: path,
-                logHandler: { message in
-                    Task {
-                        logger?(message, .info, "GraphicsMagickHelper")
-                    }
-                }
-            )
-        }.value
-
-        switch verifyResult {
-        case .success:
-            #if DEBUG
-            logger?("GraphicsMagick verification succeeded", .debug, "GraphicsMagickHelper")
-            #endif
+            let result = try await runProbe(executable: path, arguments: ["--version"])
+            guard result.status == 0 else {
+                return .failure(.graphicsMagickVerificationFailed(details: result.output))
+            }
+            logger?(result.output, .info, "GraphicsMagickHelper")
             return .success(path)
-        case .failure(let error):
-            #if DEBUG
-            logger?("GraphicsMagick verification failed: \(error)", .debug, "GraphicsMagickHelper")
-            #endif
-            return .failure(error)
+        } catch is CancellationError {
+            return .failure(.processingCancelled)
+        } catch {
+            return .failure(.graphicsMagickVerificationFailed(details: error.localizedDescription))
+        }
+    }
+
+    /// Detection children use the same cancellation and reap contract as conversion children.
+    static func runProbe(executable: String, arguments: [String], environment: [String: String]? = nil) async throws -> (status: Int32, output: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.environment = environment
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        let child = ManagedChildProcess(process: process)
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            try child.start()
+            // Drain concurrently so even an unexpectedly verbose executable cannot fill the pipe.
+            let output = Task.detached { pipe.fileHandleForReading.readDataToEndOfFile() }
+            let status = await child.waitForExit()
+            let data = await output.value
+            try? pipe.fileHandleForReading.close()
+            try Task.checkCancellation()
+            return (status, String(decoding: data, as: UTF8.self))
+        } onCancel: {
+            child.cancel()
         }
     }
 

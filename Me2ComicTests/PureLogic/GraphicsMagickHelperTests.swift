@@ -5,6 +5,7 @@
 //  P0 Pure function tests for GraphicsMagickHelper
 //
 
+import Foundation
 import Testing
 @testable import Me2Comic
 
@@ -122,15 +123,37 @@ struct GraphicsMagickStatusTests {
         let gate = DetectionGate()
         let processor = ImageProcessor(stateManager: ProcessingStateManager(), logger: ProcessingLogger(), detector: { await gate.detect() })
         await gate.waitForCalls(1)
-        processor.cancelDetection()
+        let previous = processor.cancelDetection()
         processor.retryGraphicsMagickDetection()
         await gate.waitForCalls(2)
         await gate.finish(2, result: .success("/new/gm"))
         await processor.waitForDetection()
         await gate.finish(1, result: .failure(.graphicsMagickNotFound))
         // The old callback must pass its request identity check before any state write.
-        await Task.yield()
+        await previous?.value
         if case .ready(let path) = processor.gmStatus { #expect(path == "/new/gm") }
         else { Issue.record("Obsolete request overwrote current state") }
+    }
+}
+
+@Suite("依赖检测子进程回收")
+struct GraphicsMagickProbeTests {
+    @Test("检测同时排空输出，保留失败退出码", .timeLimit(.minutes(1)))
+    func outputAndFailure() async throws {
+        let verbose = try await GraphicsMagickHelper.runProbe(executable: "/usr/bin/head", arguments: ["-c", "131072", "/dev/zero"])
+        #expect(verbose.status == 0 && verbose.output.utf8.count == 131072)
+        let failure = try await GraphicsMagickHelper.runProbe(executable: "/bin/sh", arguments: ["-c", "echo fixture-error; exit 7"])
+        #expect(failure.status == 7 && failure.output.contains("fixture-error"))
+    }
+
+    @Test("取消检测等待子进程退出", .timeLimit(.minutes(1)))
+    func cancellation() async throws {
+        let task = Task { try await GraphicsMagickHelper.runProbe(executable: "/bin/sleep", arguments: ["20"]) }
+        try await Task.sleep(for: .milliseconds(100))
+        task.cancel()
+        do {
+            _ = try await task.value
+            Issue.record("Expected cancellation")
+        } catch is CancellationError {} catch { Issue.record("Unexpected error: \(error)") }
     }
 }

@@ -50,6 +50,53 @@ final class AppLifecycle: NSObject, NSWindowDelegate {
     var isBusy: Bool { busy }
     private var terminationApproved = false
 
+    @ObservationIgnored private let confirmStop: (NSWindow?) async -> Bool
+    @ObservationIgnored private let launchReplacement: () async throws -> Void
+    @ObservationIgnored private let requestExit: () -> Void
+    @ObservationIgnored private let replyTermination: (Bool) -> Void
+    @ObservationIgnored private let reportRestartError: (Error) -> Void
+    private var transitionTask: Task<Void, Never>?
+
+    init(
+        confirmStop: @escaping (NSWindow?) async -> Bool = { await AppLifecycle.confirmStopping(in: $0) },
+        launchReplacement: @escaping () async throws -> Void = {
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            configuration.addsToRecentItems = false
+            configuration.createsNewApplicationInstance = true
+            _ = try await NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
+        },
+        requestExit: @escaping () -> Void = { NSApp.terminate(nil) },
+        replyTermination: @escaping (Bool) -> Void = { NSApp.reply(toApplicationShouldTerminate: $0) },
+        reportRestartError: @escaping (Error) -> Void = {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "RestartFailed")
+            alert.informativeText = $0.localizedDescription
+            alert.runModal()
+        }
+    ) {
+        self.confirmStop = confirmStop
+        self.launchReplacement = launchReplacement
+        self.requestExit = requestExit
+        self.replyTermination = replyTermination
+        self.reportRestartError = reportRestartError
+        super.init()
+    }
+
+    func waitForTransition() async { await transitionTask?.value }
+
+    private static func confirmStopping(in window: NSWindow?) async -> Bool {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "StopTasksBeforeClosing")
+        alert.informativeText = String(localized: "StopTasksBeforeClosingDetail")
+        alert.addButton(withTitle: String(localized: "ContinueProcessing"))
+        alert.addButton(withTitle: String(localized: "StopTasksAndContinue"))
+        let response: NSApplication.ModalResponse
+        if let window { response = await alert.beginSheetModal(for: window) }
+        else { response = alert.runModal() }
+        return response == .alertSecondButtonReturn
+    }
+
     func register(window: NSWindow, processor: ImageProcessor, settings: AppSettingsStore) {
         let key = ObjectIdentifier(window)
         guard entries[key] == nil else { return }
@@ -67,11 +114,11 @@ final class AppLifecycle: NSObject, NSWindowDelegate {
         guard !busy, let entry = entries[key] else { return false }
         let live = entries.values.filter { $0.window != nil }
         if live.count == 1 {
-            NSApp.terminate(nil)
+            requestExit()
             return false
         }
         busy = true
-        Task {
+        transitionTask = Task {
             if await prepare([entry]) {
                 allowedClosures.insert(key)
                 window.performClose(nil)
@@ -90,11 +137,11 @@ final class AppLifecycle: NSObject, NSWindowDelegate {
         if terminationApproved { return .terminateNow }
         guard !busy else { return .terminateCancel }
         busy = true
-        Task {
+        transitionTask = Task {
             let approved = await prepare(Array(entries.values))
             terminationApproved = approved
             busy = false
-            NSApp.reply(toApplicationShouldTerminate: approved)
+            replyTermination(approved)
         }
         return .terminateLater
     }
@@ -102,18 +149,8 @@ final class AppLifecycle: NSObject, NSWindowDelegate {
     private func prepare(_ targets: [Entry]) async -> Bool {
         for entry in targets { entry.processor.isClosing = true }
         if targets.contains(where: { $0.processor.hasActiveWork }) {
-            let alert = NSAlert()
-            alert.messageText = String(localized: "StopTasksBeforeClosing")
-            alert.informativeText = String(localized: "StopTasksBeforeClosingDetail")
-            alert.addButton(withTitle: String(localized: "ContinueProcessing"))
-            alert.addButton(withTitle: String(localized: "StopTasksAndContinue"))
-            let response: NSApplication.ModalResponse
-            if let window = targets.compactMap(\.window).first {
-                response = await alert.beginSheetModal(for: window)
-            } else {
-                response = alert.runModal()
-            }
-            guard response == .alertSecondButtonReturn else {
+            let approved = await confirmStop(targets.compactMap(\.window).first)
+            guard approved else {
                 for entry in targets { entry.processor.isClosing = false }
                 return false
             }
@@ -130,25 +167,18 @@ final class AppLifecycle: NSObject, NSWindowDelegate {
         busy = true
         let targets = Array(entries.values)
         guard await prepare(targets) else { busy = false; return }
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-        configuration.addsToRecentItems = false
-        configuration.createsNewApplicationInstance = true
         do {
-            _ = try await NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
+            try await launchReplacement()
             terminationApproved = true
             busy = false
-            NSApp.terminate(nil)
+            requestExit()
         } catch {
             for entry in targets {
                 entry.processor.isClosing = false
                 if entry.processor.gmStatus.isChecking { entry.processor.retryGraphicsMagickDetection() }
             }
             busy = false
-            let alert = NSAlert()
-            alert.messageText = String(localized: "RestartFailed")
-            alert.informativeText = error.localizedDescription
-            alert.runModal()
+            reportRestartError(error)
         }
     }
 }

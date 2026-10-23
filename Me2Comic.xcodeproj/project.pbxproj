@@ -59,6 +59,7 @@
 		FCF717182DF49EFA001999BD /* GraphicsMagickHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */; };
 		FCFCBCE92E24D92C00312F32 /* DirectoryAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCFCBCE72E24D92C00312F32 /* DirectoryAnalyzer.swift */; };
 		FCAC0001ABCD000100000002 /* LanguageSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCAC0001ABCD000100000001 /* LanguageSettingsTests.swift */; };
+		FCAC0001ABCD000100000004 /* AppLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCAC0001ABCD000100000003 /* AppLifecycleTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -127,6 +128,7 @@
 		FCF717172DF49EF6001999BD /* GraphicsMagickHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsMagickHelper.swift; sourceTree = "<group>"; };
 		FCFCBCE72E24D92C00312F32 /* DirectoryAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAnalyzer.swift; sourceTree = "<group>"; };
 		FCAC0001ABCD000100000001 /* LanguageSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSettingsTests.swift; sourceTree = "<group>"; };
+		FCAC0001ABCD000100000003 /* AppLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLifecycleTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -292,6 +294,7 @@
 				FCE51ABD2F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift */,
 				FCE51ABE2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift */,
 				FCAC0001ABCD000100000001 /* LanguageSettingsTests.swift */,
+				FCAC0001ABCD000100000003 /* AppLifecycleTests.swift */,
 			);
 			path = P2_BusinessLogic;
 			sourceTree = "<group>";
@@ -438,6 +441,7 @@
 				FCE51AC92F59DBAA005E37D2 /* AutoParameterCalculatorTests.swift in Sources */,
 				FCE51ACA2F59DBAA005E37D2 /* BatchTaskOrganizerTests.swift in Sources */,
 				FCAC0001ABCD000100000002 /* LanguageSettingsTests.swift in Sources */,
+				FCAC0001ABCD000100000004 /* AppLifecycleTests.swift in Sources */,
 				FCE51ACB2F59DBAA005E37D2 /* GMCommandBuilderTests.swift in Sources */,
 				FCE51ACC2F59DBAA005E37D2 /* GraphicsMagickHelperTests.swift in Sources */,
 				FCE51ACD2F59DBAA005E37D2 /* ParametersValidatorTests.swift in Sources */,

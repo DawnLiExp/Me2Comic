@@ -91,10 +91,13 @@ class ImageProcessor {
 
     func waitForDetection() async { await detectionTask?.value }
 
-    func cancelDetection() {
+    @discardableResult
+    func cancelDetection() -> Task<Void, Never>? {
+        let previous = detectionTask
         detectionID = UUID()
         detectionTask?.cancel()
         detectionTask = nil
+        return previous
     }
 
     /// Requests cancellation while retaining ownership until all children are reaped.
@@ -103,8 +106,10 @@ class ImageProcessor {
     }
 
     func cancelAndWait() async {
-        cancelDetection()
-        await beginCancellation()?.value
+        let detection = cancelDetection()
+        let cleanup = beginCancellation()
+        await detection?.value
+        await cleanup?.value
     }
 
     private func beginCancellation() -> Task<Void, Never>? {
@@ -511,7 +516,8 @@ class ImageProcessor {
         
         // Ensure all logs are processed before marking completion
         await logger.flushLogs()
-        
+        guard !Task.isCancelled else { return }
+
         Task {
             try? await notificationManager.sendCompletionNotification(
                 processedCount: processedCount,

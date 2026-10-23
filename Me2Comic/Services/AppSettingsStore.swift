@@ -15,6 +15,8 @@ import Observation
 @Observable
 @MainActor
 final class AppSettingsStore {
+    @ObservationIgnored private let defaults: UserDefaults
+
     // MARK: - System Info (Read-Only)
 
     /// Maximum allowed thread count based on physical CPU cores
@@ -88,7 +90,8 @@ final class AppSettingsStore {
 
     // MARK: - Initialization
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         maxThreadCount = SystemInfoHelper.getMaxThreadCount()
         loadParameters()
         loadDirectories()
@@ -98,7 +101,7 @@ final class AppSettingsStore {
 
     /// Writes all current parameter values to UserDefaults
     func saveParameters() {
-        let d = UserDefaults.standard
+        let d = defaults
         d.set(widthThreshold, forKey: Keys.widthThreshold)
         d.set(resizeHeight, forKey: Keys.resizeHeight)
         d.set(quality, forKey: Keys.quality)
@@ -141,7 +144,7 @@ final class AppSettingsStore {
     // MARK: - Private Load
 
     private func loadParameters() {
-        let d = UserDefaults.standard
+        let d = defaults
 
         widthThreshold = d.string(forKey: Keys.widthThreshold) ?? "3000"
         resizeHeight = d.string(forKey: Keys.resizeHeight) ?? "1648"
@@ -175,13 +178,13 @@ final class AppSettingsStore {
     /// Loads a directory URL and verifies it still exists on disk.
     /// Removes stale entries from UserDefaults if the path no longer exists.
     private func loadVerifiedDirectory(forKey key: String) -> URL? {
-        guard let url = UserDefaults.standard.url(forKey: key) else { return nil }
+        guard let url = defaults.url(forKey: key) else { return nil }
 
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
               isDirectory.boolValue
         else {
-            UserDefaults.standard.removeObject(forKey: key)
+            defaults.removeObject(forKey: key)
             return nil
         }
 
@@ -190,9 +193,9 @@ final class AppSettingsStore {
 
     private func persist(directory url: URL?, forKey key: String) {
         if let url {
-            UserDefaults.standard.set(url, forKey: key)
+            defaults.set(url, forKey: key)
         } else {
-            UserDefaults.standard.removeObject(forKey: key)
+            defaults.removeObject(forKey: key)
         }
     }
 }
