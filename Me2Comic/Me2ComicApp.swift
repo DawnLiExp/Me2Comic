@@ -106,6 +106,11 @@ final class AppLifecycle: NSObject, NSWindowDelegate {
         window.titlebarAppearsTransparent = true
         window.styleMask.insert(.fullSizeContentView)
         window.tabbingMode = .disallowed
+        // Leave initial text selection to user navigation or validation requests.
+        if let contentView = window.contentView {
+            window.initialFirstResponder = contentView
+            window.makeFirstResponder(contentView)
+        }
     }
 
     func windowShouldClose(_ window: NSWindow) -> Bool {
