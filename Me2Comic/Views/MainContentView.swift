@@ -447,10 +447,11 @@ private struct ParameterHelpButton: View {
         .help(helpLabel)
         .popover(isPresented: $isPresented) {
             Text(hint).font(.system(size: 12)).foregroundStyle(Color.textLight)
-                .frame(maxWidth: 320, alignment: .leading)
+                .frame(width: 320, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(12)
                 .background(Color.bgTertiary)
+                .fixedSize()
         }
     }
 }
