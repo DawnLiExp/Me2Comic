@@ -86,7 +86,7 @@ struct ImageProcessorView: View {
                         totalCount: stateManager.totalImagesToProcess,
                         isStopping: imageProcessor.isStopping,
                         onStop: {
-                            withAnimation { imageProcessor.stopProcessing() }
+                            imageProcessor.stopProcessing()
                         }
                     )
                 } else {
@@ -106,7 +106,7 @@ struct ImageProcessorView: View {
             if showLogs {
                 LogPanelMinimal(logger: logger)
                     .frame(width: 350)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .transition(.identity)
             }
         }
         .frame(minWidth: showLogs ? 1050 : 684, minHeight: 684)

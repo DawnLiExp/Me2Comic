@@ -20,8 +20,6 @@ struct MainContentView: View {
 
     // MARK: - UI State
 
-    @State private var showInputTip = false
-    @State private var showOutputTip = false
     @State private var isShowInFinderHovered = false
 
     // MARK: - Layout Constants
@@ -41,16 +39,7 @@ struct MainContentView: View {
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.textLight)
 
-                                Button(action: { showInputTip.toggle() }) {
-                                    Image(systemName: "info.circle")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.textMuted.opacity(0.5))
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .popover(isPresented: $showInputTip) {
-                                    Text(String(localized: "Input Directory Placeholder"))
-                                        .padding()
-                                }
+                                ParameterHelpButton(label: String(localized: "Input Directory"), hint: String(localized: "Input Directory Placeholder"))
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -71,16 +60,7 @@ struct MainContentView: View {
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.textLight)
 
-                                Button(action: { showOutputTip.toggle() }) {
-                                    Image(systemName: "info.circle")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.textMuted.opacity(0.5))
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .popover(isPresented: $showOutputTip) {
-                                    Text(String(localized: "Output Directory Placeholder"))
-                                        .padding()
-                                }
+                                ParameterHelpButton(label: String(localized: "Output Directory"), hint: String(localized: "Output Directory Placeholder"))
 
                                 Spacer()
 
@@ -95,12 +75,12 @@ struct MainContentView: View {
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     .onHover { hovering in
-                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                        withAnimation(.easeOut(duration: 0.12)) {
                                             isShowInFinderHovered = hovering
                                         }
                                     }
-                                    .transition(.opacity.combined(with: .scale))
-                                    .animation(.spring(response: 0.3), value: settings.outputDirectory != nil)
+                                    .transition(.opacity)
+                                    .animation(.easeOut(duration: 0.12), value: settings.outputDirectory != nil)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -170,8 +150,6 @@ struct MainContentView: View {
 
 struct BasicParametersView: View {
     @Bindable var settings: AppSettingsStore
-    @State private var showGrayTip = false
-    @State private var showThreadTip = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -217,19 +195,7 @@ struct BasicParametersView: View {
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.textLight)
 
-                            Button(action: { showThreadTip.toggle() }) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.textMuted.opacity(0.5))
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .popover(isPresented: $showThreadTip) {
-                                Text(String(localized: "ThreadsDesc"))
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.textLight)
-                                    .padding(10)
-                                    .background(Color.bgTertiary)
-                            }
+                            ParameterHelpButton(label: String(localized: "ThreadCount"), hint: String(localized: "ThreadsDesc"))
                         }
 
                         Spacer()
@@ -259,19 +225,7 @@ struct BasicParametersView: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.textLight)
 
-                        Button(action: { showGrayTip.toggle() }) {
-                            Image(systemName: "info.circle")
-                                .font(.system(size: 10))
-                                .foregroundColor(.textMuted.opacity(0.5))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .popover(isPresented: $showGrayTip) {
-                            Text(String(localized: "GrayDesc"))
-                                .font(.system(size: 11))
-                                .foregroundColor(.textLight)
-                                .padding(10)
-                                .background(Color.bgTertiary)
-                        }
+                        ParameterHelpButton(label: String(localized: "GrayColorspace"), hint: String(localized: "GrayDesc"))
                     }
 
                     Spacer()
@@ -301,7 +255,6 @@ struct BasicParametersView: View {
 
 struct AdvancedParametersView: View {
     @Bindable var settings: AppSettingsStore
-    @State private var showUnsharpTip = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -314,16 +267,7 @@ struct AdvancedParametersView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.textLight)
 
-                    Button(action: { showUnsharpTip.toggle() }) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 12))
-                            .foregroundColor(.textMuted.opacity(0.5))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .popover(isPresented: $showUnsharpTip) {
-                        Text(String(localized: "UnsharpDesc"))
-                            .padding()
-                    }
+                    ParameterHelpButton(label: String(localized: "SharpeningSettings"), hint: String(localized: "UnsharpDesc"))
 
                     Spacer()
 
@@ -404,7 +348,6 @@ struct MinimalParameterField: View {
     let hint: String
     var isInputDisabled: Bool = false
 
-    @State private var showHint = false
     @FocusState private var isFocused: Bool
     @Environment(\.parameterIssues) private var issues
     @Environment(\.parameterFocusRequest) private var focusRequest
@@ -419,19 +362,7 @@ struct MinimalParameterField: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.textLight)
 
-                    Button(action: { showHint.toggle() }) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 10))
-                            .foregroundColor(.textMuted.opacity(0.5))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .popover(isPresented: $showHint) {
-                        Text(hint)
-                            .font(.system(size: 11))
-                            .foregroundColor(.textLight)
-                            .padding(10)
-                            .background(Color.bgTertiary)
-                    }
+                    ParameterHelpButton(label: label, hint: hint)
                 }
 
                 Spacer()
@@ -459,7 +390,7 @@ struct MinimalParameterField: View {
                     if !unit.isEmpty {
                         Text(unit)
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(isInputDisabled ? .textMuted.opacity(0.5) : .textMuted)
+                            .foregroundColor(.textMuted)
                             .frame(width: 25, alignment: .leading)
                     }
                 }
@@ -493,5 +424,33 @@ private extension EnvironmentValues {
     var parameterFocusRequest: ParameterFocusRequest? {
         get { self[ParameterFocusKey.self] }
         set { self[ParameterFocusKey.self] = newValue }
+    }
+}
+
+private struct ParameterHelpButton: View {
+    let label: String
+    let hint: String
+    @State private var isPresented = false
+
+    private var helpLabel: String { String(format: String(localized: "ParameterHelpLabel"), label) }
+
+    var body: some View {
+        Button { isPresented.toggle() } label: {
+            Image(systemName: "info.circle")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.textMuted)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(helpLabel)
+        .help(helpLabel)
+        .popover(isPresented: $isPresented) {
+            Text(hint).font(.system(size: 12)).foregroundStyle(Color.textLight)
+                .frame(maxWidth: 320, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(12)
+                .background(Color.bgTertiary)
+        }
     }
 }

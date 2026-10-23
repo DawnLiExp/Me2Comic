@@ -253,7 +253,7 @@ struct AboutView: View {
     }
     
     private var tertiaryTextColor: Color {
-        themeManager.currentTheme.isLightTheme ? Color(hex: "#7A7A7A") : Color(hex: "#808080")
+        themeManager.currentTheme.isLightTheme ? Color(hex: "#666666") : Color(hex: "#A3A3AA")
     }
     
     private var dividerColor: Color {

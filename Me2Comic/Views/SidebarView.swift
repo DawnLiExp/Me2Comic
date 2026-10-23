@@ -28,7 +28,7 @@ struct SidebarView: View {
                 .ignoresSafeArea()
             
             Color.bgSecondary
-                .opacity(0.4)
+                .opacity(0.99)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -109,9 +109,7 @@ struct SidebarView: View {
                     
                     if !logger.logMessages.isEmpty {
                         Button(action: {
-                            withAnimation {
-                                logger.logMessages.removeAll()
-                            }
+                            logger.logMessages.removeAll()
                         }) {
                             HStack {
                                 Image(systemName: "trash")
@@ -127,7 +125,7 @@ struct SidebarView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal, 20)
-                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        .transition(.opacity)
                     }
                 }
                 .padding(.vertical, 20)
@@ -151,6 +149,15 @@ struct StatusIndicator: View {
         }
     }
 
+    private var summary: String {
+        switch status {
+        case .checking: String(localized: "Detecting")
+        case .ready: String(localized: "Ready")
+        case .failed(.graphicsMagickNotFound): String(localized: "GMNotInstalledBrief")
+        case .failed: String(localized: "GMVerificationFailedBrief")
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -158,8 +165,9 @@ struct StatusIndicator: View {
                     .foregroundStyle(color)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("GraphicsMagick").font(.system(size: 12, weight: .medium)).foregroundStyle(Color.textLight)
-                    Text(status.isReady ? "Ready" : (status.isChecking ? "Detecting" : "GMDetectionFailed"))
+                    Text(summary)
                         .font(.system(size: 11)).foregroundStyle(color)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
@@ -210,10 +218,6 @@ struct NavigationItem: View {
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Color.accentGreen)
                         .frame(width: 3, height: 16)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .opacity
-                        ))
                 }
             }
             .padding(.horizontal, 12)
@@ -221,7 +225,6 @@ struct NavigationItem: View {
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected ? Color.accentGreen.opacity(0.15) : (isHovered ? Color.bgTertiary.opacity(0.2) : Color.clear))
-                    .animation(.easeInOut(duration: 0.15), value: isSelected)
                     .animation(.easeInOut(duration: 0.1), value: isHovered)
             )
             .contentShape(Rectangle())

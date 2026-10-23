@@ -24,13 +24,6 @@ struct MinimalDirectorySelector: View {
     private enum InteractionState {
         case normal, hovered, dragging
         
-        var iconRotation: Double {
-            switch self {
-            case .hovered: return 45
-            default: return 0
-            }
-        }
-        
         var backgroundOpacity: Double {
             switch self {
             case .dragging: return 0.6
@@ -74,8 +67,6 @@ struct MinimalDirectorySelector: View {
                 Image(systemName: "arrow.right.circle")
                     .font(.system(size: 16))
                     .foregroundColor(accentColor)
-                    .rotationEffect(.degrees(interactionState.iconRotation))
-                    .animation(.spring(response: 0.3), value: interactionState.iconRotation)
             }
             .padding(12)
             .background(

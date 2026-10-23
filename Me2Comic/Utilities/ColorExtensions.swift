@@ -87,6 +87,12 @@ extension Color {
         ThemeManager.shared.color(for: .errorRed)
     }
     
+    @MainActor
+    static var buttonBackground: Color { ThemeManager.shared.color(for: .buttonBackground) }
+
+    @MainActor
+    static var buttonForeground: Color { ThemeManager.shared.color(for: .buttonForeground) }
+
     // MARK: - Adaptive Colors for Light/Dark Theme Support
     
     @MainActor

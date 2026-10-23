@@ -128,7 +128,7 @@ struct LogRow: View {
         HStack(alignment: .top, spacing: 10) {
             Text(String(format: "%03d", index + 1))
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundColor(.textMuted.opacity(0.5))
+                .foregroundColor(.textMuted)
                 .frame(width: 30, alignment: .trailing)
             
             Image(systemName: iconName(for: entry.level))
@@ -164,9 +164,9 @@ struct LogRow: View {
     private func color(for level: LogLevel) -> Color {
         switch level {
         case .info: return .textMuted
-        case .success: return Color.successGreen.opacity(0.85)
-        case .warning: return Color.warningOrange.opacity(0.85)
-        case .error: return Color.errorRed.opacity(0.85)
+        case .success: return Color.successGreen
+        case .warning: return Color.warningOrange
+        case .error: return Color.errorRed
         case .debug: return .textMuted
         }
     }

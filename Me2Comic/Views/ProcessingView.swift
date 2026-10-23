@@ -17,7 +17,7 @@ struct ProcessingView: View {
     var isStopping = false
     let onStop: () -> Void
     
-    @State private var rotation: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     var body: some View {
         VStack(spacing: 40) {
@@ -36,23 +36,17 @@ struct ProcessingView: View {
                     )
                     .frame(width: 200, height: 200)
                     .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 0.5), value: progress)
+                    .animation(reduceMotion ? nil : .linear(duration: 0.18), value: progress)
                 
-                // Decorative Ring
-                Circle()
-                    .stroke(
-                        LinearGradient(
-                            colors: [.accentGreen.opacity(0.3), .clear],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 2
-                    )
-                    .frame(width: 180, height: 180)
-                    .rotationEffect(.degrees(rotation))
-                    .animation(.linear(duration: 2).repeatForever(autoreverses: false), value: rotation)
-                    .onAppear { rotation = 360 }
-                
+                // A timeline stops immediately when Reduce Motion changes at runtime.
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { context in
+                    Circle()
+                        .stroke(LinearGradient(colors: [.accentGreen.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom), lineWidth: 2)
+                        .frame(width: 180, height: 180)
+                        .rotationEffect(.degrees(reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 2) * 180))
+                }
+                .accessibilityHidden(true)
+
                 // Center Content
                 VStack(spacing: 8) {
                     Text("\(Int(progress * 100))%")
@@ -67,7 +61,7 @@ struct ProcessingView: View {
             
             // Status Text
             VStack(spacing: 8) {
-                Text(isStopping ? "StoppingProcessing" : "ProcessingStatus")
+                Text(isStopping ? String(localized: "StoppingProcessing") : String(localized: "ProcessingStatus"))
                     .font(.system(size: 20, weight: .light))
                     .foregroundColor(.textLight)
             }

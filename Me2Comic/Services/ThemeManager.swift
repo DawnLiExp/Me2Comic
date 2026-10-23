@@ -152,6 +152,8 @@ enum SemanticColor {
     case bgTertiary
     case accentPrimary
     case accentSecondary
+    case buttonBackground
+    case buttonForeground
     case textLight
     case textMuted
     case successGreen
@@ -162,6 +164,10 @@ enum SemanticColor {
     
     var midnightBlueColor: Color {
         switch self {
+        case .buttonBackground:
+            return Color(hex: "#4864C0")
+        case .buttonForeground:
+            return Color(hex: "#FFFFFF")
         case .bgPrimary:
             return Color(hex: "#1A1D26")
         case .bgSecondary:
@@ -169,13 +175,13 @@ enum SemanticColor {
         case .bgTertiary:
             return Color(hex: "#2A3142")
         case .accentPrimary:
-            return Color(hex: "#5E7CE2")
+            return Color(hex: "#8CA4FF")
         case .accentSecondary:
             return Color(hex: "#F97B8B")
         case .textLight:
             return Color(hex: "#E8ECEF")
         case .textMuted:
-            return Color(hex: "#8B92A5")
+            return Color(hex: "#A3ADC0")
         case .successGreen:
             return Color(hex: "#6BCB77")
         case .warningOrange:
@@ -189,6 +195,10 @@ enum SemanticColor {
     
     var warmSandColor: Color {
         switch self {
+        case .buttonBackground:
+            return Color(hex: "#4A5D7A")
+        case .buttonForeground:
+            return Color(hex: "#FFFFFF")
         case .bgPrimary:
             return Color(hex: "#F5F2ED")
         case .bgSecondary:
@@ -198,17 +208,17 @@ enum SemanticColor {
         case .accentPrimary:
             return Color(hex: "#4A5D7A")
         case .accentSecondary:
-            return Color(hex: "#E67E5B")
+            return Color(hex: "#A94423")
         case .textLight:
             return Color(hex: "#2C3E50")
         case .textMuted:
-            return Color(hex: "#7F8C9A")
+            return Color(hex: "#526274")
         case .successGreen:
-            return Color(hex: "#52B788")
+            return Color(hex: "#247348")
         case .warningOrange:
-            return Color(hex: "#F4A261")
+            return Color(hex: "#955018")
         case .errorRed:
-            return Color(hex: "#E76F71")
+            return Color(hex: "#B03440")
         }
     }
     
@@ -216,6 +226,10 @@ enum SemanticColor {
     
     var forestShadowColor: Color {
         switch self {
+        case .buttonBackground:
+            return Color(hex: "#33CC66")
+        case .buttonForeground:
+            return Color(hex: "#0D140F")
         case .bgPrimary:
             return Color(hex: "#0D140F")
         case .bgSecondary:
@@ -235,7 +249,7 @@ enum SemanticColor {
         case .warningOrange:
             return Color(hex: "#FF9926")
         case .errorRed:
-            return Color(hex: "#F24D40")
+            return Color(hex: "#FF7063")
         }
     }
     
@@ -243,6 +257,10 @@ enum SemanticColor {
     
     var macOsDarkColor: Color {
         switch self {
+        case .buttonBackground:
+            return Color(hex: "#0068D9")
+        case .buttonForeground:
+            return Color(hex: "#FFFFFF")
         case .bgPrimary:
             return Color(hex: "#1E1E1E")
         case .bgSecondary:
@@ -250,19 +268,19 @@ enum SemanticColor {
         case .bgTertiary:
             return Color(hex: "#3A3A3A")
         case .accentPrimary:
-            return Color(hex: "#007AFF")
+            return Color(hex: "#63B0FF")
         case .accentSecondary:
             return Color(hex: "#FF9500")
         case .textLight:
             return Color(hex: "#FFFFFF")
         case .textMuted:
-            return Color(hex: "#8E8E93")
+            return Color(hex: "#ABABB2")
         case .successGreen:
             return Color(hex: "#6BCB77")
         case .warningOrange:
             return Color(hex: "#FFB344")
         case .errorRed:
-            return Color(hex: "#FF6B6B")
+            return Color(hex: "#FF8585")
         }
     }
 }
