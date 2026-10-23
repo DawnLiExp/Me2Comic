@@ -321,48 +321,7 @@ struct AboutView: View {
     
     @MainActor
     private func performRestart() async {
-        // Apply pending theme
-        if let pendingThemeRaw = UserDefaults.standard.string(forKey: "Me2Comic.pendingTheme"),
-           let pendingTheme = AppTheme(rawValue: pendingThemeRaw)
-        {
-            _ = themeManager.setTheme(pendingTheme)
-            UserDefaults.standard.removeObject(forKey: "Me2Comic.pendingTheme")
-        }
-        
-        // Apply pending language
-        if let pendingLang = UserDefaults.standard.string(forKey: "Me2Comic.pendingLanguage") {
-            UserDefaults.standard.set([pendingLang], forKey: "AppleLanguages")
-            UserDefaults.standard.set(pendingLang, forKey: "SelectedLanguage")
-            UserDefaults.standard.removeObject(forKey: "Me2Comic.pendingLanguage")
-        }
-        
-        // Restart application via LaunchServices to preserve activation/focus behavior.
-        let bundleURL = Bundle.main.bundleURL
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-        configuration.addsToRecentItems = false
-        configuration.createsNewApplicationInstance = true
-        
-        do {
-            let runningApp = try await NSWorkspace.shared.openApplication(
-                at: bundleURL,
-                configuration: configuration
-            )
-            runningApp.activate(options: [.activateAllWindows])
-            NSApplication.shared.terminate(nil)
-        } catch {
-            NSLog("NSWorkspace launch failed: \(error)")
-            
-            // Final fallback: open command
-            let task = Process()
-            task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            task.arguments = ["-n", "-a", bundleURL.path]
-            task.standardOutput = FileHandle.nullDevice
-            task.standardError = FileHandle.nullDevice
-            
-            try? task.run()
-            NSApplication.shared.terminate(nil)
-        }
+        await AppLifecycle.shared.restart()
     }
 }
 

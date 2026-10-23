@@ -1,11 +1,5 @@
-//
-//  Me2ComicApp.swift
-//  Me2Comic
-//
-//  Created by Me2 on 2025/4/27.
-//
-
 import AppKit
+import Observation
 import SwiftUI
 
 @main
@@ -13,127 +7,164 @@ struct Me2ComicApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        WindowGroup {
-            ImageProcessorView()
-        }
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentMinSize)
-
-        Settings {
-            AboutView()
-        }
+        WindowGroup { ImageProcessorView() }
+            .windowStyle(.hiddenTitleBar)
+            .windowResizability(.contentMinSize)
+        Settings { AboutView() }
     }
 }
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private var mainWindow: NSWindow?
     private let notificationManager = NotificationManager()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Apply pending language changes
-        applyPendingLanguageChanges()
-
-        // Apply theme appearance
-        applyThemeAppearance()
-
-        Task {
-            do {
-                _ = try await notificationManager.requestNotificationAuthorization()
-            } catch {
-                #if DEBUG
-                print("Notification authorization failed: \(error.localizedDescription)")
-                #endif
-            }
-        }
-
-        activatePrimaryWindow()
-
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if event.modifierFlags.contains(.command),
-               event.charactersIgnoringModifiers == "w"
-            {
-                NSApp.terminate(nil)
-                return nil
-            }
-            return event
-        }
-    }
-
-    private func applyPendingLanguageChanges() {
-        let defaults = UserDefaults.standard
-
-        // Apply pending language if exists
-        if let pendingLang = defaults.string(forKey: "Me2Comic.pendingLanguage") {
-            defaults.set([pendingLang], forKey: "AppleLanguages")
-            defaults.set(pendingLang, forKey: "SelectedLanguage")
-            defaults.removeObject(forKey: "Me2Comic.pendingLanguage")
-        }
-    }
-
-    private func applyThemeAppearance() {
         let theme = ThemeManager.shared.currentTheme
-
-        // Set system appearance to match theme type
-        NSApplication.shared.appearance = theme.isLightTheme
-            ? NSAppearance(named: .aqua)
-            : NSAppearance(named: .darkAqua)
+        NSApp.appearance = NSAppearance(named: theme.isLightTheme ? .aqua : .darkAqua)
+        Task { _ = try? await notificationManager.requestNotificationAuthorization() }
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        return true
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        AppLifecycle.shared.requestTermination()
     }
 
-    private func activatePrimaryWindow(attempt: Int = 0) {
-        guard let window = preferredPrimaryWindow() else {
-            guard attempt < 12 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                self?.activatePrimaryWindow(attempt: attempt + 1)
-            }
-            return
-        }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+}
 
-        configureWindow(window)
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+/// Coordinates only explicitly registered processing windows. Settings retain native behavior.
+@MainActor
+@Observable
+final class AppLifecycle: NSObject, NSWindowDelegate {
+    static let shared = AppLifecycle()
+
+    private struct Entry {
+        weak var window: NSWindow?
+        let processor: ImageProcessor
+        let settings: AppSettingsStore
     }
+    private var entries: [ObjectIdentifier: Entry] = [:]
+    private var allowedClosures: Set<ObjectIdentifier> = []
+    private var busy = false
+    var isBusy: Bool { busy }
+    private var terminationApproved = false
 
-    private func configureWindow(_ window: NSWindow) {
+    func register(window: NSWindow, processor: ImageProcessor, settings: AppSettingsStore) {
+        let key = ObjectIdentifier(window)
+        guard entries[key] == nil else { return }
+        entries[key] = Entry(window: window, processor: processor, settings: settings)
+        window.delegate = self
         window.isMovableByWindowBackground = true
         window.titlebarAppearsTransparent = true
         window.styleMask.insert(.fullSizeContentView)
         window.tabbingMode = .disallowed
-        window.delegate = self
-
-        if isPrimaryCandidate(window) {
-            mainWindow = window
-        }
     }
 
-    private func preferredPrimaryWindow() -> NSWindow? {
-        let candidates = NSApp.windows.filter(isPrimaryCandidate)
-        if let largest = candidates.max(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }) {
-            return largest
+    func windowShouldClose(_ window: NSWindow) -> Bool {
+        let key = ObjectIdentifier(window)
+        if allowedClosures.remove(key) != nil { return true }
+        guard !busy, let entry = entries[key] else { return false }
+        let live = entries.values.filter { $0.window != nil }
+        if live.count == 1 {
+            NSApp.terminate(nil)
+            return false
         }
-        return NSApp.windows.first
+        busy = true
+        Task {
+            if await prepare([entry]) {
+                allowedClosures.insert(key)
+                window.performClose(nil)
+            }
+            busy = false
+        }
+        return false
     }
 
-    private func isPrimaryCandidate(_ window: NSWindow) -> Bool {
-        let minMainWidth: CGFloat = 600
-        return window.frame.width >= minMainWidth
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        entries.removeValue(forKey: ObjectIdentifier(window))
+    }
+
+    func requestTermination() -> NSApplication.TerminateReply {
+        if terminationApproved { return .terminateNow }
+        guard !busy else { return .terminateCancel }
+        busy = true
+        Task {
+            let approved = await prepare(Array(entries.values))
+            terminationApproved = approved
+            busy = false
+            NSApp.reply(toApplicationShouldTerminate: approved)
+        }
+        return .terminateLater
+    }
+
+    private func prepare(_ targets: [Entry]) async -> Bool {
+        for entry in targets { entry.processor.isClosing = true }
+        if targets.contains(where: { $0.processor.hasActiveWork }) {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "StopTasksBeforeClosing")
+            alert.informativeText = String(localized: "StopTasksBeforeClosingDetail")
+            alert.addButton(withTitle: String(localized: "ContinueProcessing"))
+            alert.addButton(withTitle: String(localized: "StopTasksAndContinue"))
+            let response: NSApplication.ModalResponse
+            if let window = targets.compactMap(\.window).first {
+                response = await alert.beginSheetModal(for: window)
+            } else {
+                response = alert.runModal()
+            }
+            guard response == .alertSecondButtonReturn else {
+                for entry in targets { entry.processor.isClosing = false }
+                return false
+            }
+        }
+        for entry in targets {
+            entry.settings.saveParameters()
+            await entry.processor.cancelAndWait()
+        }
+        return true
+    }
+
+    func restart() async {
+        guard !busy else { return }
+        busy = true
+        let targets = Array(entries.values)
+        guard await prepare(targets) else { busy = false; return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        configuration.addsToRecentItems = false
+        configuration.createsNewApplicationInstance = true
+        do {
+            _ = try await NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
+            terminationApproved = true
+            busy = false
+            NSApp.terminate(nil)
+        } catch {
+            for entry in targets { entry.processor.isClosing = false }
+            busy = false
+            let alert = NSAlert()
+            alert.messageText = String(localized: "RestartFailed")
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
     }
 }
 
-extension AppDelegate: NSWindowDelegate {
-    func windowDidBecomeMain(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow else { return }
-        configureWindow(window)
+struct ProcessingWindowRegistration: NSViewRepresentable {
+    let processor: ImageProcessor
+    let settings: AppSettingsStore
+
+    func makeNSView(context: Context) -> RegistrationView { RegistrationView() }
+    func updateNSView(_ view: RegistrationView, context: Context) {
+        view.attach = { window in
+            AppLifecycle.shared.register(window: window, processor: processor, settings: settings)
+        }
+        if let window = view.window { view.attach?(window) }
     }
 
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        if sender == mainWindow {
-            NSApp.terminate(nil)
+    final class RegistrationView: NSView {
+        var attach: ((NSWindow) -> Void)?
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { attach?(window) }
         }
-        return true
     }
 }

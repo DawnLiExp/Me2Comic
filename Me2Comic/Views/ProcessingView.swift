@@ -14,6 +14,7 @@ struct ProcessingView: View {
     let progress: Double
     let processedCount: Int
     let totalCount: Int
+    var isStopping = false
     let onStop: () -> Void
     
     @State private var rotation: Double = 0
@@ -66,7 +67,7 @@ struct ProcessingView: View {
             
             // Status Text
             VStack(spacing: 8) {
-                Text("ProcessingStatus")
+                Text(isStopping ? "StoppingProcessing" : "ProcessingStatus")
                     .font(.system(size: 20, weight: .light))
                     .foregroundColor(.textLight)
             }
@@ -92,6 +93,7 @@ struct ProcessingView: View {
                 )
             }
             .buttonStyle(PlainButtonStyle())
+            .disabled(isStopping)
         }
     }
 }

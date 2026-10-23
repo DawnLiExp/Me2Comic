@@ -22,9 +22,13 @@ class ImageProcessor {
     
     private var gmPath = ""
     private var activeProcessingTask: Task<Void, Never>?
+    private var stopTask: Task<Void, Never>?
     private var activeCancellationToken: ProcessingCancellationToken?
     
     var gmReady = false
+    private(set) var isStopping = false
+    var isClosing = false
+    var hasActiveWork: Bool { activeProcessingTask != nil || isStopping }
     
     // MARK: - Initialization
     
@@ -67,27 +71,35 @@ class ImageProcessor {
         }
     }
     
-    /// Stops all active processing
+    /// Requests cancellation while retaining ownership until all children are reaped.
     func stopProcessing() {
-        #if DEBUG
-        logger.logDebug("Stop processing requested", source: "ImageProcessor")
-        #endif
-        
-        activeProcessingTask?.cancel()
-        let cancellationToken = activeCancellationToken
-        activeProcessingTask = nil
-        activeCancellationToken = nil
-
-        Task {
-            await cancellationToken?.cancel()
-        }
-        
-        logger.log(String(localized: "ProcessingStopRequested"), level: .warning, source: "ImageProcessor")
-        logger.log(String(localized: "ProcessingStopped"), level: .warning, source: "ImageProcessor")
-        
-        stateManager.stopProcessing()
+        _ = beginCancellation()
     }
-    
+
+    func cancelAndWait() async {
+        await beginCancellation()?.value
+    }
+
+    private func beginCancellation() -> Task<Void, Never>? {
+        if let stopTask { return stopTask }
+        guard let task = activeProcessingTask else { return nil }
+        isStopping = true
+        task.cancel()
+        let token = activeCancellationToken
+        let cleanup = Task {
+            await token?.cancel()
+            await task.value
+            activeProcessingTask = nil
+            activeCancellationToken = nil
+            stateManager.stopProcessing()
+            isStopping = false
+            stopTask = nil
+            logger.log(String(localized: "ProcessingStopped"), level: .warning, source: "ImageProcessor")
+        }
+        stopTask = cleanup
+        return cleanup
+    }
+
     /// Initiates image processing workflow
     func processImages(inputDir: URL, outputDir: URL, parameters: ProcessingParameters) {
         #if DEBUG
@@ -96,7 +108,7 @@ class ImageProcessor {
         logger.logDebug("Output: \(outputDir.path)", source: "ImageProcessor")
         #endif
         
-        activeProcessingTask?.cancel()
+        guard !hasActiveWork, !isClosing else { return }
         let cancellationToken = ProcessingCancellationToken()
         activeCancellationToken = cancellationToken
         
@@ -110,6 +122,10 @@ class ImageProcessor {
                 parameters: parameters,
                 cancellationToken: cancellationToken
             )
+            if !isStopping {
+                activeProcessingTask = nil
+                activeCancellationToken = nil
+            }
         }
     }
     

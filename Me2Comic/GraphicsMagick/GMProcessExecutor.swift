@@ -1,286 +1,157 @@
-//
-//  GMProcessExecutor.swift
-//  Me2Comic
-//
-//  Created by Me2 on 2025/6/19.
-//
-
 import Darwin
 import Foundation
 
-/// Manages GraphicsMagick process execution and lifecycle
+/// Owns one child until its termination callback has run.
+/// The lock protects launch/cancellation/exit state and all continuation ownership.
+final class ManagedChildProcess: @unchecked Sendable {
+    let process: Process
+    private let lock = NSLock()
+    private let gracePeriod: Duration
+    private var launched = false
+    private var cancelled = false
+    private var exitStatus: Int32?
+    private var waiters: [CheckedContinuation<Int32, Never>] = []
+    private var escalation: Task<Void, Never>?
+
+    init(process: Process, gracePeriod: Duration = .seconds(3)) {
+        self.process = process
+        self.gracePeriod = gracePeriod
+    }
+
+    func start() throws {
+        try lock.withLock {
+            guard !cancelled else { throw CancellationError() }
+            process.terminationHandler = { [weak self] process in
+                self?.didExit(process.terminationStatus)
+            }
+            do {
+                try process.run()
+                launched = true
+            } catch {
+                process.terminationHandler = nil
+                throw error
+            }
+        }
+    }
+
+    func cancel() {
+        lock.withLock {
+            cancelled = true
+            guard launched, exitStatus == nil, escalation == nil, process.isRunning else { return }
+            process.terminate()
+            escalation = Task.detached { [weak self, gracePeriod] in
+                do { try await Task.sleep(for: gracePeriod) } catch { return }
+                self?.forceTermination()
+            }
+        }
+    }
+
+    private func forceTermination() {
+        lock.withLock {
+            guard launched, exitStatus == nil, process.isRunning else { return }
+            // Only this still-owned child is eligible for escalation.
+            kill(process.processIdentifier, SIGKILL)
+        }
+    }
+
+    func waitForExit() async -> Int32 {
+        await withCheckedContinuation { continuation in
+            let status = lock.withLock { () -> Int32? in
+                if let exitStatus { return exitStatus }
+                waiters.append(continuation)
+                return nil
+            }
+            if let status { continuation.resume(returning: status) }
+        }
+    }
+
+    private func didExit(_ status: Int32) {
+        let pending = lock.withLock { () -> [CheckedContinuation<Int32, Never>] in
+            guard exitStatus == nil else { return [] }
+            exitStatus = status
+            escalation?.cancel()
+            escalation = nil
+            process.terminationHandler = nil
+            defer { waiters.removeAll() }
+            return waiters
+        }
+        for waiter in pending { waiter.resume(returning: status) }
+    }
+}
+
 struct GMProcessExecutor {
-    // MARK: - Properties
-    
     private let gmPath: String
     private let logger: (@Sendable (String, LogLevel, String?) -> Void)?
-    
-    // MARK: - Constants
-    
-    private enum Constants {
-        static let writeChunkSize = 16 * 1024 // 16KB
-        static let maxWriteAttempts = 50
-    }
-    
-    // MARK: - Initialization
-    
-    init(
-        gmPath: String,
-        logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil
-    ) {
+
+    init(gmPath: String, logger: (@Sendable (String, LogLevel, String?) -> Void)? = nil) {
         self.gmPath = gmPath
         self.logger = logger
     }
-    
-    // MARK: - Public Methods
-    
-    /// Execute GraphicsMagick batch process with commands
-    /// - Parameters:
-    ///   - commands: Commands to execute
-    ///   - commandGenerator: Async closure that generates and writes commands
-    /// - Returns: Result indicating success or execution failure
+
     func executeBatch(
         commandGenerator: @escaping (FileHandle) async -> Result<Void, ProcessingError>
     ) async -> Result<Void, ProcessingError> {
-        let outputCollector = ProcessOutputCollector(logger: logger)
-        
-        // Setup process
-        let process = createBatchProcess()
-        
-        // Setup pipes
-        let inputPipe = Pipe()
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        
-        process.standardInput = inputPipe
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-        
-        // Setup output handlers
-        setupOutputHandlers(
-            outputPipe: outputPipe,
-            errorPipe: errorPipe,
-            collector: outputCollector
-        )
-        
-        defer {
-            cleanupProcess(process, outputPipe: outputPipe, errorPipe: errorPipe)
-        }
-        
-        // Execute with cancellation support
-        return await withTaskCancellationHandler {
-            await performExecution(
-                process: process,
-                inputPipe: inputPipe,
-                outputCollector: outputCollector,
-                commandGenerator: commandGenerator
-            )
-        } onCancel: {
-            terminateProcess(process)
-        }
-    }
-    
-    /// Write single command to file handle
-    func writeCommand(_ command: String, to fileHandle: FileHandle) async -> Result<Void, ProcessingError> {
-        guard !Task.isCancelled else {
-            return .failure(.processingCancelled)
-        }
-        
-        guard let data = (command + "\n").data(using: .utf8) else {
-            #if DEBUG
-            logger?("Failed to encode command to UTF-8", .debug, "GMProcessExecutor")
-            #endif
-            return .failure(.commandEncodingFailed)
-        }
-        
-        do {
-            try await Task {
-                try fileHandle.write(contentsOf: data)
-            }.value
-            
-            #if DEBUG
-            logger?("Command write completed: \(data.count) bytes", .debug, "GMProcessExecutor")
-            #endif
-            
-            return .success(())
-        } catch {
-            #if DEBUG
-            logger?("File handle write failed: \(error)", .debug, "GMProcessExecutor")
-            #endif
-            
-            if Task.isCancelled {
-                return .failure(.processingCancelled)
-            } else if (error as NSError).domain == NSCocoaErrorDomain {
-                return .failure(.pipeBroken)
-            } else {
-                let posixError = POSIXError(.EIO)
-                return .failure(.pipeWriteFailed(POSIXError: posixError))
-            }
-        }
-    }
-    
-    // MARK: - Private Methods
-    
-    /// Perform the actual execution
-    private func performExecution(
-        process: Process,
-        inputPipe: Pipe,
-        outputCollector: ProcessOutputCollector,
-        commandGenerator: @escaping (FileHandle) async -> Result<Void, ProcessingError>
-    ) async -> Result<Void, ProcessingError> {
-        do {
-            #if DEBUG
-            logger?("Starting GraphicsMagick batch process", .debug, "GMProcessExecutor")
-            #endif
-            
-            try process.run()
-            
-            guard !Task.isCancelled else {
-                #if DEBUG
-                logger?("Processing cancelled, terminating GM process", .debug, "GMProcessExecutor")
-                #endif
-                terminateProcess(process)
-                return .failure(.processingCancelled)
-            }
-            
-            let writeHandle = inputPipe.fileHandleForWriting
-            defer { try? writeHandle.close() }
-            
-            // Generate and write commands
-            let writeResult = await commandGenerator(writeHandle)
-            
-            // Close input to signal completion
-            try? writeHandle.close()
-            
-            if case .failure(let error) = writeResult {
-                terminateProcess(process)
-                return .failure(error)
-            }
-            
-            #if DEBUG
-            logger?("Commands written, waiting for process completion", .debug, "GMProcessExecutor")
-            #endif
-            
-            // Wait for process completion
-            await waitForProcessTermination(process)
-            
-            // Process is guaranteed to be terminated, safe to read exit code
-            let exitCode = process.terminationStatus
-            
-            #if DEBUG
-            logger?("GraphicsMagick process completed with exit code: \(exitCode)", .debug, "GMProcessExecutor")
-            #endif
-            
-            let output = await outputCollector.getSummary()
-            
-            if exitCode != 0, !Task.isCancelled {
-                let stderrString = output.stderrTail.isEmpty
-                    ? nil
-                    : String(decoding: output.stderrTail, as: UTF8.self)
-                let error = ProcessingError.graphicsMagickExecutionFailed(
-                    exitCode: exitCode,
-                    stderr: stderrString
-                )
-                logger?(error.localizedDescription, .error, "GMProcessExecutor")
-                return .failure(error)
-            }
-            
-            return .success(())
-            
-        } catch {
-            #if DEBUG
-            logger?("GMProcessExecutor execution error: \(error.localizedDescription)", .debug, "GMProcessExecutor")
-            #endif
-            return .failure(.graphicsMagickExecutionFailed(exitCode: -1, stderr: error.localizedDescription))
-        }
-    }
-    
-    /// Create GraphicsMagick batch process
-    private func createBatchProcess() -> Process {
+        let collector = ProcessOutputCollector(logger: logger)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: gmPath)
         process.arguments = ["batch", "-stop-on-error", "off"]
-        
-        #if DEBUG
-        logger?("Created GM batch process: \(gmPath) batch -stop-on-error off", .debug, "GMProcessExecutor")
-        #endif
-        
-        return process
-    }
-    
-    /// Setup output handlers for process
-    private func setupOutputHandlers(
-        outputPipe: Pipe,
-        errorPipe: Pipe,
-        collector: ProcessOutputCollector
-    ) {
-        outputPipe.fileHandleForReading.readabilityHandler = { handle in
+        let input = Pipe(), output = Pipe(), error = Pipe()
+        process.standardInput = input
+        process.standardOutput = output
+        process.standardError = error
+        output.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            guard !data.isEmpty else { return }
-            Task { await collector.appendStdout(data) }
+            if !data.isEmpty { Task { await collector.appendStdout(data) } }
         }
-        
-        errorPipe.fileHandleForReading.readabilityHandler = { handle in
+        error.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            guard !data.isEmpty else { return }
-            Task { await collector.appendStderr(data) }
+            if !data.isEmpty { Task { await collector.appendStderr(data) } }
         }
-        
-        #if DEBUG
-        logger?("Setup GM process output handlers", .debug, "GMProcessExecutor")
-        #endif
-    }
-    
-    /// Wait for process termination using event-driven approach
-    private func waitForProcessTermination(_ process: Process) async {
-        guard process.isRunning else { return }
-        
-        #if DEBUG
-        logger?("Waiting for GraphicsMagick process termination", .debug, "GMProcessExecutor")
-        #endif
-        
-        // Bridge callback-based terminationHandler to async/await
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            process.terminationHandler = { proc in
-                // Resume continuation exactly once and then clear handler to avoid retaining closure/process
-                continuation.resume()
-                proc.terminationHandler = nil
+        defer {
+            output.fileHandleForReading.readabilityHandler = nil
+            error.fileHandleForReading.readabilityHandler = nil
+            try? input.fileHandleForWriting.close()
+        }
+        let child = ManagedChildProcess(process: process)
+        return await withTaskCancellationHandler {
+            do {
+                try Task.checkCancellation()
+                try child.start()
+            } catch {
+                if Task.isCancelled || error is CancellationError { return .failure(.processingCancelled) }
+                return .failure(.graphicsMagickExecutionFailed(exitCode: -1, stderr: error.localizedDescription))
             }
-        }
-        
-        #if DEBUG
-        logger?("GraphicsMagick process terminated", .debug, "GMProcessExecutor")
-        #endif
-    }
-    
-    /// Cleanup process and handlers
-    private func cleanupProcess(_ process: Process?, outputPipe: Pipe, errorPipe: Pipe) {
-        #if DEBUG
-        logger?("Cleaning up GM process and handlers", .debug, "GMProcessExecutor")
-        #endif
-        
-        outputPipe.fileHandleForReading.readabilityHandler = nil
-        errorPipe.fileHandleForReading.readabilityHandler = nil
-        
-        if let proc = process {
-            // Clear termination handler to avoid retaining closure
-            proc.terminationHandler = nil
-            
-            if proc.isRunning {
-                terminateProcess(proc)
+            let result = await commandGenerator(input.fileHandleForWriting)
+            try? input.fileHandleForWriting.close()
+            if case .failure = result { child.cancel() }
+            if Task.isCancelled { child.cancel() }
+            let status = await child.waitForExit()
+            if Task.isCancelled { return .failure(.processingCancelled) }
+            if case .failure = result { return result }
+            if status != 0 {
+                let summary = await collector.getSummary()
+                let failure = ProcessingError.graphicsMagickExecutionFailed(
+                    exitCode: status,
+                    stderr: summary.stderrTail.isEmpty ? nil : String(decoding: summary.stderrTail, as: UTF8.self)
+                )
+                logger?(failure.localizedDescription, .error, "GMProcessExecutor")
+                return .failure(failure)
             }
+            return .success(())
+        } onCancel: {
+            child.cancel()
         }
     }
-    
-    /// Terminate process
-    private func terminateProcess(_ process: Process?) {
-        guard let process, process.isRunning else { return }
-        
-        #if DEBUG
-        logger?("Terminating GraphicsMagick process", .debug, "GMProcessExecutor")
-        #endif
-        
-        (process.standardInput as? Pipe)?.fileHandleForWriting.closeFile()
-        process.terminate()
+
+    func writeCommand(_ command: String, to fileHandle: FileHandle) async -> Result<Void, ProcessingError> {
+        guard !Task.isCancelled else { return .failure(.processingCancelled) }
+        guard let data = (command + "\n").data(using: .utf8) else { return .failure(.commandEncodingFailed) }
+        do {
+            // Blocking pipe writes must not occupy the UI executor.
+            try await Task.detached { try fileHandle.write(contentsOf: data) }.value
+            return Task.isCancelled ? .failure(.processingCancelled) : .success(())
+        } catch {
+            return Task.isCancelled ? .failure(.processingCancelled) : .failure(.pipeBroken)
+        }
     }
 }

@@ -43,6 +43,7 @@ class ProcessingStateManager {
     // MARK: - Properties
     
     private(set) var processingStartTime: Date?
+    private var completionTask: Task<Void, Never>?
     private let batchResultAggregator = BatchResultAggregator()
     
     // MARK: - State Management
@@ -58,6 +59,8 @@ class ProcessingStateManager {
     
     /// Reset UI state after processing completion
     func resetUIState() {
+        completionTask?.cancel()
+        completionTask = nil
         isProcessing = false
         totalImagesToProcess = 0
         currentProcessedImages = 0
@@ -66,6 +69,8 @@ class ProcessingStateManager {
     
     /// Mark processing as started
     func startProcessing() {
+        completionTask?.cancel()
+        completionTask = nil
         isProcessing = true
         resetProcessingState()
     }
@@ -119,9 +124,10 @@ class ProcessingStateManager {
         }
         didFinishAllTasks = true
         
-        Task {
+        completionTask?.cancel()
+        completionTask = Task {
             // Wait for a short duration to allow UI to update to 100%
-            try? await Task.sleep(nanoseconds: delay)
+            do { try await Task.sleep(nanoseconds: delay) } catch { return }
             
             // Only reset UI if still in processing state (not manually stopped)
             if isProcessing {

@@ -75,11 +75,12 @@ struct ImageProcessorView: View {
                     .blur(radius: 50)
                 }
 
-                if stateManager.isProcessing {
+                if stateManager.isProcessing || imageProcessor.isStopping {
                     ProcessingView(
                         progress: stateManager.processingProgress,
                         processedCount: stateManager.currentProcessedImages,
                         totalCount: stateManager.totalImagesToProcess,
+                        isStopping: imageProcessor.isStopping,
                         onStop: {
                             withAnimation { imageProcessor.stopProcessing() }
                         }
@@ -102,6 +103,8 @@ struct ImageProcessorView: View {
             }
         }
         .frame(minWidth: showLogs ? 1050 : 684, minHeight: 684)
+        .background(ProcessingWindowRegistration(processor: imageProcessor, settings: settings))
+        .disabled(imageProcessor.isClosing || AppLifecycle.shared.isBusy)
         .onAppear { logLoadedDirectories() }
         .onDisappear { parameterSaveTask?.cancel() }
         .onChange(of: settings.inputDirectory) { handleInputDirectoryChange() }
