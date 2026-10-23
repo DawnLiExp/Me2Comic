@@ -6,6 +6,8 @@ import SwiftUI
 struct Me2ComicApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    init() { _ = LanguageSettings.shared }
+
     var body: some Scene {
         WindowGroup { ImageProcessorView() }
             .windowStyle(.hiddenTitleBar)
@@ -138,7 +140,10 @@ final class AppLifecycle: NSObject, NSWindowDelegate {
             busy = false
             NSApp.terminate(nil)
         } catch {
-            for entry in targets { entry.processor.isClosing = false }
+            for entry in targets {
+                entry.processor.isClosing = false
+                if entry.processor.gmStatus.isChecking { entry.processor.retryGraphicsMagickDetection() }
+            }
             busy = false
             let alert = NSAlert()
             alert.messageText = String(localized: "RestartFailed")

@@ -336,7 +336,7 @@ struct AdvancedParametersView: View {
 
                 if settings.enableUnsharp {
                     MinimalParameterField(
-                        label: "Radius",
+                        label: String(localized: "Radius"),
                         value: $settings.unsharpRadius,
                     field: .unsharpRadius,
                         unit: "",
@@ -344,7 +344,7 @@ struct AdvancedParametersView: View {
                     )
 
                     MinimalParameterField(
-                        label: "Sigma",
+                        label: String(localized: "Sigma"),
                         value: $settings.unsharpSigma,
                     field: .unsharpSigma,
                         unit: "",
@@ -352,7 +352,7 @@ struct AdvancedParametersView: View {
                     )
 
                     MinimalParameterField(
-                        label: "Amount",
+                        label: String(localized: "Amount"),
                         value: $settings.unsharpAmount,
                     field: .unsharpAmount,
                         unit: "",
@@ -360,7 +360,7 @@ struct AdvancedParametersView: View {
                     )
 
                     MinimalParameterField(
-                        label: "Threshold",
+                        label: String(localized: "Thresh"),
                         value: $settings.unsharpThreshold,
                     field: .unsharpThreshold,
                         unit: "",

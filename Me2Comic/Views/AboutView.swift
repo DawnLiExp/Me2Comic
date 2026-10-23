@@ -6,7 +6,44 @@
 //
 
 import AppKit
+import Observation
 import SwiftUI
+
+/// The active language is captured once per process, independently of the next-launch preference.
+@MainActor
+@Observable
+final class LanguageSettings {
+    static let shared = LanguageSettings()
+    let activeLanguage: String
+    private(set) var pendingLanguage: String?
+    @ObservationIgnored private let defaults: UserDefaults
+    static let supported = ["en", "zh-Hans", "zh-Hant", "ja"]
+
+    init(defaults: UserDefaults = .standard,
+         activeLanguage: String = Bundle.main.preferredLocalizations.first ?? "en") {
+        self.defaults = defaults
+        let active = Self.supported.contains(activeLanguage) ? activeLanguage : "en"
+        self.activeLanguage = active
+        let pending = defaults.string(forKey: "Me2Comic.pendingLanguage")
+        pendingLanguage = pending.flatMap { Self.supported.contains($0) && $0 != active ? $0 : nil }
+        defaults.set(self.activeLanguage, forKey: "SelectedLanguage")
+        if pendingLanguage == nil { defaults.removeObject(forKey: "Me2Comic.pendingLanguage") }
+    }
+
+    var selectedLanguage: String { pendingLanguage ?? activeLanguage }
+
+    func select(_ language: String) {
+        guard Self.supported.contains(language) else { return }
+        pendingLanguage = language == activeLanguage ? nil : language
+        defaults.set([language], forKey: "AppleLanguages")
+        defaults.set(activeLanguage, forKey: "SelectedLanguage")
+        if let pendingLanguage {
+            defaults.set(pendingLanguage, forKey: "Me2Comic.pendingLanguage")
+        } else {
+            defaults.removeObject(forKey: "Me2Comic.pendingLanguage")
+        }
+    }
+}
 
 // MARK: - Types
 
@@ -37,28 +74,16 @@ struct AboutView: View {
     @State private var themeManager = ThemeManager.shared
     
     // Applied Settings (currently active)
-    @State private var appliedLanguage: String = ""
+    @State private var languageSettings = LanguageSettings.shared
     @State private var appliedTheme: AppTheme = ThemeManager.shared.selectedThemeMode
     
     // Selected Settings (UI selection)
-    @State private var selectedLanguage: String = ""
+    private var selectedLanguage: String { languageSettings.selectedLanguage }
     @State private var selectedTheme: AppTheme = ThemeManager.shared.selectedThemeMode
     
     // Pending Changes
     @State private var pendingChangeType: PendingChangeType = .none
     @State private var showRestartAlert = false
-    
-    // MARK: - Initialization
-    
-    init() {
-        // Initialize applied language
-        let saved = UserDefaults.standard.string(forKey: "SelectedLanguage")
-        let systemLang = Locale.preferredLanguages.first ?? "en"
-        let initialLang = saved ?? Self.detectSystemLanguage(systemLang)
-        
-        _appliedLanguage = State(initialValue: initialLang)
-        _selectedLanguage = State(initialValue: initialLang)
-    }
     
     // MARK: - Body
     
@@ -83,6 +108,7 @@ struct AboutView: View {
         }
         .frame(width: 360, height: 505)
         .background(backgroundColor)
+        .disabled(AppLifecycle.shared.isBusy)
         .onAppear(perform: loadSettings)
         .alert(isPresented: $showRestartAlert) {
             restartAlert
@@ -132,7 +158,7 @@ struct AboutView: View {
                 value: selectedLanguage,
                 hasPendingChange: hasPendingLanguageChange
             ) {
-                Picker(selection: $selectedLanguage, label: EmptyView()) {
+                Picker(selection: Binding(get: { selectedLanguage }, set: { handleLanguageChange($0) }), label: Text("LanguageSettings")) {
                     Text("简体中文").tag("zh-Hans")
                     Text("繁體中文").tag("zh-Hant")
                     Text("English").tag("en")
@@ -141,9 +167,6 @@ struct AboutView: View {
                 .labelsHidden()
                 .pickerStyle(.menu)
                 .frame(width: 120)
-                .onChange(of: selectedLanguage) { _, newValue in
-                    handleLanguageChange(newValue)
-                }
             }
             
             // Theme Setting
@@ -239,58 +262,22 @@ struct AboutView: View {
     
     // MARK: - Methods
     
-    private static func detectSystemLanguage(_ systemLang: String) -> String {
-        if systemLang.contains("zh-Hans") { return "zh-Hans" }
-        if systemLang.contains("zh-Hant") { return "zh-Hant" }
-        if systemLang.contains("ja") { return "ja" }
-        return "en"
-    }
-    
     private func loadSettings() {
-        // Load applied settings (user's selection mode)
         appliedTheme = themeManager.selectedThemeMode
-        
-        if let saved = UserDefaults.standard.string(forKey: "SelectedLanguage") {
-            appliedLanguage = saved
-        } else {
-            let systemLang = Locale.preferredLanguages.first ?? "en"
-            appliedLanguage = Self.detectSystemLanguage(systemLang)
-        }
-        
-        // Load pending settings or use applied
-        if let pendingLang = UserDefaults.standard.string(forKey: "Me2Comic.pendingLanguage") {
-            selectedLanguage = pendingLang
-        } else {
-            selectedLanguage = appliedLanguage
-        }
-        
-        if let pendingThemeRaw = UserDefaults.standard.string(forKey: "Me2Comic.pendingTheme"),
-           let pendingTheme = AppTheme(rawValue: pendingThemeRaw)
-        {
-            selectedTheme = pendingTheme
+        if let raw = UserDefaults.standard.string(forKey: "Me2Comic.pendingTheme"), let theme = AppTheme(rawValue: raw) {
+            selectedTheme = theme
         } else {
             selectedTheme = appliedTheme
         }
-        
-        // Update pending state
         updatePendingState()
     }
-    
-    private func handleLanguageChange(_ newLanguage: String) {
-        if newLanguage == appliedLanguage {
-            // Reverting to applied - clear pending
-            UserDefaults.standard.removeObject(forKey: "Me2Comic.pendingLanguage")
-            updatePendingState()
-        } else {
-            // New pending change
-            UserDefaults.standard.set(newLanguage, forKey: "Me2Comic.pendingLanguage")
-            UserDefaults.standard.set(newLanguage, forKey: "SelectedLanguage")
-            UserDefaults.standard.set([newLanguage], forKey: "AppleLanguages")
-            updatePendingState()
-            showRestartAlert = true
-        }
+
+    private func handleLanguageChange(_ language: String) {
+        languageSettings.select(language)
+        updatePendingState()
+        if languageSettings.pendingLanguage != nil { showRestartAlert = true }
     }
-    
+
     private func handleThemeChange(_ newTheme: AppTheme) {
         if newTheme == appliedTheme {
             // Reverting to applied - clear pending
@@ -305,7 +292,7 @@ struct AboutView: View {
     }
     
     private func updatePendingState() {
-        let hasLanguageChange = selectedLanguage != appliedLanguage
+        let hasLanguageChange = languageSettings.pendingLanguage != nil
         let hasThemeChange = selectedTheme != appliedTheme
         
         if hasLanguageChange, hasThemeChange {
