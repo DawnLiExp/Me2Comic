@@ -110,7 +110,8 @@ struct MainContentView: View {
                         .padding(.horizontal, 60)
                         .frame(minHeight: parameterAreaHeight)
                     }
-                    .padding(.vertical, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 20)
                     .frame(maxWidth: .infinity)
                     .environment(\.parameterIssues, issues)
                     .environment(\.parameterFocusRequest, focusRequest)
@@ -134,7 +135,7 @@ struct MainContentView: View {
                 action: onProcess
             )
             .padding(.horizontal, 60)
-            .padding(.bottom, 18)
+            .padding(.bottom, 32)
         }
     }
 
