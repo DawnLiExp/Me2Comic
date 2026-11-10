@@ -10,7 +10,7 @@ import Foundation
 // MARK: - Processing Parameters
 
 /// Configuration for image processing
-struct ProcessingParameters {
+struct ProcessingParameters: Codable, Sendable {
     let widthThreshold: Int
     let resizeHeight: Int
     let quality: Int
@@ -26,7 +26,7 @@ struct ProcessingParameters {
 // MARK: - Processing Category
 
 /// Processing category for directories
-enum ProcessingCategory {
+enum ProcessingCategory: Sendable {
     case globalBatch // Images not requiring cropping
     case isolated // Images requiring cropping or unclear classification
 }
@@ -34,7 +34,7 @@ enum ProcessingCategory {
 // MARK: - Directory Scan Result
 
 /// Result of directory scan
-struct DirectoryScanResult {
+struct DirectoryScanResult: Sendable {
     let directoryURL: URL
     let imageFiles: [URL]
     let category: ProcessingCategory

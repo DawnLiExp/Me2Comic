@@ -92,3 +92,6 @@ Gather the seven Dragon Balls ➔ [Actions](../../actions) ➔ `🐉 SHENRON! Gr
 ### <sub>※ *Note* </sub> 
 <sub>※ *App icon adapted from Mucha's Zodiac, build names honor his legacy. No official affiliation.* </sub>
 
+## Command-line interface
+
+The app includes a command-line tool that shares its processing core. See [CLI usage and JSON requests](docs/CLI.md).

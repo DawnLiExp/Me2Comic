@@ -21,18 +21,6 @@ struct BatchTask {
     let duplicateBaseNames: Set<String>
 }
 
-/// Batch processing result
-struct BatchResult {
-    let processed: Int
-    let failed: [String]
-    let isGlobal: Bool
-    let globalProcessed: Int // Images processed from global batch tasks only
-    
-    static var empty: BatchResult {
-        BatchResult(processed: 0, failed: [], isGlobal: false, globalProcessed: 0)
-    }
-}
-
 /// Organizes images into batch processing tasks
 @MainActor
 class BatchTaskOrganizer {

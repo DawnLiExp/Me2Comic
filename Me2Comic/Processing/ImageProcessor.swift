@@ -26,8 +26,6 @@ class ImageProcessor {
     private let notificationManager = NotificationManager()
     private let stateManager: ProcessingStateManager
     let logger: ProcessingLogger
-    private let taskOrganizer: BatchTaskOrganizer
-    private let autoCalculator: AutoParameterCalculator
     
     private let detector: @Sendable () async -> Result<String, ProcessingError>
     private var detectionTask: Task<Void, Never>?
@@ -50,8 +48,6 @@ class ImageProcessor {
          detector: (@Sendable () async -> Result<String, ProcessingError>)? = nil) {
         self.stateManager = stateManager
         self.logger = logger
-        taskOrganizer = BatchTaskOrganizer(logger: logger)
-        autoCalculator = AutoParameterCalculator(logger: logger)
         
         let log = LoggerFactory.createLoggerClosure(from: logger)
         self.detector = detector ?? { await GraphicsMagickHelper.verifyGraphicsMagickAsync(logger: log) }
@@ -163,309 +159,31 @@ class ImageProcessor {
     
     // MARK: - Private Processing Methods
     
-    /// Main async processing implementation
     private func processImagesAsync(
-        inputDir: URL,
-        outputDir: URL,
-        parameters: ProcessingParameters,
+        inputDir: URL, outputDir: URL, parameters: ProcessingParameters,
         cancellationToken: ProcessingCancellationToken
     ) async {
-        guard gmStatus.isReady else {
-            logger.logError(String(localized: "GMNotReady"), source: "ImageProcessor")
-            stateManager.stopProcessing()
-            return
-        }
-        
-        let dirResult = FileSystemHelper.createDirectory(at: outputDir)
-        if case .failure(let error) = dirResult {
-            #if DEBUG
-            logger.logDebug("Output directory creation failed: \(error)", source: "ImageProcessor")
-            #endif
-            logger.logError(error.localizedDescription, source: "ImageProcessor")
-            stateManager.stopProcessing()
-            return
-        }
-        
-        guard !Task.isCancelled else {
-            #if DEBUG
-            logger.logDebug("Processing task cancelled before directory processing", source: "ImageProcessor")
-            #endif
-            stateManager.stopProcessing()
-            return
-        }
-        
-        await processDirectoriesAsync(
-            inputDir: inputDir,
-            outputDir: outputDir,
-            parameters: parameters,
-            cancellationToken: cancellationToken
-        )
-    }
-    
-    /// Process directories with categorization
-    private func processDirectoriesAsync(
-        inputDir: URL,
-        outputDir: URL,
-        parameters: ProcessingParameters,
-        cancellationToken: ProcessingCancellationToken
-    ) async {
-        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
-        
-        let analyzer = DirectoryAnalyzer(
-            logHandler: loggerClosure,
-            isProcessingCheck: { @Sendable in
-                await cancellationToken.canContinue()
-            }
-        )
-        
-        let scanResults = await analyzer.analyzeAsync(
-            inputDir: inputDir,
-            widthThreshold: parameters.widthThreshold
-        )
-        
-        guard !scanResults.isEmpty else {
-            #if DEBUG
-            logger.logDebug("No scan results available, stopping processing", source: "ImageProcessor")
-            #endif
-            stateManager.stopProcessing()
-            return
-        }
-        
-        let totalImages = scanResults.reduce(0) { $0 + $1.imageFiles.count }
-        stateManager.setTotalImages(totalImages)
-        logger.log(String(format: String(localized: "TotalImagesToProcess"), totalImages), level: .info, source: "ImageProcessor")
-        
-        #if DEBUG
-        logger.logDebug("Processing \(totalImages) total images across \(scanResults.count) directories", source: "ImageProcessor")
-        #endif
-        
-        // Check if any directory contains high resolution images
-        let hasHighResolution = scanResults.contains { $0.isHighResolution }
-        
-        let globalBatchImages = scanResults
-            .filter { $0.category == .globalBatch }
-            .flatMap(\.imageFiles)
-        
-        let (effectiveThreadCount, effectiveBatchSize) = autoCalculator.determineParameters(
-            parameters: parameters,
-            totalImages: totalImages,
-            hasHighResolution: hasHighResolution
-        )
-        
-        #if DEBUG
-        logger.logDebug("Effective parameters: threads=\(effectiveThreadCount), batchSize=\(effectiveBatchSize)\(hasHighResolution ? " [High Resolution Mode]" : "")", source: "ImageProcessor")
-        #endif
-        
-        let createResult = FileSystemHelper.createOutputDirectories(
-            scanResults: scanResults,
-            outputDir: outputDir
-        )
-        if case .failure(let error) = createResult {
-            #if DEBUG
-            logger.logDebug("Output directory setup failed: \(error)", source: "ImageProcessor")
-            #endif
-            logger.logError(error.localizedDescription, source: "ImageProcessor")
-            stateManager.stopProcessing()
-            return
-        }
-        
-        await processBatches(
-            scanResults: scanResults,
-            globalBatchImages: globalBatchImages,
-            outputDir: outputDir,
-            parameters: parameters,
-            effectiveThreadCount: effectiveThreadCount,
-            effectiveBatchSize: effectiveBatchSize,
-            cancellationToken: cancellationToken
-        )
-    }
-    
-    /// Process batches with controlled concurrency and work-stealing
-    private func processBatches(
-        scanResults: [DirectoryScanResult],
-        globalBatchImages: [URL],
-        outputDir: URL,
-        parameters: ProcessingParameters,
-        effectiveThreadCount: Int,
-        effectiveBatchSize: Int,
-        cancellationToken: ProcessingCancellationToken
-    ) async {
-        guard stateManager.isProcessing, !Task.isCancelled else {
-            #if DEBUG
-            logger.logDebug("Batch processing skipped due to cancellation or state", source: "ImageProcessor")
-            #endif
-            return
-        }
-        
-        let batchTasks = taskOrganizer.prepareBatchTasks(
-            scanResults: scanResults,
-            globalBatchImages: globalBatchImages,
-            outputDir: outputDir,
-            parameters: parameters,
-            effectiveThreadCount: effectiveThreadCount,
-            effectiveBatchSize: effectiveBatchSize
-        )
-        
-        guard !batchTasks.isEmpty else {
-            #if DEBUG
-            logger.logDebug("No batch tasks generated", source: "ImageProcessor")
-            #endif
-            return
-        }
-        
-        #if DEBUG
-        logger.logDebug("Generated \(batchTasks.count) batch tasks for concurrent processing", source: "ImageProcessor")
-        #endif
-        // Track which tasks are high-resolution global batches
-        var highResGlobalIndices = Set<Int>()
-        var currentIndex = 0
-
-        // Mark isolated tasks first (they're added first in prepareBatchTasks)
-        for result in scanResults where result.category == .isolated {
-            let subBatchCount = Int(ceil(Double(result.imageFiles.count) / Double(effectiveBatchSize)))
-            currentIndex += subBatchCount
-        }
-
-        // Mark high-resolution global batch tasks
-        let highResGlobalResults = scanResults.filter {
-            $0.category == .globalBatch && $0.isHighResolution
-        }
-        if !highResGlobalResults.isEmpty {
-            let highResImageCount = highResGlobalResults.flatMap(\.imageFiles).count
-            let highResBatchCount = Int(ceil(Double(highResImageCount) / Double(effectiveBatchSize)))
-            for i in currentIndex ..< (currentIndex + highResBatchCount) {
-                highResGlobalIndices.insert(i)
-            }
-        }
-        // Initialize task queue with priority information
-        let loggerClosure = LoggerFactory.createLoggerClosure(from: logger)
-        let taskQueue = TaskQueue(logger: loggerClosure)
-        await taskQueue.initialize(with: batchTasks, highResGlobalIndices: highResGlobalIndices)
-        let gmPath = self.gmPath
-        let batchParameters = parameters
-        let cancellationCheck: @Sendable () async -> Bool = {
-            await cancellationToken.canContinue()
-        }
-        
-        var globalProcessedCount = 0
-        
-        await withTaskGroup(of: BatchResult.self) { group in
-            // Start worker threads
-            for threadId in 0 ..< effectiveThreadCount {
-                group.addTask {
-                    var localResults = BatchResult.empty
-                    
-                    // Work-stealing loop: keep processing until no tasks remain
-                    while !Task.isCancelled {
-                        // Get next task from queue (work-stealing enabled)
-                        guard let task = await taskQueue.getNextTask(threadId: threadId) else {
-                            break // No more tasks available
-                        }
-                        
-                        // Process the task
-                        let (processed, failed) = await ImageProcessor.processBatch(
-                            gmPath: gmPath,
-                            images: task.images,
-                            outputDir: task.outputDir,
-                            parameters: batchParameters,
-                            duplicateBaseNames: task.duplicateBaseNames,
-                            cancellationCheck: cancellationCheck,
-                            logger: loggerClosure
-                        )
-                        
-                        // Mark task completed
-                        await taskQueue.markCompleted()
-                        
-                        // Accumulate results for this thread
-                        localResults = BatchResult(
-                            processed: localResults.processed + processed,
-                            failed: localResults.failed + failed,
-                            isGlobal: task.isGlobal || localResults.isGlobal,
-                            globalProcessed: localResults.globalProcessed + (task.isGlobal ? processed : 0)
-                        )
-                        
-                        #if DEBUG
-                        let progress = await taskQueue.getProgress()
-                        loggerClosure(
-                            "Thread \(threadId) completed task: \(progress.completed)/\(progress.total) done, \(progress.remaining) remaining",
-                            .debug,
-                            "ImageProcessor"
-                        )
-                        #endif
+        do {
+            let report = try await ImageProcessingRunner(gmPath: gmPath, logger: logger).run(
+                inputs: [inputDir], output: outputDir, parameters: parameters,
+                cancellationToken: cancellationToken,
+                eventSink: { [stateManager] event in
+                    switch event {
+                    case .total(let count): await stateManager.setTotalImages(count)
+                    case .completed(let processed, let failed):
+                        await stateManager.handleBatchCompletion(processedCount: processed, failedFiles: failed)
                     }
-                    
-                    return localResults
                 }
-            }
-            
-            // Collect results from all threads
-            for await result in group {
-                guard !Task.isCancelled, stateManager.isProcessing else { break }
-                
-                await stateManager.handleBatchCompletion(
-                    processedCount: result.processed,
-                    failedFiles: result.failed
-                )
-                
-                if result.isGlobal {
-                    globalProcessedCount += result.globalProcessed
-                }
-                
-                #if DEBUG
-                logger.logDebug("Worker thread completed: processed=\(result.processed), failed=\(result.failed.count)", source: "ImageProcessor")
-                #endif
-            }
+            )
+            await handleProcessingCompletion(scanResults: report.directories, globalProcessedCount: report.globalProcessed)
+        } catch is CancellationError {
+            // The owning cancellation task resets UI state after the runner finishes.
+        } catch {
+            logger.logError(error.localizedDescription, source: "ImageProcessor")
+            stateManager.stopProcessing()
         }
-        
-        #if DEBUG
-        let stats = await taskQueue.getStatistics()
-        logger.logDebug("Work distribution: \(stats.distribution), steal operations: \(stats.stealCount)", source: "ImageProcessor")
-        #endif
-        
-        guard !Task.isCancelled, stateManager.isProcessing else {
-            #if DEBUG
-            logger.logDebug("Batch processing completed due to cancellation", source: "ImageProcessor")
-            #endif
-            return
-        }
-        
-        await handleProcessingCompletion(
-            scanResults: scanResults,
-            globalProcessedCount: globalProcessedCount
-        )
     }
-    
-    /// Process single batch
-    nonisolated private static func processBatch(
-        gmPath: String,
-        images: [URL],
-        outputDir: URL,
-        parameters: ProcessingParameters,
-        duplicateBaseNames: Set<String>,
-        cancellationCheck: @escaping @Sendable () async -> Bool,
-        logger: (@Sendable (String, LogLevel, String?) -> Void)?
-    ) async -> (processed: Int, failed: [String]) {
-        let processor = BatchImageProcessor(
-            gmPath: gmPath,
-            widthThreshold: parameters.widthThreshold,
-            resizeHeight: parameters.resizeHeight,
-            quality: parameters.quality,
-            unsharpRadius: parameters.unsharpRadius,
-            unsharpSigma: parameters.unsharpSigma,
-            unsharpAmount: parameters.unsharpAmount,
-            unsharpThreshold: parameters.unsharpThreshold,
-            useGrayColorspace: parameters.useGrayColorspace,
-            cancellationCheck: cancellationCheck,
-            logger: logger
-        )
-        
-        return await processor.processBatch(
-            images: images,
-            outputDir: outputDir,
-            duplicateBaseNames: duplicateBaseNames
-        )
-    }
-    
+
     /// Handle final completion
     private func handleProcessingCompletion(
         scanResults: [DirectoryScanResult],
